@@ -323,20 +323,26 @@ function initTabs() {
 // ---------------------------------------------------------------------------
 // Runtime & Header Renderers
 // ---------------------------------------------------------------------------
+function getTelemetryQueries(briefOverride) {
+  const b = briefOverride || state.brief || {};
+  const raw = state.bqTelemetry || b.bq_telemetry;
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw?.queries)) return raw.queries;
+  return [];
+}
+
 function isBigQueryEngineActive(briefOverride) {
   const b = briefOverride || state.brief || {};
-  const queries = state.bqTelemetry?.queries || b.bq_telemetry?.queries || [];
-  if (Array.isArray(queries) && queries.some((q) => String(q.engine || "").toLowerCase().includes("bigquery"))) {
+  const queries = getTelemetryQueries(briefOverride);
+  if (queries.some((q) => String(q.engine || "").toLowerCase().includes("bigquery"))) {
+    return true;
+  }
+  const raw = state.bqTelemetry || b.bq_telemetry;
+  if (raw && !Array.isArray(raw) && String(raw.backend || "").toLowerCase().includes("bigquery")) {
     return true;
   }
   const engine = b.execution_engine || b.routing?.execution_engine || "";
   return String(engine).toLowerCase().includes("bigquery");
-}
-
-function getTelemetryQueries(briefOverride) {
-  const b = briefOverride || state.brief || {};
-  const q = state.bqTelemetry?.queries || b.bq_telemetry?.queries || [];
-  return Array.isArray(q) ? q : [];
 }
 
 function renderGqlTelemetryBar() {
@@ -362,9 +368,8 @@ function renderGqlTelemetryBar() {
   }
 
   if (queries.length > 0) {
-    const q = queries[0];
-    const ms = q.elapsed_ms !== undefined ? ` (${q.elapsed_ms}ms · ${q.row_count ?? "--"} rows)` : "";
-    bar.innerHTML = `<span class="telemetry-engine-pill">Local Deterministic Parquet Graph</span><span>Preview ISO GQL execution${escapeHtml(ms)}</span>`;
+    const totalMs = Math.round(queries.reduce((acc, q) => acc + (Number(q.elapsed_ms) || 0), 0) * 100) / 100;
+    bar.innerHTML = `<span class="telemetry-engine-pill">Local Deterministic Parquet Graph</span><span>ISO/IEC 39075 GQL parity · ${escapeHtml(queries.length)} graph queries (${escapeHtml(totalMs)}ms)</span>`;
     return;
   }
 
@@ -685,16 +690,19 @@ function updateCapacityChip(brief, overrideSnapshot = null) {
 
   if (snap && typeof snap === "object") {
     const parts = [];
-    if (snap.eval_hub_open_slots !== undefined) parts.push(`Open Slots: ${snap.eval_hub_open_slots}`);
+    if (snap.monthly_slot_capacity !== undefined) parts.push(`Monthly Cap: ${snap.monthly_slot_capacity}`);
     if (snap.eval_hub_waitlist_count !== undefined) parts.push(`Waitlist: ${snap.eval_hub_waitlist_count}`);
     if (snap.active_holds_count !== undefined) parts.push(`Active Holds: ${snap.active_holds_count}`);
-    if (snap.remaining_capacity !== undefined) parts.push(`Remaining: ${snap.remaining_capacity}`);
+    const openVal = snap.remaining_capacity ?? snap.eval_hub_open_slots;
+    if (openVal !== undefined) parts.push(`Open Slots: ${openVal}`);
     const metricsTxt = parts.length > 0 ? parts.join(" · ") : JSON.stringify(snap);
     chip.innerHTML = `<strong>${escapeHtml(evalHubId || coordinatorId)}</strong> · ${escapeHtml(metricsTxt)}`;
     return;
   }
 
-  chip.innerHTML = `Route Corridor: <code>${escapeHtml(coordinatorId)}</code> &rarr; <code>${escapeHtml(evalHubId)}</code> &rarr; <code>${escapeHtml(vendorId)}</code> · Est. ${escapeHtml(rec.expected_cumulative_days ?? "--")}d wait`;
+  const activeHoldsCount = Array.isArray(brief?.slot_holds) ? brief.slot_holds.length : 0;
+  const holdsSuffix = activeHoldsCount > 0 ? ` · ${activeHoldsCount} active 48h hold${activeHoldsCount === 1 ? "" : "s"}` : "";
+  chip.innerHTML = `Route Corridor: <code>${escapeHtml(coordinatorId)}</code> &rarr; <code>${escapeHtml(evalHubId)}</code> &rarr; <code>${escapeHtml(vendorId)}</code> · Est. ${escapeHtml(rec.expected_cumulative_days ?? "--")}d wait${escapeHtml(holdsSuffix)}`;
 }
 
 function renderPathwaysAndClock(brief, { preserveHoldBanner = false } = {}) {
@@ -1378,7 +1386,10 @@ function renderOutreachAndEquity(brief) {
 
 function renderBeforeAfterEquity(brief) {
   const grid = $("beforeAfterMetricsGrid");
-  const cohort = brief?.equity_audit?.before_vs_after_rerouting_cohort;
+  const cohort =
+    brief?.equity_audit?.before_vs_after_rerouting_cohort ||
+    brief?.before_vs_after_rerouting_cohort ||
+    brief?.routing?.before_vs_after_rerouting_cohort;
   const simSum = brief?.counterfactual_simulation?.impact_summary;
 
   if (grid) {
@@ -1878,18 +1889,18 @@ const CYTOSCAPE_MEDICAL_STYLE = [
     selector: "node",
     style: {
       shape: "round-rectangle",
-      width: 148,
-      height: 50,
+      width: 154,
+      height: 52,
       "background-color": "#F8FAFC",
       "border-width": 2,
       "border-color": "#0F172A",
       label: "data(label)",
       color: "#0F172A",
       "font-family": "Noto Sans, system-ui, sans-serif",
-      "font-size": "11px",
+      "font-size": "12px",
       "font-weight": "600",
       "text-wrap": "wrap",
-      "text-max-width": "138px",
+      "text-max-width": "144px",
       "text-valign": "center",
       "text-halign": "center",
     },
@@ -1948,7 +1959,7 @@ const CYTOSCAPE_MEDICAL_STYLE = [
       "arrow-scale": 1.05,
       label: "data(label)",
       "font-family": "JetBrains Mono, monospace",
-      "font-size": "10px",
+      "font-size": "12px",
       color: "#0F172A",
       "text-background-color": "#FFFFFF",
       "text-background-opacity": 0.9,
@@ -2158,27 +2169,27 @@ function renderCytoscapeGraph(brief) {
 // ---------------------------------------------------------------------------
 function getStatutoryTierInfo(ageMonths) {
   const age = Number(ageMonths);
-  if (Number.isNaN(age) || age < 24) {
+  if (Number.isNaN(age) || age < 27) {
     return {
-      tier: "Tier 1 · Standard Part C (0–23m)",
+      tier: "Tier 1 · Standard Part C (0–26m)",
       badgeClass: "badge-compliant",
     };
   }
-  if (age <= 29) {
+  if (age < 33) {
     return {
-      tier: "Tier 2 · Early Transition Watch (24–29m)",
-      badgeClass: "badge-compliant",
-    };
-  }
-  if (age <= 32) {
-    return {
-      tier: "Tier 3 · Concurrent Part B Notice (30–32m · 34 CFR § 303.209)",
+      tier: "Tier 2 · LEA Transition Planning (27–32m · 34 CFR § 303.209)",
       badgeClass: "badge-warn",
     };
   }
-  if (age <= 35) {
+  if (age < 34.5) {
     return {
-      tier: "Tier 4 · Urgent 36m Cliff / Part B LEA Referral (33–35m)",
+      tier: "Tier 3 · Mandatory Part B Conference (33–34.4m · 34 CFR § 303.209)",
+      badgeClass: "badge-warn",
+    };
+  }
+  if (age < 36) {
+    return {
+      tier: "Tier 4 · <45d Exemption + Dual LEA Handoff (34.5–35.9m)",
       badgeClass: "badge-breach",
     };
   }
@@ -2308,6 +2319,28 @@ function computeGatekeeperFallback(payload) {
   };
 }
 
+function formatGatekeeperMissingItem(m) {
+  if (!m) return "";
+  if (typeof m === "string") return m;
+  if (typeof m === "object") {
+    const code = m.item_code || m.code || "";
+    const cite = m.citation ? ` (${m.citation})` : "";
+    const action = m.action || m.message || "";
+    if (code && action) return `${code}${cite}: ${action}`;
+    return action || code || JSON.stringify(m);
+  }
+  return String(m);
+}
+
+function formatGatekeeperWarning(w) {
+  if (!w) return "";
+  if (typeof w === "string") return w;
+  if (typeof w === "object") {
+    return w.message || w.action || w.code || JSON.stringify(w);
+  }
+  return String(w);
+}
+
 function renderGatekeeperResult(res) {
   const box = $("gatekeeperResult");
   if (!box || !res) return;
@@ -2315,10 +2348,31 @@ function renderGatekeeperResult(res) {
 
   const score = res.readiness_score ?? res.score ?? "--";
   const tier = res.statutory_transition_tier || getStatutoryTierInfo(state.intake.ageMonths).tier;
-  const statusTxt = res.status || (Number(score) >= 80 ? "READY" : "INCOMPLETE");
-  const missing = Array.isArray(res.missing_items) ? res.missing_items : [];
-  const warnings = Array.isArray(res.warnings) ? res.warnings : [];
-  const isReady = missing.length === 0 && Number(score) >= 75;
+  const statusTxt =
+    res.packet_status ||
+    (res.status && res.status !== "ok" ? res.status : null) ||
+    (Number(score) >= 80 ? "READY_FOR_EHR_HANDOFF" : "INCOMPLETE");
+
+  const rawMissing = Array.isArray(res.missing_intake_items)
+    ? res.missing_intake_items
+    : Array.isArray(res.missing_items)
+    ? res.missing_items
+    : [];
+  const missing = rawMissing.map(formatGatekeeperMissingItem).filter(Boolean);
+
+  const rawWarnings = Array.isArray(res.bounce_prevention_warnings)
+    ? res.bounce_prevention_warnings
+    : Array.isArray(res.warnings)
+    ? res.warnings
+    : [];
+  const warnings = rawWarnings.map(formatGatekeeperWarning).filter(Boolean);
+
+  const explicitReady =
+    res.ready_for_referral_handoff !== undefined
+      ? Boolean(res.ready_for_referral_handoff)
+      : res.ready !== undefined
+      ? Boolean(res.ready)
+      : missing.length === 0 && Number(score) >= 75;
 
   const missingHtml =
     missing.length > 0
@@ -2329,13 +2383,14 @@ function renderGatekeeperResult(res) {
 
   const warningsHtml =
     warnings.length > 0
-      ? `<div class="muted-small">${warnings.map((w) => escapeHtml(w)).join(" · ")}</div>`
+      ? `<div class="muted-small">${warnings.slice(0, 3).map((w) => escapeHtml(w)).join(" · ")}</div>`
       : "";
 
   box.innerHTML = `
     <div class="gatekeeper-top-row">
-      <span class="mini-tag ${isReady ? "ok" : "warn"}">${ICONS.shieldCheck} Readiness: <strong>${escapeHtml(score)}/100</strong> (${escapeHtml(statusTxt)})</span>
+      <span class="mini-tag ${explicitReady ? "ok" : "warn"}">${ICONS.shieldCheck} Readiness: <strong>${escapeHtml(score)}/100</strong> (${escapeHtml(statusTxt)})</span>
       <span class="mini-tag">${escapeHtml(tier)}</span>
+      ${res.days_until_age_3 !== undefined && res.days_until_age_3 !== null ? `<span class="mini-tag">Age-3 Buffer: ${escapeHtml(res.days_until_age_3)}d</span>` : ""}
       ${res.__localFallback ? `<span class="mini-tag">Local Pre-Flight Check</span>` : ""}
     </div>
     ${missingHtml}
@@ -2618,14 +2673,22 @@ async function reserveRecommendedSlot() {
     if (res.capacity_snapshot) {
       updateCapacityChip(state.brief, res.capacity_snapshot);
     }
+    const holdRecord = res.hold || res;
+    const isReserved = !res.status || String(res.status).toLowerCase() === "reserved";
     if (statusBox) {
       statusBox.hidden = false;
-      statusBox.innerHTML = `${ICONS.checkCircle} <strong>48-Hour Slot Hold Confirmed:</strong> Hold ID <code>${escapeHtml(res.hold_id || "HOLD-48H")}</code> · Expires <strong>${escapeHtml(res.expires_at || "in 48 hours")}</strong> · Status: <code>${escapeHtml(res.status || "RESERVED")}</code>`;
+      statusBox.classList.toggle("warn", !isReserved);
+      if (isReserved) {
+        statusBox.innerHTML = `${ICONS.checkCircle} <strong>48-Hour Slot Hold Confirmed:</strong> Hold ID <code>${escapeHtml(holdRecord.hold_id || "HOLD-48H")}</code> · Expires <strong>${escapeHtml(holdRecord.expires_at || "in 48 hours")}</strong> · Status: <code>${escapeHtml(String(res.status || "RESERVED").toUpperCase())}</code>`;
+      } else {
+        statusBox.innerHTML = `${ICONS.alertTriangle} <strong>Slot Capacity Alert (${escapeHtml(res.status)}):</strong> ${escapeHtml(res.message || "Provider capacity exhausted; select an alternate <=45d corridor.")}`;
+      }
     }
     await loadBriefWithIntakeParams({ preserveHoldBanner: true });
   } catch (err) {
     if (statusBox) {
       statusBox.hidden = false;
+      statusBox.classList.add("warn");
       statusBox.innerHTML = `${ICONS.alertTriangle} <strong>Slot Hold Request Unavailable:</strong> ${escapeHtml(err.message)} (verify backend <code>POST /api/slots/reserve</code> is running).`;
     }
   } finally {
@@ -2693,6 +2756,9 @@ function renderBrief(brief, { preserveHoldBanner = false } = {}) {
   renderRuntimeMeta(brief.runtime, brief.execution_engine || brief.routing?.execution_engine);
   renderHeaderAndKpis(brief);
   syncIntakeControlsFromBrief(brief);
+  if (brief.packet_readiness && state.gatekeeper.hasScreeningTool && state.gatekeeper.hasParentConsent) {
+    renderGatekeeperResult(brief.packet_readiness);
+  }
   renderGuardrails(brief);
   renderCytoscapeGraph(brief);
   renderPathwaysAndClock(brief, { preserveHoldBanner });

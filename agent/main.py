@@ -133,6 +133,20 @@ _GEO_CACHE: dict[tuple[str, str], dict[str, Any]] = {}
 _BRIEF_CACHE: dict[tuple[Any, ...], dict[str, Any]] = {}
 
 
+def _safe_active_hold_signature(state_code: str) -> tuple[tuple[str, int], ...]:
+    """Returns a hashable snapshot of active slot holds so `_BRIEF_CACHE` stays capacity-accurate."""
+    try:
+        mod = importlib.import_module("first_milestones.tools.slot_ledger")
+        fn = getattr(mod, "get_active_hold_counts", None)
+        if callable(fn):
+            counts = fn(state_code)
+            if isinstance(counts, dict):
+                return tuple(sorted((str(k), int(v)) for k, v in counts.items() if v))
+    except Exception:  # noqa: BLE001
+        pass
+    return ()
+
+
 def _get_cached_brief(
     *,
     state_code: str,
@@ -144,20 +158,23 @@ def _get_cached_brief(
     has_household_vehicle: bool = False,
 ) -> dict[str, Any]:
     """Returns a deep-copied 45d brief, caching static per-state/profile computation in memory."""
-    resolved_tract = child_tract_geoid.strip() or _default_anchor_tract(state_code)
+    clean_state = state_code.strip().upper()
+    resolved_tract = child_tract_geoid.strip() or _default_anchor_tract(clean_state)
     cfg = get_config()
-    is_mocked = hasattr( getattr(graph_client, "query_bq_or_none", None), "assert_called")
+    is_mocked = hasattr(getattr(graph_client, "query_bq_or_none", None), "assert_called")
     cache_key = (
         cfg.get("project", ""),
         cfg.get("dataset", ""),
         os.environ.get("A4I_FORCE_LOCAL_PARQUET", ""),
-        state_code.strip().upper(),
+        os.environ.get("A4I_SLOT_LEDGER_DB", ""),
+        clean_state,
         resolved_tract,
         int(child_age_months),
         concern_domain.strip(),
         bool(needs_medicaid),
         bool(needs_bilingual),
         bool(has_household_vehicle),
+        _safe_active_hold_signature(clean_state),
     )
     if not is_mocked and cache_key in _BRIEF_CACHE:
         cloned = copy.deepcopy(_BRIEF_CACHE[cache_key])
@@ -176,6 +193,7 @@ def _get_cached_brief(
         needs_medicaid=needs_medicaid,
         needs_bilingual=needs_bilingual,
         has_household_vehicle=has_household_vehicle,
+        state_code=state_code,
     )
     if not is_mocked:
         if len(_BRIEF_CACHE) >= 128:
@@ -225,8 +243,10 @@ class GatekeeperRequest(BaseModel):
     child_age_months: int = Field(default=32, ge=0, le=60)
     consent_signed: bool | None = None
     has_parent_consent: bool | None = None
+    parental_consent_signed: bool | None = None
     screening_tool_completed: bool | None = None
     has_screening_tool: bool | None = None
+    developmental_screen_completed: bool | None = None
     primary_language: str | None = None
     preferred_language: str | None = None
     insurance_status: str | None = None
@@ -253,6 +273,13 @@ class SlotReserveRequest(BaseModel):
     needs_bilingual: bool = True
     hold_hours: int = Field(default=48, ge=1, le=168)
     case_reference: str = ""
+
+
+class SlotReleaseRequest(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    hold_id: str = Field(..., min_length=1, max_length=120)
+    state_code: str | None = None
 
 
 _ORIG_GOOGLE_AUTH_DEFAULT = google.auth.default
@@ -1739,6 +1766,21 @@ def _build_geo_payload(state_code: str) -> dict[str, Any]:
         })
 
     payload = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "properties": {
+                    "tract_geoid": t.get("tract_geoid"),
+                    "county_name": t.get("county_name"),
+                    "poverty_pct": t.get("poverty_pct"),
+                    "zero_vehicle_pct": t.get("zero_vehicle_pct"),
+                    "children_under_5_count": t.get("children_under_5_count"),
+                },
+                "geometry": None,
+            }
+            for t in tracts_out
+        ],
         "state_code": state_code,
         "viewbox": f"0 0 {int(width)} {int(height)}",
         "viewport": {"width": int(width), "height": int(height)},
@@ -1806,15 +1848,23 @@ async def gatekeeper_endpoint(req: GatekeeperRequest) -> dict[str, Any]:
         parent_consent = (
             req.has_parent_consent
             if req.has_parent_consent is not None
-            else (req.consent_signed if req.consent_signed is not None else True)
+            else (
+                req.parental_consent_signed
+                if req.parental_consent_signed is not None
+                else (req.consent_signed if req.consent_signed is not None else True)
+            )
         )
         screening_done = (
             req.has_screening_tool
             if req.has_screening_tool is not None
             else (
-                req.screening_tool_completed
-                if req.screening_tool_completed is not None
-                else True
+                req.developmental_screen_completed
+                if req.developmental_screen_completed is not None
+                else (
+                    req.screening_tool_completed
+                    if req.screening_tool_completed is not None
+                    else True
+                )
             )
         )
         language = (
@@ -1863,6 +1913,13 @@ async def gatekeeper_endpoint(req: GatekeeperRequest) -> dict[str, Any]:
                 res["ready"] = bool(res["ready_for_referral_handoff"])
             if "missing_items" not in res and "missing_intake_items" in res:
                 res["missing_items"] = list(res["missing_intake_items"] or [])
+            if "warnings" not in res and "bounce_prevention_warnings" in res:
+                res["warnings"] = [
+                    str(w.get("message") or w.get("code") or w)
+                    if isinstance(w, dict)
+                    else str(w)
+                    for w in (res["bounce_prevention_warnings"] or [])
+                ]
             return res
         return {"status": "ok", "state_code": active_state, "result": res}
 
@@ -1927,6 +1984,7 @@ async def get_slot_ledger(
         return {
             "state_code": active_state,
             "total_active_holds": len(holds),
+            "active_holds_count": len(holds),
             "holds": holds,
             "providers": providers,
             "synthetic_provenance_notice": "100% [Synthetic] CareNode slot ledger.",
@@ -1977,6 +2035,12 @@ async def reserve_slot_endpoint(req: SlotReserveRequest) -> dict[str, Any]:
         if isinstance(res, dict):
             res.setdefault("state_code", active_state)
             res.setdefault("active_holds", _list_holds_for_state(active_state))
+            if "hold" not in res and "hold_id" in res:
+                res["hold"] = {
+                    "hold_id": res["hold_id"],
+                    "expires_at": res.get("expires_at"),
+                    "status": res.get("status", "reserved"),
+                }
             if "capacity_snapshot" not in res:
                 util_map = res.get("provider_utilization_after_hold")
                 if isinstance(util_map, dict) and util_map:
@@ -1984,7 +2048,8 @@ async def reserve_slot_endpoint(req: SlotReserveRequest) -> dict[str, Any]:
                     snap = util_map[focus_pid]
                     res["capacity_snapshot"] = {
                         "provider_id": focus_pid,
-                        "eval_hub_open_slots": snap.get("monthly_slot_capacity"),
+                        "monthly_slot_capacity": snap.get("monthly_slot_capacity"),
+                        "eval_hub_open_slots": snap.get("remaining_slots"),
                         "eval_hub_waitlist_count": snap.get("active_waitlist_count"),
                         "active_holds_count": snap.get("active_holds"),
                         "remaining_capacity": snap.get("remaining_slots"),
@@ -1992,6 +2057,28 @@ async def reserve_slot_endpoint(req: SlotReserveRequest) -> dict[str, Any]:
                     }
             return res
         return {"status": "reserved", "state_code": active_state, "result": res}
+
+
+@app.post("/api/slots/release")
+async def release_slot_endpoint(req: SlotReleaseRequest) -> dict[str, Any]:
+    """Releases an active 48-hour pathway slot hold immediately."""
+    raw_dump = req.model_dump(mode="python")
+    _reject_audit_keys_http(raw_dump, "/api/slots/release")
+    with request_state_context(req.state_code) as active_state:
+        mod = _get_slot_ledger_module()
+        fn = getattr(mod, "release_slot_hold", None) if mod is not None else None
+        if callable(fn):
+            res = fn(req.hold_id)
+            if isinstance(res, dict):
+                res.setdefault("state_code", active_state)
+                res.setdefault("active_holds", _list_holds_for_state(active_state))
+                return res
+        return {
+            "status": "not_found",
+            "error_code": "HOLD_NOT_FOUND",
+            "hold_id": req.hold_id,
+            "state_code": active_state,
+        }
 
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")

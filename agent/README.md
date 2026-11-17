@@ -1,42 +1,48 @@
-# First Milestones — Multi-Agent ADK System, BigQuery Property Graph & Coordinator Workbench
+# First Milestones — Multi-Agent ADK System, 6-State BigQuery Property Graph & Coordinator Workbench
 
 Built for **Agents for Impact 2026 · Challenge 04: Early Intervention & Developmental Screening Triage**.
 
 ## Architecture Summary
 
-### 1. Hierarchical Multi-Agent ADK Architecture (`first_milestones/agent.py` + `schemas.py`)
-- **Root Orchestrator (`first_milestones_coordinator`):** Powered by Gemini Pro / Argon (`A4I_GEMINI_MODEL`, automatic fallback cascade via `A4I_GEMINI_FALLBACK_MODELS`), enforcing statutory **45-day IDEA Part C (`34 CFR § 303.310`)**, **36-month aging-out cliff**, zero-vehicle **Medicaid NEMT**, zero-race-input routing, and `100% [Synthetic]` stage-safety guardrails.
+### 1. Hierarchical Multi-Agent ADK Architecture (`first_milestones/agent.py`, `schemas.py`, `guardrails.py`)
+- **Root Orchestrator (`first_milestones_coordinator`):** Powered by `gemini-2.5-pro` (`A4I_GEMINI_MODEL`, automatic fallback cascade via `A4I_GEMINI_FALLBACK_MODELS` with tuned Gemini 2.5 Pro/Flash thinking budgets), enforcing statutory **45-day IDEA Part C (`34 CFR § 303.310`)**, the **5-tier `34 CFR § 303.209` / `§ 303.21` / `§ 300.800` age transition engine**, zero-vehicle **Medicaid NEMT** + **Natural Environment home visits (`34 CFR § 303.126`)**, zero-race-input routing, and `100% [Synthetic]` stage-safety guardrails.
 - **3 Specialist `gemini-2.5-flash` Sub-Agents (`A4I_SUBAGENT_MODEL=gemini-2.5-flash`):**
-  1. `triage_pathway_router` — Executes prospective `<=45`-day multi-hop pathway routing (`Clinic -> Coordinator -> Eval Hub -> Therapy Vendor`) with spatial `ST_DISTANCE`, Medicaid/Part C/bilingual hard filters, and 36-month cliff buffers.
-  2. `network_bottleneck_auditor` — Runs variable-length `-{2,4}->` ISO GQL bounce audits correlated on `case_chain_id` (prefix-deduplicated to eliminate 3-hop Type B double-counting) and simulates `paper_fax -> ehr_electronic_portal` counterfactual interventions.
-  3. `equity_and_caregiver_specialist` — Performs strictly post-output neighborhood equity audits (`audit_*` ACS shares joined *after* routing), ranks Hidden EI Deserts for mobile screening without 6x NSCH fan-out, and composes plain-language **English & Español** Caregiver Action Notes.
-- **Pydantic Schema Validation (`first_milestones/schemas.py`):** Validates structured 45-Day Pathway & Network Brief payloads across ADK tool outputs, REST endpoints, and UI artifacts.
+  1. `triage_pathway_router` — Executes Hop-0 intake packet gatekeeping (`check_intake_packet_readiness`), prospective `<=45`-day multi-hop pathway routing (`find_compliant_45d_pathways`, `find_viable_45d_paths` over `Clinic -> Coordinator -> Eval Hub -> Therapy Vendor` via `CAN_REFER_TO` + `SERVES_AREA` + `ST_DISTANCE`), and hold-aware slot reservation (`reserve_pathway_slot`).
+  2. `network_bottleneck_auditor` — Runs variable-length `-{2,4}->` ISO GQL bounce & regional betweenness audits (`audit_multihop_bounce_hubs`, `detect_regional_bottleneck_hubs`, `get_referral_history`) correlated on `case_chain_id` and prefix-deduplicated to eliminate 3-hop Type B double-counting, plus counterfactual `paper_fax -> ehr_electronic_portal` + slot pre-check simulations (`simulate_hub_intervention`).
+  3. `equity_and_caregiver_specialist` — Runs strictly post-output neighborhood equity & before-vs-after non-racial re-routing cohort parity audits (`run_post_output_equity_audit`), detects True Hidden EI Deserts paired with public-domain HRSA FQHC BYOD screening sites (`rank_outreach_zones`, `prioritize_community_screening_tracts`, `17 U.S.C. § 105`), preserves 6-row `'Statewide'` HRSA NSCH grain, and composes date-anchored plain-language **English & Español** Caregiver Action Notes (`brief_builder.py`).
+- **Pydantic Schema Validation & Runtime Callbacks (`schemas.py`, `guardrails.py`):** Validates structured `PathwayBrief` payloads end-to-end while blocking `audit_*` demographic shares, `limited_english_rate`, and raw PII before tool execution.
 
-### 2. Multi-State BigQuery Property Graph & Data Rigor (`first_milestones/tools/`)
+### 2. Live SSE Streaming & Interactive Cytoscape.js Coordinator Workbench (`main.py` + `static/`)
+- **Live SSE Streaming (`POST /run` & `/api/chat`):** Streams real-time ADK coordinator/sub-agent delegation events, tool invocations, BigQuery execution telemetry (`job_id`, elapsed ms, bytes processed), and token deltas to the Coordinator Assistant pane while synchronizing the right-hand Pathway & Network Brief (backed by thread-safe brief & BigQuery query caching).
+- **Interactive Cytoscape.js Referral Topology & TIGER Choropleth (`static/vendor/cytoscape.min.js`, `/api/geo`):** Renders interactive multi-hop `CareNode` provider graphs (`Screening_Pediatric_Clinic`, `Part_C_Intake_Coordinator`, `Multidisciplinary_Eval_Hub`, `EI_Therapy_Vendor`), crimson `paper_fax` bounce loops (`>45d`), emerald `ehr_electronic_portal` compliant corridors (`<=45d`), Census TIGER tract SVG choropleths, and HRSA FQHC BYOD screening overlays.
+
+### 3. 6-State BigQuery Property Graph, Governed MCP & Local Auth Bridge (`first_milestones/tools/`, `mcp_integration.py`, `notebooks/`)
 - **Live 6-State Property Graph (`a4i_early_intervention_multistate.ReferralGraph` & `a4i_early_intervention.ReferralGraph`):**
-  - Supports all 6 challenge states out of the box: **Mississippi (`MS`, FIPS `28`)**, **California (`CA`, leading-zero FIPS `'06...'`, `41,144` under-5 children across `101` tracts)**, **Alabama (`AL`, leading-zero FIPS `'01...'`)**, **Georgia (`GA`, `13`)**, **Texas (`TX`, `48`)**, and **New York (`NY`, `36`)**.
-  - `A4I_DATASET=a4i_early_intervention` remains preserved as the primary single-state dataset while `A4I_MULTISTATE_DATASET=a4i_early_intervention_multistate` serves live cross-state ISO/IEC 39075 GQL `GRAPH_TABLE` switching without reloading tables.
-- **4 Verified Data & Graph Rigor Guardrails:**
-  1. **Zero-Padding FIPS Preservation:** `census_tract_geoid` (11-char `STRING`) and `county_fips` (5-char `STRING`) preserve `'01...'` (AL) and `'06...'` (CA) leading zeros end-to-end.
+  - Supports all 6 challenge states live in BigQuery and in the local GeoParquet mirror: **Mississippi (`MS`, FIPS `28`)**, **California (`CA`, leading-zero FIPS `'06...'`, `41,144` under-5 children across `101` tracts)**, **Alabama (`AL`, leading-zero FIPS `'01...'`)**, **Georgia (`GA`, `13`)**, **Texas (`TX`, `48`)**, and **New York (`NY`, `36`)**.
+  - Preserves the shared single-state dataset `A4I_DATASET=a4i_early_intervention` untouched while automatically routing cross-state ISO/IEC 39075 GQL `GRAPH_TABLE` queries (`CareNode`, `Neighborhood`, `ReferralHandoff`, `REFERS_TO`, `CAN_REFER_TO`, `SERVES_AREA`) to `A4I_MULTISTATE_DATASET=a4i_early_intervention_multistate`.
+- **4 Verified Data & Graph Rigor Guardrails (proven in `notebooks/c_ei_02_graph_and_audit.ipynb`):**
+  1. **Zero-Padding FIPS Preservation:** `census_tract_geoid` (11-char `STRING`) and `county_fips` (5-char `STRING`) preserve `'01...'` (AL) and `'06...'` (CA) leading zeros end-to-end via `LPAD`.
   2. **ACS `limited_english_rate` Trap Caught:** All 426 starter ACS tracts carry `0.0` in `limited_english_rate`; excluded from formulas and replaced with `bilingual_services_listed` + statewide HRSA NSCH language strata.
-  3. **Statewide-Only NSCH Grain:** `nsch_developmental_screening_survey` (`6` statewide rows per state) is never cross-joined to tracts, preventing 6x row fan-out.
-  4. **Correlated Prefix-Deduplicated GQL:** `COUNT(DISTINCT h.case_chain_id) = 1` + `QUALIFY ROW_NUMBER() OVER (PARTITION BY chain_id ORDER BY total_hops DESC) = 1` yields exact 44 episodes and 26 `>45d` breaches in MS.
-
-### 3. Google-Managed MCP Integration (`tools.yaml` + `mcp_integration.py`)
-- Connects automatically to **Google MCP Toolbox for Databases** (`googleapis/mcp-toolbox` `v0.27.0` via ADK `ToolboxToolset` using `agent/tools.yaml`) inside Cloud Run, or to **BigQuery's Built-in Remote Managed MCP Server** (`https://bigquery.googleapis.com/mcp` via ADK `McpToolset` + Google ADC headers).
-
-### 4. Interactive Cytoscape.js Graph & SSE Streaming Workbench (`main.py` + `static/`)
-- **Live SSE Streaming (`POST /run` & `/api/chat`):** Streams real-time ADK agent/sub-agent delegation events, tool invocations, and token deltas to the Coordinator Assistant pane while simultaneously synchronizing the right-hand Pathway & Network Brief.
-- **Interactive Cytoscape.js Referral Topology (`static/vendor/cytoscape.min.js`):** Renders interactive multi-hop provider nodes (`Screening_Pediatric_Clinic`, `Part_C_Intake_Coordinator`, `Multidisciplinary_Eval_Hub`, `EI_Therapy_Vendor`), crimson `paper_fax` bounce loops (`>45d`), and emerald `ehr_electronic_portal` compliant corridors (`<=45d`) with filter toggles, hover tooltips, and click-to-inspect details.
+  3. **Statewide-Only NSCH Grain:** `nsch_developmental_screening_survey` (`6` `'Statewide'` rows per state) is never cross-joined to tracts, preventing 6x row fan-out.
+  4. **Correlated Prefix-Deduplicated GQL:** `COUNT(DISTINCT h.case_chain_id) = 1` + `QUALIFY ROW_NUMBER() OVER (PARTITION BY chain_id ORDER BY total_hops DESC) = 1` yields exact `44` complete episodes, `35` 3–4 hop chains, and `26` `>45d` statutory breaches per state.
+- **Governed Google-Managed MCP Integration (`tools.yaml` + `mcp_integration.py`):** Connects to **Google MCP Toolbox for Databases** (`googleapis/mcp-toolbox` via ADK `ToolboxToolset` and `agent/tools.yaml`) or **BigQuery's Built-in Remote Managed MCP Server** (`https://bigquery.googleapis.com/mcp` via ADK `McpToolset` with `GcloudCliCredentials` / Google ADC headers and unrestricted `execute_sql` strictly excluded).
 
 ---
 
-## Quick Start
+## Quick Start & Deployment
 
-### 1. Local `gcloud` ADC Bridge & Local Workbench (`http://localhost:8080`)
-If running locally with an active `gcloud auth login` session (without browser ADC setup):
+### 1. Provision All 6 Starter States + `ReferralGraph` in BigQuery
+Load all 6 states (`MS`, `AL`, `GA`, `TX`, `CA`, `NY`) and declare `ReferralGraph` views & DDL in `a4i_early_intervention_multistate` without overwriting the shared single-state `a4i_early_intervention` dataset:
 ```bash
-bash scripts/setup_local_adc.sh         # bridges gcloud CLI credentials for BigQuery + Vertex AI
+bash scripts/load_multistate.sh
+# Or load a single state (or ALL) into A4I_DATASET:
+bash scripts/load.sh MS
+```
+
+### 2. Local `gcloud` Auth Bridge & Local Workbench (`http://localhost:8080`)
+Configure live BigQuery Property Graph + Vertex AI Gemini access from a local shell authenticated via `gcloud auth login` (even before browser ADC file setup):
+```bash
+source scripts/setup_local_adc.sh       # exports GOOGLE_CLOUD_PROJECT, A4I_USE_GCLOUD_AUTH=1, A4I_DATASET
 .venv/bin/python agent/main.py          # launches Split-Pane Coordinator Workbench on :8080
 ```
 Or launch the built-in ADK Developer Web UI:
@@ -44,16 +50,14 @@ Or launch the built-in ADK Developer Web UI:
 .venv/bin/adk web agent
 ```
 
-### 2. Deploy Unified Workbench + MCP Toolbox to Google Cloud Run
+### 3. Deploy Unified Workbench + MCP Toolbox to Google Cloud Run
 From the repository root:
 ```bash
 bash scripts/deploy_cloud_run.sh MS     # or CA, AL, GA, TX, NY (pass --skip-data for code-only redeploy)
 ```
-Configures `--min-instances=1`, `A4I_DATASET=a4i_early_intervention`, `A4I_MULTISTATE_DATASET=a4i_early_intervention_multistate`, and `A4I_SUBAGENT_MODEL=gemini-2.5-flash` for zero-cold-start live demos.
+Enables required Cloud Run / Vertex AI / BigQuery / MCP APIs, grants least-privilege IAM roles (`bigquery.dataViewer`, `bigquery.jobUser`, `aiplatform.user`, `mcp.toolUser`, `datastore.user`), and deploys with `--min-instances=1`, `A4I_DATASET=a4i_early_intervention`, `A4I_MULTISTATE_DATASET=a4i_early_intervention_multistate`, and `A4I_SUBAGENT_MODEL=gemini-2.5-flash`.
 
-### 3. Deploy ADK Package to Vertex AI Agent Engine (`google-adk==2.14.1`)
-Validate flags, staging bucket, and agent importability first with `--dry-run`, then deploy live:
+### 4. Run Automated Verification Suite
 ```bash
-bash scripts/deploy_agent_engine.sh --dry-run
-bash scripts/deploy_agent_engine.sh --project="$GOOGLE_CLOUD_PROJECT" --region=us-central1
+.venv/bin/pytest -v
 ```

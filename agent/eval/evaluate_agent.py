@@ -262,8 +262,34 @@ async def evaluate_suite(
                     flush=True,
                 )
         else:
-            tasks = [_eval_one(idx, case) for idx, case in enumerate(cases)]
-            case_results = await asyncio.gather(*tasks)
+            # Batch by state_code when concurrency > 1 so main.py's process-wide A4I_STATE
+            # does not cross-contaminate regular cases (reserved for the MS+CA probe).
+            results_by_id: dict[str, dict[str, Any]] = {}
+            completed = 0
+            states_order = list(dict.fromkeys(str(c.get("state_code", "MS")).upper() for c in cases))
+            for st in states_order:
+                st_cases = [c for c in cases if str(c.get("state_code", "MS")).upper() == st]
+
+                async def _eval_and_log(idx_in_batch: int, c: dict[str, Any]) -> dict[str, Any]:
+                    nonlocal completed
+                    res = await _eval_one(idx_in_batch, c)
+                    completed += 1
+                    status_lbl = "PASS" if res["passed"] else "FAIL"
+                    print(
+                        f"[{completed:02d}/{len(cases):02d}] {status_lbl} {res['case_id']} "
+                        f"(score={res['composite_score']:.2f}, traj_f1={res['trajectory']['f1']:.2f}, "
+                        f"faith={res['faithfulness']['score']:.2f}, model={res['model_used']}, "
+                        f"{res['latency_ms']:.0f}ms)",
+                        flush=True,
+                    )
+                    return res
+
+                batch_results = await asyncio.gather(
+                    *(_eval_and_log(i, c) for i, c in enumerate(st_cases))
+                )
+                for res in batch_results:
+                    results_by_id[res["case_id"]] = res
+            case_results = [results_by_id[c["case_id"]] for c in cases]
 
         isolation_probe = (
             await run_concurrency_state_isolation_probe(client, run_id)

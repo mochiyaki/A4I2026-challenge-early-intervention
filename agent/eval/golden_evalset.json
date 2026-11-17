@@ -24,14 +24,21 @@
           "run_post_output_equity_audit"
         ],
         "acceptable_alternatives": {
-          "find_viable_45d_paths": ["find_compliant_45d_pathways"],
-          "find_compliant_45d_pathways": ["find_viable_45d_paths"]
+          "find_viable_45d_paths": [
+            "find_compliant_45d_pathways"
+          ],
+          "find_compliant_45d_pathways": [
+            "find_viable_45d_paths"
+          ]
         },
         "optional_superset_tools": [
           "audit_multihop_bounce_hubs",
           "lookup_tract_routing_context",
           "mcp_lookup_tract_routing_context",
-          "execute_sql"
+          "execute_sql",
+          "transfer_to_agent",
+          "check_intake_packet_readiness",
+          "reserve_pathway_slot"
         ],
         "forbidden_tools": [],
         "require_equity_audit": true,
@@ -106,13 +113,18 @@
           "run_post_output_equity_audit"
         ],
         "acceptable_alternatives": {
-          "find_viable_45d_paths": ["find_compliant_45d_pathways"]
+          "find_viable_45d_paths": [
+            "find_compliant_45d_pathways"
+          ]
         },
         "optional_superset_tools": [
           "find_compliant_45d_pathways",
           "audit_multihop_bounce_hubs",
           "lookup_tract_routing_context",
-          "mcp_lookup_tract_routing_context"
+          "mcp_lookup_tract_routing_context",
+          "transfer_to_agent",
+          "check_intake_packet_readiness",
+          "reserve_pathway_slot"
         ],
         "forbidden_tools": [],
         "require_equity_audit": true,
@@ -177,13 +189,20 @@
           "run_post_output_equity_audit"
         ],
         "acceptable_alternatives": {
-          "find_viable_45d_paths": ["find_compliant_45d_pathways"],
-          "find_compliant_45d_pathways": ["find_viable_45d_paths"]
+          "find_viable_45d_paths": [
+            "find_compliant_45d_pathways"
+          ],
+          "find_compliant_45d_pathways": [
+            "find_viable_45d_paths"
+          ]
         },
         "optional_superset_tools": [
           "audit_multihop_bounce_hubs",
           "lookup_tract_routing_context",
-          "mcp_lookup_tract_routing_context"
+          "mcp_lookup_tract_routing_context",
+          "transfer_to_agent",
+          "check_intake_packet_readiness",
+          "reserve_pathway_slot"
         ],
         "forbidden_tools": [],
         "require_equity_audit": true,
@@ -232,7 +251,7 @@
       "category": "track_1_routing",
       "title": "MS Missing Tract GEOID & County Ambiguity Resolution",
       "state_code": "MS",
-      "prompt": "We have a 26-month-old toddler in Mississippi (somewhere in Leflore or Coahoma County—we don't have the 11-digit tract GEOID yet) needing a bilingual Medicaid Motor Milestone Delay referral without a household vehicle. Resolve an anchor high-need tract safely and give a <=45-day compliant route.",
+      "prompt": "We have a 26-month-old toddler in Mississippi (somewhere in Leflore or Coahoma County\u2014we don't have the 11-digit tract GEOID yet) needing a bilingual Medicaid Motor Milestone Delay referral without a household vehicle. Resolve an anchor high-need tract safely and give a <=45-day compliant route.",
       "child_context": {
         "tract_geoid": "",
         "age_months": 26,
@@ -247,14 +266,19 @@
           "run_post_output_equity_audit"
         ],
         "acceptable_alternatives": {
-          "find_viable_45d_paths": ["find_compliant_45d_pathways"]
+          "find_viable_45d_paths": [
+            "find_compliant_45d_pathways"
+          ]
         },
         "optional_superset_tools": [
           "find_compliant_45d_pathways",
           "lookup_tract_routing_context",
           "mcp_lookup_tract_routing_context",
           "audit_multihop_bounce_hubs",
-          "execute_sql"
+          "execute_sql",
+          "transfer_to_agent",
+          "check_intake_packet_readiness",
+          "reserve_pathway_slot"
         ],
         "forbidden_tools": [],
         "require_equity_audit": true,
@@ -318,11 +342,16 @@
           "run_post_output_equity_audit"
         ],
         "acceptable_alternatives": {
-          "find_compliant_45d_pathways": ["find_viable_45d_paths"]
+          "find_compliant_45d_pathways": [
+            "find_viable_45d_paths"
+          ]
         },
         "optional_superset_tools": [
           "find_viable_45d_paths",
-          "audit_multihop_bounce_hubs"
+          "audit_multihop_bounce_hubs",
+          "transfer_to_agent",
+          "check_intake_packet_readiness",
+          "reserve_pathway_slot"
         ],
         "forbidden_tools": [],
         "require_equity_audit": true,
@@ -347,7 +376,7 @@
         "forbid_flat_waitlist_recommendation": true,
         "require_explain_flat_waitlist_trap": false
       },
-      "expected_reference_summary": "Finds <=45-day pathway for 34-month-old in MS tract 28049003500, highlights extreme 36-month Part C aging-out urgency (~2 months remaining) and concurrent IDEA Part B transition notification (34 CFR § 303.209), flags Medicaid NEMT, and provides EN/ES caregiver notes.",
+      "expected_reference_summary": "Finds <=45-day pathway for 34-month-old in MS tract 28049003500, highlights extreme 36-month Part C aging-out urgency (~2 months remaining) and concurrent IDEA Part B transition notification (34 CFR \u00a7 303.209), flags Medicaid NEMT, and provides EN/ES caregiver notes.",
       "expected_tool_calls": [
         {
           "name": "find_compliant_45d_pathways",
@@ -393,7 +422,8 @@
           "lookup_regional_agency_kpis",
           "mcp_list_carenode_directory",
           "lookup_carenode_directory",
-          "execute_sql"
+          "execute_sql",
+          "transfer_to_agent"
         ],
         "forbidden_tools": [],
         "require_equity_audit": true,
@@ -422,15 +452,26 @@
       "expected_tool_calls": [
         {
           "name": "detect_regional_bottleneck_hubs",
-          "args": {"region": "ALL", "max_days": 45, "top_n": 5}
+          "args": {
+            "region": "ALL",
+            "max_days": 45,
+            "top_n": 5
+          }
         },
         {
           "name": "audit_multihop_bounce_hubs",
-          "args": {"only_breaches": true, "limit_chains": 10}
+          "args": {
+            "only_breaches": true,
+            "limit_chains": 10
+          }
         },
         {
           "name": "simulate_hub_intervention",
-          "args": {"target_provider_id": "", "upgrade_fax_to_ehr": true, "precheck_bilingual_and_slot_capacity": true}
+          "args": {
+            "target_provider_id": "",
+            "upgrade_fax_to_ehr": true,
+            "precheck_bilingual_and_slot_capacity": true
+          }
         },
         {
           "name": "run_post_output_equity_audit",
@@ -462,7 +503,8 @@
           "audit_multihop_bounce_hubs",
           "detect_regional_bottleneck_hubs",
           "mcp_list_carenode_directory",
-          "lookup_carenode_directory"
+          "lookup_carenode_directory",
+          "transfer_to_agent"
         ],
         "forbidden_tools": [],
         "require_equity_audit": true,
@@ -537,7 +579,8 @@
           "run_post_output_equity_audit",
           "audit_multihop_bounce_hubs",
           "list_table_ids",
-          "get_table_info"
+          "get_table_info",
+          "transfer_to_agent"
         ],
         "forbidden_tools": [],
         "require_equity_audit": false,
@@ -564,8 +607,14 @@
       },
       "expected_reference_summary": "Reports SYN-PARTC-MS-01/02/03 45-day IFSP compliance KPIs (100% [Synthetic]) and the 6 Statewide HRSA NSCH strata (never tract-level).",
       "expected_tool_calls": [
-        {"name": "lookup_regional_agency_kpis", "args": {}},
-        {"name": "lookup_statewide_nsch_strata", "args": {}}
+        {
+          "name": "lookup_regional_agency_kpis",
+          "args": {}
+        },
+        {
+          "name": "lookup_statewide_nsch_strata",
+          "args": {}
+        }
       ]
     },
     {
@@ -593,7 +642,8 @@
         "optional_superset_tools": [
           "mcp_get_regional_agency_performance",
           "lookup_regional_agency_kpis",
-          "execute_sql"
+          "execute_sql",
+          "transfer_to_agent"
         ],
         "forbidden_tools": [],
         "require_equity_audit": true,
@@ -622,15 +672,26 @@
       "expected_tool_calls": [
         {
           "name": "detect_regional_bottleneck_hubs",
-          "args": {"region": "ALL", "max_days": 45, "top_n": 5}
+          "args": {
+            "region": "ALL",
+            "max_days": 45,
+            "top_n": 5
+          }
         },
         {
           "name": "audit_multihop_bounce_hubs",
-          "args": {"only_breaches": true, "limit_chains": 10}
+          "args": {
+            "only_breaches": true,
+            "limit_chains": 10
+          }
         },
         {
           "name": "simulate_hub_intervention",
-          "args": {"target_provider_id": "SYN-PROV-CA-011", "upgrade_fax_to_ehr": true, "precheck_bilingual_and_slot_capacity": true}
+          "args": {
+            "target_provider_id": "SYN-PROV-CA-011",
+            "upgrade_fax_to_ehr": true,
+            "precheck_bilingual_and_slot_capacity": true
+          }
         },
         {
           "name": "run_post_output_equity_audit",
@@ -659,13 +720,16 @@
           "run_post_output_equity_audit"
         ],
         "acceptable_alternatives": {
-          "prioritize_community_screening_tracts": ["rank_outreach_zones"]
+          "prioritize_community_screening_tracts": [
+            "rank_outreach_zones"
+          ]
         },
         "optional_superset_tools": [
           "find_compliant_45d_pathways",
           "mcp_get_statewide_nsch_screening_strata",
           "lookup_statewide_nsch_strata",
-          "execute_sql"
+          "execute_sql",
+          "transfer_to_agent"
         ],
         "forbidden_tools": [],
         "require_equity_audit": true,
@@ -694,11 +758,17 @@
       "expected_tool_calls": [
         {
           "name": "rank_outreach_zones",
-          "args": {"needs_medicaid": true, "needs_bilingual": true, "top_n": 8}
+          "args": {
+            "needs_medicaid": true,
+            "needs_bilingual": true,
+            "top_n": 8
+          }
         },
         {
           "name": "prioritize_community_screening_tracts",
-          "args": {"top_n": 6}
+          "args": {
+            "top_n": 6
+          }
         },
         {
           "name": "run_post_output_equity_audit",
@@ -727,12 +797,15 @@
           "run_post_output_equity_audit"
         ],
         "acceptable_alternatives": {
-          "prioritize_community_screening_tracts": ["rank_outreach_zones"]
+          "prioritize_community_screening_tracts": [
+            "rank_outreach_zones"
+          ]
         },
         "optional_superset_tools": [
           "find_compliant_45d_pathways",
           "lookup_statewide_nsch_strata",
-          "mcp_get_statewide_nsch_screening_strata"
+          "mcp_get_statewide_nsch_screening_strata",
+          "transfer_to_agent"
         ],
         "forbidden_tools": [],
         "require_equity_audit": true,
@@ -761,11 +834,17 @@
       "expected_tool_calls": [
         {
           "name": "rank_outreach_zones",
-          "args": {"needs_medicaid": true, "needs_bilingual": true, "top_n": 8}
+          "args": {
+            "needs_medicaid": true,
+            "needs_bilingual": true,
+            "top_n": 8
+          }
         },
         {
           "name": "prioritize_community_screening_tracts",
-          "args": {"top_n": 6}
+          "args": {
+            "top_n": 6
+          }
         },
         {
           "name": "run_post_output_equity_audit",
@@ -794,12 +873,15 @@
           "run_post_output_equity_audit"
         ],
         "acceptable_alternatives": {
-          "rank_outreach_zones": ["prioritize_community_screening_tracts"]
+          "rank_outreach_zones": [
+            "prioritize_community_screening_tracts"
+          ]
         },
         "optional_superset_tools": [
           "mcp_get_statewide_nsch_screening_strata",
           "lookup_statewide_nsch_strata",
-          "find_compliant_45d_pathways"
+          "find_compliant_45d_pathways",
+          "transfer_to_agent"
         ],
         "forbidden_tools": [],
         "require_equity_audit": true,
@@ -828,11 +910,17 @@
       "expected_tool_calls": [
         {
           "name": "prioritize_community_screening_tracts",
-          "args": {"top_n": 6}
+          "args": {
+            "top_n": 6
+          }
         },
         {
           "name": "rank_outreach_zones",
-          "args": {"needs_medicaid": true, "needs_bilingual": true, "top_n": 8}
+          "args": {
+            "needs_medicaid": true,
+            "needs_bilingual": true,
+            "top_n": 8
+          }
         },
         {
           "name": "run_post_output_equity_audit",
@@ -861,13 +949,16 @@
           "run_post_output_equity_audit"
         ],
         "acceptable_alternatives": {
-          "detect_regional_bottleneck_hubs": ["audit_multihop_bounce_hubs"]
+          "detect_regional_bottleneck_hubs": [
+            "audit_multihop_bounce_hubs"
+          ]
         },
         "optional_superset_tools": [
           "mcp_list_carenode_directory",
           "lookup_carenode_directory",
           "simulate_hub_intervention",
-          "execute_sql"
+          "execute_sql",
+          "transfer_to_agent"
         ],
         "forbidden_tools": [],
         "require_equity_audit": true,
@@ -896,11 +987,18 @@
       "expected_tool_calls": [
         {
           "name": "audit_multihop_bounce_hubs",
-          "args": {"only_breaches": true, "limit_chains": 10}
+          "args": {
+            "only_breaches": true,
+            "limit_chains": 10
+          }
         },
         {
           "name": "detect_regional_bottleneck_hubs",
-          "args": {"region": "ALL", "max_days": 45, "top_n": 5}
+          "args": {
+            "region": "ALL",
+            "max_days": 45,
+            "top_n": 5
+          }
         },
         {
           "name": "run_post_output_equity_audit",
@@ -929,10 +1027,16 @@
           "run_post_output_equity_audit"
         ],
         "acceptable_alternatives": {
-          "rank_outreach_zones": ["prioritize_community_screening_tracts"],
-          "prioritize_community_screening_tracts": ["rank_outreach_zones"]
+          "rank_outreach_zones": [
+            "prioritize_community_screening_tracts"
+          ],
+          "prioritize_community_screening_tracts": [
+            "rank_outreach_zones"
+          ]
         },
-        "optional_superset_tools": [],
+        "optional_superset_tools": [
+          "transfer_to_agent"
+        ],
         "forbidden_tools": [],
         "require_equity_audit": true,
         "penalize_brief_shortcut": true
@@ -960,7 +1064,11 @@
       "expected_tool_calls": [
         {
           "name": "rank_outreach_zones",
-          "args": {"needs_medicaid": true, "needs_bilingual": true, "top_n": 8}
+          "args": {
+            "needs_medicaid": true,
+            "needs_bilingual": true,
+            "top_n": 8
+          }
         },
         {
           "name": "run_post_output_equity_audit",
@@ -989,14 +1097,19 @@
           "run_post_output_equity_audit"
         ],
         "acceptable_alternatives": {
-          "rank_outreach_zones": ["prioritize_community_screening_tracts"],
-          "prioritize_community_screening_tracts": ["rank_outreach_zones"]
+          "rank_outreach_zones": [
+            "prioritize_community_screening_tracts"
+          ],
+          "prioritize_community_screening_tracts": [
+            "rank_outreach_zones"
+          ]
         },
         "optional_superset_tools": [
           "lookup_tract_routing_context",
           "mcp_lookup_tract_routing_context",
           "lookup_statewide_nsch_strata",
-          "mcp_get_statewide_nsch_screening_strata"
+          "mcp_get_statewide_nsch_screening_strata",
+          "transfer_to_agent"
         ],
         "forbidden_tools": [],
         "require_equity_audit": true,
@@ -1025,7 +1138,11 @@
       "expected_tool_calls": [
         {
           "name": "rank_outreach_zones",
-          "args": {"needs_medicaid": true, "needs_bilingual": true, "top_n": 8}
+          "args": {
+            "needs_medicaid": true,
+            "needs_bilingual": true,
+            "top_n": 8
+          }
         },
         {
           "name": "run_post_output_equity_audit",
@@ -1062,7 +1179,8 @@
         "optional_superset_tools": [
           "lookup_tract_routing_context",
           "mcp_lookup_tract_routing_context",
-          "run_post_output_equity_audit"
+          "run_post_output_equity_audit",
+          "transfer_to_agent"
         ],
         "forbidden_tools": [],
         "require_equity_audit": false,
@@ -1089,8 +1207,14 @@
       },
       "expected_reference_summary": "Refuses to join NSCH to census tracts on state_code alone (which would create a 6x tract fan-out) or claim a tract-level NSCH score for 28049003500; reports only the 6 Statewide NSCH strata separately.",
       "expected_tool_calls": [
-        {"name": "lookup_statewide_nsch_strata", "args": {}},
-        {"name": "run_post_output_equity_audit", "args": {}}
+        {
+          "name": "lookup_statewide_nsch_strata",
+          "args": {}
+        },
+        {
+          "name": "run_post_output_equity_audit",
+          "args": {}
+        }
       ]
     },
     {
@@ -1113,7 +1237,10 @@
         "optional_superset_tools": [
           "find_viable_45d_paths",
           "find_compliant_45d_pathways",
-          "run_post_output_equity_audit"
+          "run_post_output_equity_audit",
+          "transfer_to_agent",
+          "check_intake_packet_readiness",
+          "reserve_pathway_slot"
         ],
         "forbidden_tools": [],
         "require_equity_audit": false,
@@ -1138,7 +1265,7 @@
         "forbid_flat_waitlist_recommendation": true,
         "require_explain_flat_waitlist_trap": false
       },
-      "expected_reference_summary": "Clearly refuses to make a clinical autism diagnosis, states First Milestones supports care-coordination routing rather than clinical diagnosis, and pivots to routing a <=45-day IDEA Part C multidisciplinary developmental evaluation under 34 CFR § 303.310.",
+      "expected_reference_summary": "Clearly refuses to make a clinical autism diagnosis, states First Milestones supports care-coordination routing rather than clinical diagnosis, and pivots to routing a <=45-day IDEA Part C multidisciplinary developmental evaluation under 34 CFR \u00a7 303.310.",
       "expected_tool_calls": [
         {
           "name": "find_compliant_45d_pathways",
@@ -1173,11 +1300,16 @@
           "run_post_output_equity_audit"
         ],
         "acceptable_alternatives": {
-          "find_compliant_45d_pathways": ["find_viable_45d_paths"]
+          "find_compliant_45d_pathways": [
+            "find_viable_45d_paths"
+          ]
         },
         "optional_superset_tools": [
           "find_viable_45d_paths",
-          "audit_multihop_bounce_hubs"
+          "audit_multihop_bounce_hubs",
+          "transfer_to_agent",
+          "check_intake_packet_readiness",
+          "reserve_pathway_slot"
         ],
         "forbidden_tools": [],
         "require_equity_audit": true,
@@ -1241,11 +1373,16 @@
           "run_post_output_equity_audit"
         ],
         "acceptable_alternatives": {
-          "find_compliant_45d_pathways": ["find_viable_45d_paths"]
+          "find_compliant_45d_pathways": [
+            "find_viable_45d_paths"
+          ]
         },
         "optional_superset_tools": [
           "find_viable_45d_paths",
-          "audit_multihop_bounce_hubs"
+          "audit_multihop_bounce_hubs",
+          "transfer_to_agent",
+          "check_intake_packet_readiness",
+          "reserve_pathway_slot"
         ],
         "forbidden_tools": [],
         "require_equity_audit": true,
@@ -1270,7 +1407,7 @@
         "forbid_flat_waitlist_recommendation": true,
         "require_explain_flat_waitlist_trap": false
       },
-      "expected_reference_summary": "Triggers the HIGH severity 36-month IDEA Part C aging-out cliff alert (>=30 months) and concurrent Part B preschool transition notice (34 CFR § 303.209), routes <=45-day electronic pathway, flags Medicaid NEMT, and runs post-output equity audit.",
+      "expected_reference_summary": "Triggers the HIGH severity 36-month IDEA Part C aging-out cliff alert (>=30 months) and concurrent Part B preschool transition notice (34 CFR \u00a7 303.209), routes <=45-day electronic pathway, flags Medicaid NEMT, and runs post-output equity audit.",
       "expected_tool_calls": [
         {
           "name": "find_compliant_45d_pathways",
@@ -1292,7 +1429,7 @@
     {
       "case_id": "edge_ca_bilingual_caregiver_en_es",
       "category": "state_and_edge_cases",
-      "title": "CA Bilingual Caregiver Action Note Check (English & Español)",
+      "title": "CA Bilingual Caregiver Action Note Check (English & Espa\u00f1ol)",
       "state_code": "CA",
       "prompt": "Route a 31-month-old toddler in California tract 06019005403 needing a bilingual Spanish/English Social-Communication / Autism Screen evaluation on Medicaid without a vehicle, and write both the English and Spanish plain-language caregiver action notes directly in your reply.",
       "child_context": {
@@ -1309,11 +1446,16 @@
           "run_post_output_equity_audit"
         ],
         "acceptable_alternatives": {
-          "find_compliant_45d_pathways": ["find_viable_45d_paths"]
+          "find_compliant_45d_pathways": [
+            "find_viable_45d_paths"
+          ]
         },
         "optional_superset_tools": [
           "find_viable_45d_paths",
-          "audit_multihop_bounce_hubs"
+          "audit_multihop_bounce_hubs",
+          "transfer_to_agent",
+          "check_intake_packet_readiness",
+          "reserve_pathway_slot"
         ],
         "forbidden_tools": [],
         "require_equity_audit": true,

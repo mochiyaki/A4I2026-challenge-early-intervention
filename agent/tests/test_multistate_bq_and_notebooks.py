@@ -34,9 +34,11 @@ from first_milestones.tools.bq_client import (  # noqa: E402
     VALID_STATES,
     DualBackendGraphClient,
     GcloudCliCredentials,
+    get_bq_telemetry,
     get_config,
     graph_client,
     request_state_context,
+    reset_bq_telemetry,
     resolve_gcp_credentials_and_project,
     rewrite_sql_dataset,
 )
@@ -245,6 +247,49 @@ def test_scripts_load_multistate_and_local_adc_exist_and_safe() -> None:
         "a4i_early_intervention_multistate",
     ):
         assert required_export in adc_sh
+
+    readme = (AGENT_DIR / "README.md").read_text(encoding="utf-8")
+    for scoped_out in ("deploy_agent_engine.sh", "record_demo_video.py", "presentation/"):
+        assert scoped_out not in readme
+    for expected_doc in (
+        "schemas.py",
+        "/run",
+        "Cytoscape.js",
+        "a4i_early_intervention_multistate",
+        "scripts/load_multistate.sh",
+        "scripts/setup_local_adc.sh",
+        "scripts/deploy_cloud_run.sh",
+    ):
+        assert expected_doc in readme
+
+
+def test_bq_client_override_telemetry_and_cache_unit() -> None:
+    reset_bq_telemetry()
+    fake_bq = MagicMock()
+    fake_job = MagicMock()
+    fake_job.job_id = "job_override_999"
+    fake_job.total_bytes_processed = 2048
+    fake_job.result.return_value = [{"cnt": 44}]
+    fake_bq.query.return_value = fake_job
+
+    with patch.dict(os.environ, {"A4I_FORCE_LOCAL_PARQUET": "1"}, clear=False):
+        with request_state_context("CA"):
+            client = DualBackendGraphClient()
+            rows = client.query(
+                "SELECT 44 AS cnt",
+                label="unit_override_check",
+                bq_client_override=fake_bq,
+                project_override="override-proj",
+            )
+            assert rows == [{"cnt": 44}]
+            tel = get_bq_telemetry()
+            assert any(
+                t["label"] == "unit_override_check"
+                and t["job_id"] == "job_override_999"
+                and t["total_bytes_processed"] == 2048
+                and t["state_code"] == "CA"
+                for t in tel
+            )
 
 
 def test_notebook_c_ei_02_executed_cleanly_with_outputs() -> None:

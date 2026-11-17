@@ -5,28 +5,38 @@ artifact combining:
   1. Multi-hop `<=45`-day compliant pathway + cautionary 4-hop `paper_fax` bounce loop
   2. Regional Bounce Hub diagnosis + Counterfactual single-hub intervention impact
   3. Post-Output Equity Audit (`audit_*` shares + zero-vehicle mobility + NSCH context)
-  4. Warm, jargon-free English & Spanish caregiver action notes anchored to real
+  4. Public-domain HRSA FQHC / Look-Alike community screening sites (`17 U.S.C. § 105`),
+     Hop-0 intake packet gatekeeper readiness, and 48h slot-hold ledger state
+  5. Warm, jargon-free English & Spanish caregiver action notes anchored to real
      calendar dates (`YYYY-MM-DD`) and statutory IDEA Part C rights
 """
 
 from __future__ import annotations
 
+from contextlib import nullcontext
+import copy
 from datetime import date, timedelta
-import importlib
+import os
 import re
 from typing import Any
 
 from .schemas import CaregiverNotes, PathwayBrief
 from .tools import (
+    check_intake_packet_readiness,
     detect_regional_bottleneck_hubs,
     find_viable_45d_paths,
+    list_slot_holds,
     rank_outreach_zones,
 )
 from .tools import bq_client as _bq_client_mod
 from .tools.equity_audit import prioritize_community_screening_tracts, run_post_output_equity_audit
 from .tools.graph_audit import audit_multihop_bounce_hubs, simulate_hub_intervention
-from .tools.graph_routing import find_compliant_45d_pathways
-from .tools.reference_lookups import lookup_regional_agency_kpis
+from .tools.graph_routing import classify_part_c_age_tier, find_compliant_45d_pathways
+from .tools.reference_lookups import (
+    BYOD_HRSA_PROVENANCE,
+    load_byod_hrsa_sites,
+    lookup_regional_agency_kpis,
+)
 
 _DOMAIN_ES: dict[str, str] = {
     "Social-Communication / Autism Screen": "comunicación social y detección temprana del desarrollo",
@@ -35,6 +45,13 @@ _DOMAIN_ES: dict[str, str] = {
     "Feeding & Sensory": "alimentación y procesamiento sensorial",
     "developmental milestones": "hitos del desarrollo infantil",
 }
+
+_BRIEF_PAYLOAD_CACHE: dict[tuple[Any, ...], dict[str, Any]] = {}
+
+
+def clear_brief_cache() -> None:
+    """Clears the in-memory validated 45-Day Pathway Brief payload cache."""
+    _BRIEF_PAYLOAD_CACHE.clear()
 
 
 def _clean_provider_name(raw_name: str) -> str:
@@ -67,19 +84,11 @@ def _localize_domain_es(domain: str) -> str:
 
 
 def _compute_statutory_transition_tier(age_months: int | float | None) -> str:
-    """Classifies `child_age_months` into the 5-tier `34 CFR § 303.209` transition ladder."""
-    if age_months is None:
-        return "0-26m_standard_part_c"
-    age = float(age_months)
-    if age >= 36.0:
-        return ">=36m_ineligible_part_c_refer_part_b_619"
-    if age >= 34.5:
-        return "34.5-35.9m_urgent_compressed_part_b_coordination"
-    if age >= 33.0:
-        return "33.0-34.4m_mandatory_part_b_transition_conference"
-    if age >= 27.0:
-        return "27-32m_part_b_transition_window"
-    return "0-26m_standard_part_c"
+    """Classifies `child_age_months` into the canonical 5-tier `34 CFR § 303.209` ladder."""
+    classified = classify_part_c_age_tier(22 if age_months is None else age_months)
+    if classified and isinstance(classified.get("statutory_transition_tier"), str):
+        return str(classified["statutory_transition_tier"])
+    return "tier_1_standard_part_c_45d"
 
 
 def build_caregiver_notes(routing_result: dict[str, Any]) -> dict[str, str]:
@@ -94,6 +103,8 @@ def build_caregiver_notes(routing_result: dict[str, Any]) -> dict[str, str]:
 
     needs_medicaid = bool(profile.get("needs_medicaid", True))
     needs_bilingual = bool(profile.get("needs_bilingual", True))
+    domain_en = str(profile.get("concern_domain") or "developmental milestones").strip()
+    domain_es = _localize_domain_es(domain_en)
 
     if status == "ineligible_part_c_aged_out":
         raw_age_out = profile.get("child_age_months", routing_result.get("child_age_months", 36))
@@ -133,13 +144,13 @@ def build_caregiver_notes(routing_result: dict[str, Any]) -> dict[str, str]:
         notes = CaregiverNotes(
             english=(
                 f"**Your Child's Early Milestones Plan (Day 0: {day0_str} · Statutory Day 45 Deadline: {day45_str})**\n\n"
-                "Your Early Intervention coordinator is arranging an expedited evaluation and "
+                f"Your Early Intervention coordinator is arranging an expedited evaluation ({domain_en}) and "
                 f"transportation support {ins_en} within the 45-day federal timeline, with free interpreter rights under 34 CFR § 303.321.\n\n"
                 "- *(Demo Notice: Caregiver-facing organizations are fictional `[Synthetic]` training profiles.)*"
             ),
             spanish=(
                 f"**Plan de Primeros Pasos de su Hijo/a (Día 0: {day0_str} · Plazo Legal Día 45: {day45_str})**\n\n"
-                "Su coordinador de Intervención Temprana está organizando una evaluación acelerada y "
+                f"Su coordinador de Intervención Temprana está organizando una evaluación acelerada ({domain_es}) y "
                 f"apoyo de transporte gratuito {ins_es} dentro del plazo federal de 45 días, con derecho gratuito a intérprete bajo 34 CFR § 303.321.\n\n"
                 "- *(Aviso de Demostración: Las organizaciones mostradas son perfiles ficticios `[Synthetic]` de entrenamiento.)*"
             ),
@@ -152,14 +163,12 @@ def build_caregiver_notes(routing_result: dict[str, Any]) -> dict[str, str]:
     age_m = 22 if raw_age is None else float(raw_age)
     age_display = int(age_m) if float(age_m).is_integer() else round(age_m, 1)
 
-    domain_en = str(profile.get("concern_domain") or "developmental milestones").strip()
-    domain_es = _localize_domain_es(domain_en)
-
     has_vehicle = bool(profile.get("has_household_vehicle", True))
     tract_zero_veh = float(profile.get("tract_zero_vehicle_pct", 0.0) or 0.0)
     needs_nemt = (not has_vehicle) or (tract_zero_veh >= 10.0)
     mobile_visit_capable = bool(
         rec.get("mobile_visit_capable")
+        or rec.get("natural_environment_home_visit")
         or profile.get("mobile_visit_capable")
         or any(
             isinstance(h, dict)
@@ -356,56 +365,74 @@ def _safe_packet_readiness(
     needs_bilingual: bool,
     has_household_vehicle: bool,
     home_tract_geoid: str = "",
-) -> dict[str, Any] | None:
-    """Safely calls `packet_gatekeeper.check_intake_packet_readiness` if available."""
+) -> dict[str, Any]:
+    """Evaluates Hop-0 packet readiness via `check_intake_packet_readiness`."""
     try:
-        mod = importlib.import_module("first_milestones.tools.packet_gatekeeper")
-        fn = getattr(mod, "check_intake_packet_readiness", None)
-        if callable(fn):
-            res = fn(
-                state_code=_bq_client_mod.get_config().get("state", "MS"),
-                child_age_months=child_age_months,
-                concern_domain=concern_domain,
-                preferred_language="Spanish" if needs_bilingual else "English",
-                needs_medicaid=needs_medicaid,
-                insurance_type="Medicaid" if needs_medicaid else "Commercial",
-                has_household_vehicle=has_household_vehicle,
-                home_tract_geoid=home_tract_geoid,
-            )
-            if isinstance(res, dict):
-                return res
+        res = check_intake_packet_readiness(
+            state_code=_bq_client_mod.get_config().get("state", "MS"),
+            child_age_months=child_age_months,
+            concern_domain=concern_domain,
+            preferred_language="Spanish" if needs_bilingual else "English",
+            needs_medicaid=needs_medicaid,
+            insurance_type="Medicaid" if needs_medicaid else "Commercial",
+            has_household_vehicle=has_household_vehicle,
+            home_tract_geoid=home_tract_geoid,
+        )
+        if isinstance(res, dict):
+            return res
     except Exception:  # noqa: BLE001
         pass
     return {
-        "status": "ready" if child_age_months < 36 else "redirect_part_b_619",
-        "ready": child_age_months < 36,
+        "status": "ok",
+        "packet_status": "READY_FOR_EHR_HANDOFF" if child_age_months < 36 else "REDIRECT_TO_IDEA_PART_B_LEA",
+        "ready_for_referral_handoff": child_age_months < 36,
+        "readiness_score": 100 if child_age_months < 36 else 0,
         "statutory_transition_tier": _compute_statutory_transition_tier(child_age_months),
-        "missing_items": [],
-        "checks": {
-            "consent_signed": True,
-            "screening_tool_completed": True,
-            "language_confirmed": True,
-            "insurance_verified": True,
-            "channel": "ehr_electronic_portal",
-        },
+        "missing_intake_items": [],
+        "bounce_prevention_warnings": [],
     }
 
 
 def _safe_list_slot_holds() -> list[dict[str, Any]]:
-    """Safely fetches active 48h slot holds from `slot_ledger.list_slot_holds` if available."""
+    """Fetches active 48h slot holds for the active state from `slot_ledger.list_slot_holds`."""
     try:
-        mod = importlib.import_module("first_milestones.tools.slot_ledger")
-        fn = getattr(mod, "list_slot_holds", None)
-        if callable(fn):
-            active_state = _bq_client_mod.get_config().get("state", "MS")
-            res = fn(state_code=active_state)
-            if isinstance(res, dict) and isinstance(res.get("holds"), list):
-                return list(res["holds"])
-            if isinstance(res, list):
-                return list(res)
+        active_state = _bq_client_mod.get_config().get("state", "MS")
+        res = list_slot_holds(state_code=active_state)
+        if isinstance(res, dict) and isinstance(res.get("holds"), list):
+            return list(res["holds"])
+        if isinstance(res, list):
+            return list(res)
     except Exception:  # noqa: BLE001
         pass
     return []
+
+
+def _safe_byod_hrsa_sites(state_code: str, limit: int = 5) -> list[dict[str, Any]]:
+    """Loads compact public-domain HRSA FQHC screening site records (`17 U.S.C. § 105`)."""
+    try:
+        df = load_byod_hrsa_sites(state_code)
+        if df.empty:
+            return []
+        keep_cols = [
+            c
+            for c in (
+                "hrsa_site_id",
+                "site_name",
+                "health_center_name",
+                "site_city",
+                "state_code",
+                "county_fips",
+                "county_name",
+                "latitude",
+                "longitude",
+                "operating_hours_per_week",
+                "data_provenance",
+            )
+            if c in df.columns
+        ]
+        return df[keep_cols].head(limit).to_dict(orient="records")
+    except Exception:  # noqa: BLE001
+        return []
 
 
 def _safe_bq_telemetry() -> list[dict[str, Any]] | dict[str, Any] | None:
@@ -434,96 +461,143 @@ def build_validated_45d_brief_model(
     needs_medicaid: bool = True,
     needs_bilingual: bool = True,
     has_household_vehicle: bool = False,
+    *,
+    state_code: str | None = None,
+    use_cache: bool = True,
 ) -> PathwayBrief:
     """Assembles and validates the complete `PathwayBrief` Pydantic v2 model."""
-    routing = find_compliant_45d_pathways(
-        child_tract_geoid=child_tract_geoid,
-        child_age_months=child_age_months,
-        concern_domain=concern_domain,
-        needs_medicaid=needs_medicaid,
-        needs_bilingual=needs_bilingual,
-        has_household_vehicle=has_household_vehicle,
+    state_ctx = (
+        _bq_client_mod.request_state_context(state_code)
+        if state_code and str(state_code).strip()
+        else nullcontext()
     )
-    viable_45d_paths = find_viable_45d_paths(
-        zip_or_tract=child_tract_geoid,
-        languages="Spanish" if needs_bilingual else "English",
-        insurance="Medicaid" if needs_medicaid else "Commercial",
-        specialty=concern_domain,
-        child_age_months=child_age_months,
-        has_household_vehicle=has_household_vehicle,
-    )
-    audit = audit_multihop_bounce_hubs(only_breaches=True, limit_chains=6)
-    bottleneck_hubs = detect_regional_bottleneck_hubs(region="ALL", max_days=45, top_n=5)
-    top_hub_id = (
-        audit["top_hidden_bounce_hub"]["provider_id"]
-        if audit.get("top_hidden_bounce_hub")
-        else ""
-    )
-    simulation = simulate_hub_intervention(
-        target_provider_id=top_hub_id,
-        upgrade_fax_to_ehr=True,
-        precheck_bilingual_and_slot_capacity=True,
-    )
-    equity = run_post_output_equity_audit()
-    outreach = prioritize_community_screening_tracts(top_n=5)
-    outreach_zones = rank_outreach_zones(
-        needs_medicaid=needs_medicaid,
-        needs_bilingual=needs_bilingual,
-        top_n=6,
-    )
-    agencies = lookup_regional_agency_kpis()
-    caregiver_notes = build_caregiver_notes(routing)
+    with state_ctx:
+        cfg = _bq_client_mod.get_config()
+        active_state = str(cfg.get("state", "MS")).strip().upper()
+        is_mocked = hasattr(
+            getattr(_bq_client_mod.graph_client, "query_bq_or_none", None),
+            "assert_called",
+        )
+        cache_key = (
+            cfg.get("project", ""),
+            cfg.get("dataset", ""),
+            os.environ.get("A4I_FORCE_LOCAL_PARQUET", ""),
+            active_state,
+            str(child_tract_geoid or "").strip(),
+            int(child_age_months),
+            str(concern_domain or "").strip(),
+            bool(needs_medicaid),
+            bool(needs_bilingual),
+            bool(has_household_vehicle),
+            date.today().isoformat(),
+        )
 
-    transition_tier = (
-        routing.get("statutory_transition_tier")
-        or (routing.get("child_profile") or {}).get("statutory_transition_tier")
-        or _compute_statutory_transition_tier(child_age_months)
-    )
-    packet_readiness = routing.get("packet_readiness") or _safe_packet_readiness(
-        child_age_months=child_age_months,
-        concern_domain=concern_domain,
-        needs_medicaid=needs_medicaid,
-        needs_bilingual=needs_bilingual,
-        has_household_vehicle=has_household_vehicle,
-        home_tract_geoid=child_tract_geoid,
-    )
-    slot_holds = _safe_list_slot_holds()
-    bq_telemetry = _safe_bq_telemetry()
-    before_vs_after = routing.get("before_vs_after_rerouting_cohort")
+        if use_cache and not is_mocked and cache_key in _BRIEF_PAYLOAD_CACHE:
+            cached_payload = copy.deepcopy(_BRIEF_PAYLOAD_CACHE[cache_key])
+            cached_payload["slot_holds"] = _safe_list_slot_holds()
+            cached_payload["bq_telemetry"] = _safe_bq_telemetry()
+            return PathwayBrief.model_validate(cached_payload)
 
-    resolved_state = str(
-        (routing.get("child_profile") or {}).get("state_code")
-        or agencies.get("state_code")
-        or equity.get("state_code")
-        or "MS"
-    )
-    resolved_engine = str(
-        routing.get("execution_engine")
-        or routing.get("engine")
-        or equity.get("execution_engine")
-        or "local_geoparquet_mirror"
-    )
+        routing = find_compliant_45d_pathways(
+            child_tract_geoid=child_tract_geoid,
+            child_age_months=child_age_months,
+            concern_domain=concern_domain,
+            needs_medicaid=needs_medicaid,
+            needs_bilingual=needs_bilingual,
+            has_household_vehicle=has_household_vehicle,
+        )
+        viable_45d_paths = find_viable_45d_paths(
+            zip_or_tract=child_tract_geoid,
+            languages="Spanish" if needs_bilingual else "English",
+            insurance="Medicaid" if needs_medicaid else "Commercial",
+            specialty=concern_domain,
+            child_age_months=child_age_months,
+            has_household_vehicle=has_household_vehicle,
+        )
+        audit = audit_multihop_bounce_hubs(only_breaches=True, limit_chains=6)
+        bottleneck_hubs = detect_regional_bottleneck_hubs(region="ALL", max_days=45, top_n=5)
+        top_hub_id = (
+            audit["top_hidden_bounce_hub"]["provider_id"]
+            if audit.get("top_hidden_bounce_hub")
+            else ""
+        )
+        simulation = simulate_hub_intervention(
+            target_provider_id=top_hub_id,
+            upgrade_fax_to_ehr=True,
+            precheck_bilingual_and_slot_capacity=True,
+        )
+        equity = run_post_output_equity_audit()
+        outreach = prioritize_community_screening_tracts(top_n=5)
+        outreach_zones = rank_outreach_zones(
+            needs_medicaid=needs_medicaid,
+            needs_bilingual=needs_bilingual,
+            top_n=6,
+        )
+        agencies = lookup_regional_agency_kpis()
+        caregiver_notes = build_caregiver_notes(routing)
 
-    payload: dict[str, Any] = {
-        "state_code": resolved_state,
-        "execution_engine": resolved_engine,
-        "agencies": agencies["agencies"],
-        "routing": routing,
-        "viable_45d_paths": viable_45d_paths,
-        "network_audit": audit,
-        "bottleneck_hubs": bottleneck_hubs,
-        "counterfactual_simulation": simulation,
-        "equity_audit": equity,
-        "screening_outreach": outreach,
-        "outreach_zones": outreach_zones,
-        "caregiver_notes": caregiver_notes,
-        "packet_readiness": packet_readiness,
-        "slot_holds": slot_holds,
-        "bq_telemetry": bq_telemetry,
-        "statutory_transition_tier": transition_tier,
-        "before_vs_after_rerouting_cohort": before_vs_after,
-    }
-    return PathwayBrief.model_validate(payload)
+        transition_tier = (
+            routing.get("statutory_transition_tier")
+            or (routing.get("child_profile") or {}).get("statutory_transition_tier")
+            or _compute_statutory_transition_tier(child_age_months)
+        )
+        packet_readiness = routing.get("packet_readiness") or _safe_packet_readiness(
+            child_age_months=child_age_months,
+            concern_domain=concern_domain,
+            needs_medicaid=needs_medicaid,
+            needs_bilingual=needs_bilingual,
+            has_household_vehicle=has_household_vehicle,
+            home_tract_geoid=child_tract_geoid,
+        )
+        slot_holds = _safe_list_slot_holds()
+        bq_telemetry = _safe_bq_telemetry()
+        before_vs_after = (
+            equity.get("before_vs_after_rerouting_cohort")
+            or routing.get("before_vs_after_rerouting_cohort")
+        )
+
+        resolved_state = str(
+            (routing.get("child_profile") or {}).get("state_code")
+            or agencies.get("state_code")
+            or equity.get("state_code")
+            or active_state
+        )
+        resolved_engine = str(
+            routing.get("execution_engine")
+            or routing.get("engine")
+            or equity.get("execution_engine")
+            or "local_geoparquet_mirror"
+        )
+        byod_sites = _safe_byod_hrsa_sites(resolved_state, limit=5)
+        byod_prov = str(outreach_zones.get("byod_provenance") or BYOD_HRSA_PROVENANCE)
+
+        payload: dict[str, Any] = {
+            "state_code": resolved_state,
+            "execution_engine": resolved_engine,
+            "agencies": agencies["agencies"],
+            "routing": routing,
+            "viable_45d_paths": viable_45d_paths,
+            "network_audit": audit,
+            "bottleneck_hubs": bottleneck_hubs,
+            "counterfactual_simulation": simulation,
+            "equity_audit": equity,
+            "screening_outreach": outreach,
+            "outreach_zones": outreach_zones,
+            "caregiver_notes": caregiver_notes,
+            "packet_readiness": packet_readiness,
+            "slot_holds": slot_holds,
+            "bq_telemetry": bq_telemetry,
+            "statutory_transition_tier": transition_tier,
+            "before_vs_after_rerouting_cohort": before_vs_after,
+            "byod_provenance": byod_prov,
+            "byod_hrsa_sites": byod_sites,
+        }
+        validated = PathwayBrief.model_validate(payload)
+        if use_cache and not is_mocked:
+            if len(_BRIEF_PAYLOAD_CACHE) >= 128:
+                _BRIEF_PAYLOAD_CACHE.clear()
+            _BRIEF_PAYLOAD_CACHE[cache_key] = copy.deepcopy(payload)
+        return validated
 
 
 def generate_complete_45d_brief(
@@ -533,6 +607,8 @@ def generate_complete_45d_brief(
     needs_medicaid: bool = True,
     needs_bilingual: bool = True,
     has_household_vehicle: bool = False,
+    state_code: str | None = None,
+    use_cache: bool = True,
 ) -> dict[str, Any]:
     """Generates and schema-validates the complete 45-Day Pathway & Bottleneck Brief."""
     validated = build_validated_45d_brief_model(
@@ -542,5 +618,7 @@ def generate_complete_45d_brief(
         needs_medicaid=needs_medicaid,
         needs_bilingual=needs_bilingual,
         has_household_vehicle=has_household_vehicle,
+        state_code=state_code,
+        use_cache=use_cache,
     )
     return validated.model_dump(mode="python")

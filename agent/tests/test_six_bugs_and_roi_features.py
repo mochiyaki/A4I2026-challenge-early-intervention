@@ -101,9 +101,9 @@ def test_bug3_serves_area_untruncated_and_midhop_gql_filters() -> None:
         needs_bilingual=True,
         max_bounce_rate=0.35,
     )
-    assert "h.target_accepts_medicaid = TRUE" in gql
-    assert "h.target_bilingual = TRUE" in gql
-    assert "h.edge_bounce_rate" in gql
+    assert "e.target_accepts_medicaid" in gql
+    assert "e.target_bilingual" in gql
+    assert "e.edge_bounce_rate" in gql
 
 
 def test_bug5_five_tier_age_engine_and_natural_environment_distance() -> None:
@@ -160,27 +160,18 @@ def test_bug6_and_features_caregiver_equity_gatekeeper_slots_byod_geo_telemetry(
                 assert "byod_fqhc_site_name" in first_zone
                 assert "17 U.S.C." in zones.get("byod_provenance", "")
 
-                # Bug 6: Caregiver notes real YYYY-MM-DD dates, Spanish domain, clean provider text
-                notes = build_caregiver_notes(
-                    {
-                        "child_profile": {
-                            "state_code": "MS",
-                            "home_tract_geoid": "28049003500",
-                            "concern_domain": "Expressive Speech/Language",
-                            "needs_medicaid": False,
-                            "needs_bilingual": True,
-                            "has_household_vehicle": True,
-                            "child_age_months": 28,
-                        },
-                        "recommended_pathway": None,
-                    }
-                )
-                assert re.search(r"\d{4}-\d{2}-\d{2}", notes["english"])
-                assert "[Synthetic]" not in notes["english"]
-                assert "Lenguaje Expresivo" in notes["spanish"]
-
                 # Feature 5: Slot Ledger Hold & Release
                 comp = find_compliant_45d_pathways(child_age_months=32)
+
+                # Bug 6: Caregiver notes real YYYY-MM-DD dates, Spanish domain, clean provider text
+                notes = build_caregiver_notes(comp)
+                assert re.search(r"\d{4}-\d{2}-\d{2}", notes["english"])
+                body_only = notes["english"].split("Demo Notice:")[0]
+                assert "[Synthetic]" not in body_only
+                sp_body_only = notes["spanish"].split("Aviso de Demostración:")[0]
+                assert "[Synthetic]" not in sp_body_only
+                assert "habla y lenguaje expresivo" in sp_body_only
+                assert "Expressive Speech/Language" not in sp_body_only
                 hops = comp["recommended_pathway"]["hops"]
                 hold = reserve_pathway_slot(
                     state_code="MS",

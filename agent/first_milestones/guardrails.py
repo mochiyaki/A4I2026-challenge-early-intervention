@@ -51,7 +51,9 @@ _CLAUSE_END_RE = re.compile(
 )
 
 _SUBSTANTIVE_REF_RE = re.compile(
-    r"SYN-PROV-|SYN-PARTC-|CHAIN-|\b45[\s-]*(?:calendar\s+)?days?\b|\b<=?\s*45\s*d\b",
+    r"SYN-PROV-|SYN-PARTC-|CHAIN-|\b45[\s-]*(?:calendar\s+)?days?\b|\b<=?\s*45\s*d\b"
+    r"|limited_english_rate|\baudit_[a-z_]+\b|\bnsch\b|active_waitlist_count"
+    r"|early\s+intervention|\bpart\s+c\b",
     re.IGNORECASE,
 )
 _AGE_30_TO_35_RE = re.compile(
@@ -64,6 +66,28 @@ _TRANSITION_MENTION_RE = re.compile(
 )
 _PROVIDER_TOKEN_RE = re.compile(r"\bSYN-PROV-(?!\*)([A-Za-z0-9_-]+)")
 _VALID_PROVIDER_ID_RE = re.compile(r"^SYN-PROV-(?:MS|AL|GA|TX|CA|NY)-\d{3}$")
+
+_KNOWN_PROVIDER_IDS: set[str] | None = None
+
+
+def _get_known_provider_ids() -> set[str]:
+    """Lazily caches valid synthetic provider IDs across all 6 starter states."""
+    global _KNOWN_PROVIDER_IDS
+    if _KNOWN_PROVIDER_IDS is not None:
+        return _KNOWN_PROVIDER_IDS
+    known: set[str] = set()
+    try:
+        from .tools.bq_client import VALID_STATES, load_local_state_frames
+
+        for st in VALID_STATES:
+            frames = load_local_state_frames(st)
+            provs = frames.get("providers")
+            if provs is not None and "provider_id" in provs.columns:
+                known.update(str(pid).strip() for pid in provs["provider_id"].dropna())
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("Skipping known-provider directory cache: %s", exc)
+    _KNOWN_PROVIDER_IDS = known
+    return known
 
 
 def _strip_sql_comments(sql: str) -> str:
@@ -342,6 +366,8 @@ def guardrail_after_model_callback(
 
     full_text = "\n".join(parts[idx].text for idx in text_indices)
 
+    known_providers = _get_known_provider_ids()
+    unknown_ids: list[str] = []
     for m in _PROVIDER_TOKEN_RE.finditer(full_text):
         candidate_id = f"SYN-PROV-{m.group(1)}"
         if not _VALID_PROVIDER_ID_RE.match(candidate_id):
@@ -349,6 +375,29 @@ def guardrail_after_model_callback(
                 "Malformed synthetic provider ID cited in model output: %s",
                 candidate_id,
             )
+            unknown_ids.append(candidate_id)
+        elif known_providers and candidate_id not in known_providers:
+            logger.warning(
+                "Hallucinated / non-existent synthetic provider ID cited in model output: %s",
+                candidate_id,
+            )
+            unknown_ids.append(candidate_id)
+
+    sanitized_text = False
+    new_parts = list(parts)
+    if unknown_ids and known_providers:
+        # Strip ungrounded/hallucinated SYN-PROV-* IDs that do not exist in starter state tables
+        unknown_set = set(unknown_ids)
+        for idx in text_indices:
+            orig = new_parts[idx].text
+            replaced = orig
+            for uid in unknown_set:
+                if uid in replaced:
+                    replaced = replaced.replace(uid, "[verified directory lookup required]")
+            if replaced != orig:
+                new_parts[idx] = types.Part.from_text(text=replaced)
+                sanitized_text = True
+        full_text = "\n".join(new_parts[idx].text for idx in text_indices)
 
     additions: list[str] = []
     normalized_text = re.sub(r"[*`]", "", full_text).lower()
@@ -363,14 +412,14 @@ def guardrail_after_model_callback(
             "evaluation and IFSP delivery finish before the strict **36-month** Part C aging-out cutoff."
         )
 
-    if not additions:
+    if not additions and not sanitized_text:
         return None
 
     suffix = "".join(additions)
-    new_parts = list(parts)
-    last_idx = text_indices[-1]
-    last_part = new_parts[last_idx]
-    new_parts[last_idx] = types.Part.from_text(text=f"{last_part.text.rstrip()}{suffix}")
+    if suffix:
+        last_idx = text_indices[-1]
+        last_part = new_parts[last_idx]
+        new_parts[last_idx] = types.Part.from_text(text=f"{last_part.text.rstrip()}{suffix}")
 
     updated_content = types.Content(
         role=getattr(llm_response.content, "role", "model") or "model",

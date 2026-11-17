@@ -777,9 +777,17 @@ class DualBackendGraphClient:
         job_config: Any = None,
         *,
         label: str | None = None,
+        bq_client_override: Any = None,
+        project_override: str | None = None,
     ) -> list[dict[str, Any]] | None:
-        """Alias for `query_bq_or_none` with optional telemetry label."""
-        return self.query_bq_or_none(sql, job_config=job_config, label=label)
+        """Alias for `query_bq_or_none` with optional telemetry label and test overrides."""
+        return self.query_bq_or_none(
+            sql,
+            job_config=job_config,
+            label=label,
+            bq_client_override=bq_client_override,
+            project_override=project_override,
+        )
 
     def query_bq_or_none(
         self,
@@ -787,12 +795,19 @@ class DualBackendGraphClient:
         job_config: Any = None,
         *,
         label: str | None = None,
+        bq_client_override: Any = None,
+        project_override: str | None = None,
     ) -> list[dict[str, Any]] | None:
         """Runs `sql` on BigQuery (with multi-state dataset routing) or returns `None` if offline."""
         t0 = time.perf_counter()
         cfg = get_config()
+        effective_project = (
+            project_override.strip()
+            if isinstance(project_override, str) and project_override.strip()
+            else cfg["project"]
+        )
         resolved_label = label or _infer_query_label(sql)
-        bq = self._get_bq()
+        bq = bq_client_override if bq_client_override is not None else self._get_bq()
         if bq is None:
             record_bq_telemetry(
                 resolved_label,
@@ -806,40 +821,45 @@ class DualBackendGraphClient:
             )
             return None
         configured_ds = cfg["dataset"]
-        target_ds = self.resolve_dataset_for_state(cfg["state"])
+        if bq_client_override is not None:
+            target_ds = configured_ds
+        else:
+            target_ds = self.resolve_dataset_for_state(cfg["state"])
 
-        # If querying CAN_REFER_TO against a shared dataset that predates v_graph_can_refer_to_edges,
-        # route cleanly to A4I_MULTISTATE_DATASET without altering the shared dataset.
-        if (
-            cfg["project"]
-            and "CAN_REFER_TO" in sql
-            and not self._dataset_has_can_refer_to(bq, cfg["project"], target_ds)
-        ):
-            ms_ds = self._get_multistate_dataset_name()
-            if ms_ds != target_ds and self._dataset_has_can_refer_to(bq, cfg["project"], ms_ds):
-                ms_cnt = self._count_state_providers(bq, cfg["project"], ms_ds, cfg["state"])
-                if ms_cnt is not None and ms_cnt > 0:
-                    target_ds = ms_ds
+            # If querying CAN_REFER_TO against a shared dataset that predates v_graph_can_refer_to_edges,
+            # route cleanly to A4I_MULTISTATE_DATASET without altering the shared dataset.
+            if (
+                effective_project
+                and "CAN_REFER_TO" in sql
+                and not self._dataset_has_can_refer_to(bq, effective_project, target_ds)
+            ):
+                ms_ds = self._get_multistate_dataset_name()
+                if ms_ds != target_ds and self._dataset_has_can_refer_to(bq, effective_project, ms_ds):
+                    ms_cnt = self._count_state_providers(bq, effective_project, ms_ds, cfg["state"])
+                    if ms_cnt is not None and ms_cnt > 0:
+                        target_ds = ms_ds
 
         try:
-            if cfg["project"]:
-                self._ensure_graph_if_missing(bq, cfg["project"], target_ds)
-            else:
-                self.ensure_property_graph(dataset=target_ds)
+            if bq_client_override is None:
+                if effective_project:
+                    self._ensure_graph_if_missing(bq, effective_project, target_ds)
+                else:
+                    self.ensure_property_graph(dataset=target_ds)
             exec_sql = rewrite_sql_dataset(sql, configured_ds, target_ds)
             can_use_cache = (
-                job_config is None
-                and bool(cfg["project"])
+                bq_client_override is None
+                and job_config is None
+                and bool(effective_project)
                 and type(bq).__module__.startswith("google.cloud.bigquery")
             )
-            cache_key = (cfg["project"], target_ds, cfg["state"], exec_sql)
+            cache_key = (effective_project, target_ds, cfg["state"], exec_sql)
             if can_use_cache:
                 with self._query_cache_lock:
                     cached_hit = self._query_cache.get(cache_key)
                 if cached_hit is not None:
                     cached_rows, cached_job_id, cached_bytes = cached_hit
                     result_rows = [dict(r) for r in cached_rows]
-                    self._last_resolution = (cfg["project"], configured_ds, cfg["state"], target_ds)
+                    self._last_resolution = (effective_project, configured_ds, cfg["state"], target_ds)
                     record_bq_telemetry(
                         resolved_label,
                         job_id=cached_job_id,
@@ -855,7 +875,7 @@ class DualBackendGraphClient:
             job = bq.query(exec_sql, job_config=job_config)
             rows = job.result()
             result_rows = [dict(row.items()) for row in rows]
-            self._last_resolution = (cfg["project"], configured_ds, cfg["state"], target_ds)
+            self._last_resolution = (effective_project, configured_ds, cfg["state"], target_ds)
             raw_job_id = getattr(job, "job_id", None)
             job_id = str(raw_job_id) if isinstance(raw_job_id, (str, int)) else None
             raw_bytes = getattr(job, "total_bytes_processed", None)

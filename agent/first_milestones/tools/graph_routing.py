@@ -1434,7 +1434,7 @@ SELECT tt.tract_geoid,cr.start_provider_id,cr.start_name,cr.eval_provider_id,cr.
 FROM cr CROSS JOIN tt LEFT JOIN sa ON cr.eval_provider_id=sa.vid
 QUALIFY ROW_NUMBER() OVER (PARTITION BY cr.mid,cr.eval_provider_id,cr.hop_count
  ORDER BY cr.domain_matched DESC,cr.observed_corridor_hops DESC,cr.total_expected_days,distance_km)=1
-ORDER BY cr.domain_matched DESC,cr.observed_corridor_hops DESC,cr.total_expected_days,distance_km LIMIT 4;""".strip()
+ORDER BY cr.domain_matched DESC,cr.observed_corridor_hops DESC,cr.total_expected_days,distance_km LIMIT 3;""".strip()
 
 
 def find_viable_45d_paths(
@@ -1631,7 +1631,7 @@ def find_viable_45d_paths(
                     "specialty_requested": spec_clean,
                     "nodes": node_list,
                 })
-                if len(viable_paths) >= 4:
+                if len(viable_paths) >= 3:
                     break
     else:
         corridors = _evaluate_candidate_corridors(
@@ -1698,7 +1698,7 @@ def find_viable_45d_paths(
                 ),
                 "nodes": c["nodes"],
             })
-            if len(viable_paths) >= 4:
+            if len(viable_paths) >= 3:
                 break
 
     guardrail_alerts: list[dict[str, str]] = []
