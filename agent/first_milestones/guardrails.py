@@ -33,6 +33,12 @@ PROVENANCE_NOTICE = (
     "strata remain `Statewide` (6 rows)."
 )
 
+DIAGNOSIS_REFUSAL_PREFIX = (
+    "I cannot provide a medical diagnosis or replace clinical judgment; below is the "
+    "verified IDEA Part C <=45-day multidisciplinary developmental evaluation pathway "
+    "and post-output equity context.\n\n"
+)
+
 _DESTRUCTIVE_SQL_RE = re.compile(
     r"\b(DROP|DELETE|TRUNCATE|INSERT|UPDATE|ALTER|CREATE)\b",
     re.IGNORECASE,
@@ -56,12 +62,62 @@ _SUBSTANTIVE_REF_RE = re.compile(
     r"|early\s+intervention|\bpart\s+c\b",
     re.IGNORECASE,
 )
+_AGE_0_TO_26_RE = re.compile(
+    r"\b([0-9]|1[0-9]|2[0-6])[-\s]?months?(?:-old)?\b",
+    re.IGNORECASE,
+)
+_AGE_27_TO_35_RE = re.compile(
+    r"(?<![\d\u2013-])\b(2[7-9]|3[0-5])(?:\.\d+)?[-\s]?months?(?:-old)?\b",
+    re.IGNORECASE,
+)
+_AGE_36_PLUS_CHILD_RE = re.compile(
+    r"\b(?:3[6-9]|[4-5]\d)[-\s]?months?[-\s]?old\b"
+    r"|\b(?:aged?|is|turned|turning|at)\s+(?:3[6-9]|[4-5]\d)\s+months?\b"
+    r"|\b(?:3[7-9]|[4-5]\d)[-\s]?months?\b"
+    r"|>=\s*36\s*[-\s]?months?\b",
+    re.IGNORECASE,
+)
 _AGE_30_TO_35_RE = re.compile(
-    r"\b(3[0-5](?:\.\d+)?)(?:\s*-\s*|\s+)months?(?:-old)?\b",
+    r"(?<![\d\u2013-])\b(3[0-5](?:\.\d+)?)(?:\s*-\s*|\s+)months?(?:-old)?\b",
     re.IGNORECASE,
 )
 _TRANSITION_MENTION_RE = re.compile(
     r"\b36\s*[-\s]?months?\b|\bpart\s*b\b",
+    re.IGNORECASE,
+)
+_SPURIOUS_36M_RE = re.compile(
+    r"(?:\b36\s*[-\s]?months?\b|\baging[-\s]?out\b|\baged\s+out\b"
+    r"|\bpart\s*b(?:\s+(?:preschool|section\s*619|transition))?\b"
+    r"|\b303\.209\b)",
+    re.IGNORECASE,
+)
+_SPURIOUS_36M_LABEL_RE = re.compile(
+    r"^\s*(?:[-*+]|\d+\.|#{1,6}|>)\s*(?:\*\*|__)?\s*"
+    r"(?:36[-\s]?month|aging[-\s]?out|idea\s+part\s*b|part\s*b\s+transition)",
+    re.IGNORECASE,
+)
+_AGING_OUT_NEGATION_RE = re.compile(
+    r"(?:\bnot\s+(?:trigger(?:ed)?|near|approaching|applicable|apply|eligible)\b"
+    r"|\bdoes\s+not\s+(?:trigger|apply)\b"
+    r"|\bno\s+(?:36\s*[-\s]?months?\s+)?(?:aging[-\s]?out|part\s*b)\b"
+    r"|\bnot\s+triggered\b"
+    r"|\bwell\s+(?:before|under)\s+(?:the\s+)?3[06]\s*[-\s]?months?\b"
+    r"|\bn/?a\b)",
+    re.IGNORECASE,
+)
+_DIAGNOSIS_REQUEST_RE = re.compile(
+    r"\bdiagnos(?:e|is|ing)\b"
+    r"|\bdoes\s+(?:he|she|my\s+(?:child|son|daughter|toddler)|the\s+child|toddler)\s+have\b",
+    re.IGNORECASE,
+)
+_DIAGNOSIS_REFUSAL_PRESENT_RE = re.compile(
+    r"(?:cannot\s+provide\s+a\s+(?:medical|clinical)\s+diagnosis"
+    r"|cannot\s+(?:clinically\s+)?diagnos"
+    r"|can't\s+(?:clinically\s+)?diagnos"
+    r"|not\s+a\s+(?:medical|clinical)\s+diagnosis"
+    r"|never\s+diagnos"
+    r"|do\s+not\s+(?:provide\s+a\s+)?(?:medical\s+|clinical\s+)?diagnos"
+    r"|unable\s+to\s+(?:provide\s+a\s+)?(?:medical\s+|clinical\s+)?diagnos)",
     re.IGNORECASE,
 )
 _PROVIDER_TOKEN_RE = re.compile(r"\bSYN-PROV-(?!\*)([A-Za-z0-9_-]+)")
@@ -349,12 +405,91 @@ def guardrail_before_tool_callback(
     return None
 
 
+def extract_callback_user_text(callback_context: CallbackContext | Any) -> str:
+    """Safely extracts user turn text from an ADK CallbackContext (or test mock)."""
+    if callback_context is None:
+        return ""
+    user_content = getattr(callback_context, "user_content", None)
+    if user_content is None or not hasattr(user_content, "parts"):
+        inv_ctx = getattr(callback_context, "_invocation_context", None)
+        user_content = getattr(inv_ctx, "user_content", None) if inv_ctx is not None else None
+    if user_content is None:
+        return ""
+    parts = getattr(user_content, "parts", None)
+    if not isinstance(parts, (list, tuple)):
+        return ""
+    texts = [
+        p.text.strip()
+        for p in parts
+        if isinstance(getattr(p, "text", None), str) and p.text.strip()
+    ]
+    return "\n".join(texts)
+
+
+def has_diagnosis_request(user_text: str) -> bool:
+    """Returns True if the user message requests a medical/clinical diagnosis."""
+    return bool(user_text and _DIAGNOSIS_REQUEST_RE.search(user_text))
+
+
+def has_diagnosis_refusal(reply_text: str) -> bool:
+    """Returns True if the reply already includes an explicit clinical diagnosis refusal."""
+    return bool(reply_text and _DIAGNOSIS_REFUSAL_PRESENT_RE.search(reply_text))
+
+
+def ensure_diagnosis_refusal(user_text: str, reply_text: str) -> str:
+    """Prepends a deterministic medical diagnosis refusal if requested and missing."""
+    if not reply_text or not has_diagnosis_request(user_text) or has_diagnosis_refusal(reply_text):
+        return reply_text
+    return f"{DIAGNOSIS_REFUSAL_PREFIX}{reply_text.lstrip()}"
+
+
+def is_under_27m_context(user_text: str, reply_text: str = "") -> bool:
+    """Returns True when conversation discusses a 0-26m toddler and NOT a 27-36m+ child."""
+    combined = f"{user_text or ''}\n{reply_text or ''}"
+    if not _AGE_0_TO_26_RE.search(combined):
+        return False
+    if _AGE_27_TO_35_RE.search(combined) or _AGE_36_PLUS_CHILD_RE.search(combined):
+        return False
+    return True
+
+
+def sanitize_under_27m_aging_out_text(text: str) -> str:
+    """Strips spurious 36-month / aging-out / Part B transition bullets & sentences on <27m cases."""
+    if not text or not _SPURIOUS_36M_RE.search(text):
+        return text
+
+    kept_lines: list[str] = []
+    for line in text.splitlines():
+        if _SPURIOUS_36M_LABEL_RE.match(line):
+            continue
+        if not _SPURIOUS_36M_RE.search(line):
+            kept_lines.append(line)
+            continue
+
+        # Preserve leading bullet/blockquote prefix if any, and filter sentence-by-sentence
+        prefix_match = re.match(r"^(\s*(?:[-*+]|\d+\.|>)\s+)(.*)$", line)
+        prefix = prefix_match.group(1) if prefix_match else ""
+        body = prefix_match.group(2) if prefix_match else line
+
+        sentences = re.split(r"(?<=[.!?])\s+", body.strip())
+        kept_sents = [
+            sent
+            for sent in sentences
+            if sent and not (_SPURIOUS_36M_RE.search(sent) and not _AGING_OUT_NEGATION_RE.search(sent))
+        ]
+        if kept_sents:
+            kept_lines.append(f"{prefix}{' '.join(kept_sents)}".rstrip())
+
+    cleaned = "\n".join(kept_lines)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
+    return cleaned
+
+
 def guardrail_after_model_callback(
     callback_context: CallbackContext,
     llm_response: LlmResponse,
 ) -> LlmResponse | None:
-    """Enforces synthetic provenance disclosure, 36-month safeguards, and ID checks."""
-    del callback_context  # Signature required by ADK 2.14.1 AfterModelCallback
+    """Enforces synthetic provenance disclosure, diagnosis refusal, <27m & 36m safeguards, and ID checks."""
     if llm_response is None or llm_response.content is None:
         return None
     parts = getattr(llm_response.content, "parts", None) or []
@@ -364,6 +499,7 @@ def guardrail_after_model_callback(
     if not text_indices:
         return None
 
+    user_text = extract_callback_user_text(callback_context)
     full_text = "\n".join(parts[idx].text for idx in text_indices)
 
     known_providers = _get_known_provider_ids()
@@ -383,7 +519,7 @@ def guardrail_after_model_callback(
             )
             unknown_ids.append(candidate_id)
 
-    sanitized_text = False
+    modified_text = False
     new_parts = list(parts)
     if unknown_ids and known_providers:
         # Strip ungrounded/hallucinated SYN-PROV-* IDs that do not exist in starter state tables
@@ -396,28 +532,54 @@ def guardrail_after_model_callback(
                     replaced = replaced.replace(uid, "[verified directory lookup required]")
             if replaced != orig:
                 new_parts[idx] = types.Part.from_text(text=replaced)
-                sanitized_text = True
+                modified_text = True
         full_text = "\n".join(new_parts[idx].text for idx in text_indices)
+
+    # P1 #1: Eliminate spurious 36-month / Part B aging-out alarms on 0-26m toddlers
+    under_27m = is_under_27m_context(user_text, full_text)
+    if under_27m and _SPURIOUS_36M_RE.search(full_text):
+        for idx in text_indices:
+            orig = new_parts[idx].text
+            cleaned = sanitize_under_27m_aging_out_text(orig)
+            if cleaned != orig:
+                new_parts[idx] = types.Part.from_text(text=cleaned)
+                modified_text = True
+        full_text = "\n".join(new_parts[idx].text for idx in text_indices if new_parts[idx].text.strip())
+        if not full_text.strip():
+            fallback_part = "Standard IDEA Part C <=45-day multidisciplinary evaluation pathway applies."
+            new_parts[text_indices[0]] = types.Part.from_text(text=fallback_part)
+            full_text = fallback_part
+            modified_text = True
+
+    # P0: Preserve/prepend clinical diagnosis refusal if user requested a diagnosis
+    if has_diagnosis_request(user_text) and not has_diagnosis_refusal(full_text):
+        first_idx = text_indices[0]
+        first_txt = new_parts[first_idx].text.lstrip()
+        new_parts[first_idx] = types.Part.from_text(text=f"{DIAGNOSIS_REFUSAL_PREFIX}{first_txt}")
+        modified_text = True
+        full_text = "\n".join(new_parts[idx].text for idx in text_indices if new_parts[idx].text.strip())
 
     additions: list[str] = []
     normalized_text = re.sub(r"[*`]", "", full_text).lower()
     if _SUBSTANTIVE_REF_RE.search(full_text) and "100% [synthetic]" not in normalized_text:
         additions.append(PROVENANCE_NOTICE)
 
-    age_match = _AGE_30_TO_35_RE.search(full_text)
-    if age_match and not _TRANSITION_MENTION_RE.search(full_text):
-        additions.append(
-            f"\n\n> **36-Month IDEA Part C Cutoff Safeguard:** At **{age_match.group(1)} months**, "
-            "initiate concurrent **IDEA Part B** preschool transition notice immediately so "
-            "evaluation and IFSP delivery finish before the strict **36-month** Part C aging-out cutoff."
-        )
+    if not under_27m:
+        age_match = _AGE_30_TO_35_RE.search(full_text)
+        if age_match and not _TRANSITION_MENTION_RE.search(full_text):
+            additions.append(
+                f"\n\n> **36-Month IDEA Part C Cutoff Safeguard:** At **{age_match.group(1)} months**, "
+                "initiate concurrent **IDEA Part B** preschool transition notice immediately so "
+                "evaluation and IFSP delivery finish before the strict **36-month** Part C aging-out cutoff."
+            )
 
-    if not additions and not sanitized_text:
+    if not additions and not modified_text:
         return None
 
     suffix = "".join(additions)
     if suffix:
-        last_idx = text_indices[-1]
+        non_empty_indices = [idx for idx in text_indices if new_parts[idx].text.strip()]
+        last_idx = non_empty_indices[-1] if non_empty_indices else text_indices[-1]
         last_part = new_parts[last_idx]
         new_parts[last_idx] = types.Part.from_text(text=f"{last_part.text.rstrip()}{suffix}")
 
