@@ -91,6 +91,48 @@ def test_cloud_run_script_and_dockerfile_structure() -> None:
     assert "agent/static/vendor" in docker_text
     assert "COPY data /app/data" in docker_text
     assert "COPY agent /app/agent" in docker_text
+    assert "FROM node:20-slim AS frontend-builder" in docker_text
+    assert "VITE_AGENT_API_URL=/api/chat" in docker_text
+    assert "COPY --from=frontend-builder /build/frontend/dist /app/frontend/dist" in docker_text
+
+
+def test_react_frontend_serving_and_prompt_chat_contract() -> None:
+    from fastapi.testclient import TestClient
+
+    agent_dir = REPO_ROOT / "agent"
+    if str(agent_dir) not in sys.path:
+        sys.path.insert(0, str(agent_dir))
+    import main as server_main  # noqa: PLC0415
+
+    client = TestClient(server_main.app)
+    r_wb = client.get("/workbench")
+    assert r_wb.status_code == 200
+    assert "<!doctype html>" in r_wb.text.lower()
+
+    if (REPO_ROOT / "frontend" / "dist" / "index.html").is_file():
+        r_root = client.get("/")
+        assert r_root.status_code == 200
+        assert '<div id="root"></div>' in r_root.text
+        assert "/assets/" in r_root.text
+
+    r_chat = client.post(
+        "/api/chat",
+        json={
+            "prompt": "Find <=45-day CareNode pathway in MS",
+            "state_code": "MS",
+            "child_home_tract_geoid": "28049010100",
+            "child_age_months": 20,
+            "accepts_medicaid": True,
+            "bilingual_required": True,
+            "primary_language": "Spanish",
+            "concern_domain": "Speech & Language Delay",
+            "has_household_vehicle": True,
+        },
+    )
+    assert r_chat.status_code == 200, r_chat.text
+    payload = r_chat.json()
+    assert isinstance(payload.get("response"), str) and payload["response"].strip()
+    assert payload.get("reply") == payload.get("response")
 
 
 def test_agent_readme_documents_multiagent_multistate_and_deployments() -> None:

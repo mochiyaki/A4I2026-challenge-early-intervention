@@ -45,7 +45,7 @@ from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from first_milestones.agent import (
     ACTIVE_MCP_MODE,
@@ -91,6 +91,7 @@ logger = logging.getLogger("first_milestones.server")
 
 APP_NAME = "first_milestones"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+FRONTEND_DIST_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 
 @asynccontextmanager
 async def _lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -204,9 +205,24 @@ def _ordered_model_candidates() -> list[str]:
 
 
 class ChatRequest(BaseModel):
-    message: str = Field(..., min_length=1, max_length=4000)
+    model_config = ConfigDict(extra="allow")
+
+    message: str | None = Field(default=None, max_length=8000)
+    prompt: str | None = Field(default=None, max_length=8000)
     session_id: str | None = None
     state_code: str | None = None
+
+    @model_validator(mode="after")
+    def _validate_message_or_prompt(self) -> "ChatRequest":
+        text = (self.message if self.message is not None else self.prompt) or ""
+        if not text.strip():
+            raise ValueError("Either 'message' or 'prompt' must be a non-empty string.")
+        return self
+
+    @property
+    def resolved_message(self) -> str:
+        text = (self.message if self.message is not None else self.prompt) or ""
+        return text.strip()
 
 
 class SimulateRequest(BaseModel):
@@ -972,8 +988,10 @@ def _merge_captured_brief(
 @app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest) -> dict[str, Any]:
     global _working_model_cache  # noqa: PLW0603
+    _reject_audit_keys_http(req.model_dump(exclude_none=True), "chat request")
     session_id = req.session_id or f"coord-{uuid.uuid4().hex[:10]}"
     user_id = "part_c_coordinator"
+    user_message = req.resolved_message
 
     with request_state_context(req.state_code) as active_state:
         # If running in Google Cloud / with Gemini credentials, run ADK LlmAgent with model fallback chain
@@ -982,7 +1000,7 @@ async def chat_endpoint(req: ChatRequest) -> dict[str, Any]:
                 role="user",
                 parts=[
                     types.Part.from_text(
-                        text=f"[Active State: {active_state}] {req.message}"
+                        text=f"[Active State: {active_state}] {user_message}"
                     )
                 ],
             )
@@ -1023,7 +1041,7 @@ async def chat_endpoint(req: ChatRequest) -> dict[str, Any]:
                     if reply_text:
                         _working_model_cache = model_name
                         brief = _merge_captured_brief(
-                            req.message, active_state, captured_outputs, reply_text=reply_text
+                            user_message, active_state, captured_outputs, reply_text=reply_text
                         )
                         return {
                             "session_id": session_id,
@@ -1031,7 +1049,7 @@ async def chat_endpoint(req: ChatRequest) -> dict[str, Any]:
                             "mode": f"adk_gemini_live ({model_name})",
                             "model_used": model_name,
                             "fallback_used": model_name != DEFAULT_MODEL,
-                            "recommended_tab": _compute_recommended_tab(req.message, tool_calls_seen),
+                            "recommended_tab": _compute_recommended_tab(user_message, tool_calls_seen),
                             "tools_invoked": tool_calls_seen,
                             "bq_telemetry": (
                                 brief.get("bq_telemetry")
@@ -1039,6 +1057,7 @@ async def chat_endpoint(req: ChatRequest) -> dict[str, Any]:
                                 else _safe_get_bq_telemetry()
                             ),
                             "reply": reply_text,
+                            "response": reply_text,
                             "brief": brief,
                         }
                     if _working_model_cache == model_name:
@@ -1057,7 +1076,7 @@ async def chat_endpoint(req: ChatRequest) -> dict[str, Any]:
                     )
 
         # Local offline preview fallback (executes real graph/equity tools deterministically)
-        reply_text, tools_used, brief = _parse_intent_and_fallback_reply(req.message, active_state)
+        reply_text, tools_used, brief = _parse_intent_and_fallback_reply(user_message, active_state)
         telemetry = _safe_get_bq_telemetry()
         brief["bq_telemetry"] = telemetry
         return {
@@ -1066,10 +1085,11 @@ async def chat_endpoint(req: ChatRequest) -> dict[str, Any]:
             "mode": "local_graph_engine_preview (set GOOGLE_GENAI_USE_VERTEXAI=TRUE or GOOGLE_API_KEY for live Gemini)",
             "model_used": "local_deterministic_fallback",
             "fallback_used": True,
-            "recommended_tab": _compute_recommended_tab(req.message, tools_used),
+            "recommended_tab": _compute_recommended_tab(user_message, tools_used),
             "tools_invoked": tools_used,
             "bq_telemetry": telemetry,
             "reply": reply_text,
+            "response": reply_text,
             "brief": brief,
         }
 
@@ -1995,10 +2015,24 @@ async def reserve_slot_endpoint(req: SlotReserveRequest) -> dict[str, Any]:
 
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+if (FRONTEND_DIST_DIR / "assets").is_dir():
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST_DIR / "assets")), name="frontend-assets")
+
+
+def _should_serve_classic_workbench() -> bool:
+    return os.environ.get("A4I_CLASSIC_WORKBENCH", "").strip().lower() in {"1", "true", "yes"}
+
+
+@app.get("/workbench")
+async def serve_classic_workbench() -> FileResponse:
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/")
 async def serve_index() -> FileResponse:
+    react_index = FRONTEND_DIST_DIR / "index.html"
+    if react_index.is_file() and not _should_serve_classic_workbench():
+        return FileResponse(react_index)
     return FileResponse(STATIC_DIR / "index.html")
 
 

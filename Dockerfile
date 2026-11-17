@@ -1,10 +1,21 @@
 # =============================================================================
 # A4I 2026 · Challenge 04 ("First Milestones")
 # Unified Cloud Run Container:
+#   - React + Vite Coordinator Frontend (`frontend/`, commit afa1953)
 #   - Official Google MCP Toolbox for Databases (`v0.27.0`)
 #   - Python ADK Multi-Agent Hierarchy (`first_milestones`) + Gemini on Vertex AI
-#   - FastAPI + SSE `/run` Streaming + Cytoscape.js Split-Pane Coordinator UI
+#   - FastAPI + SSE `/run` Streaming + `/api/chat` Coordinator API
 # =============================================================================
+FROM node:20-slim AS frontend-builder
+
+WORKDIR /build/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend ./
+ARG VITE_AGENT_API_URL=/api/chat
+ENV VITE_AGENT_API_URL=${VITE_AGENT_API_URL}
+RUN npm run build
+
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -30,8 +41,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY agent/requirements.txt agent/pyproject.toml* /app/agent/
 RUN pip install --no-cache-dir -r /app/agent/requirements.txt
 
-# Copy starter GeoParquet tables, vendored frontend assets, and ADK application
+# Copy starter GeoParquet tables, built React UI, vendored fallback assets, and ADK application
 COPY data /app/data
+COPY --from=frontend-builder /build/frontend/dist /app/frontend/dist
 COPY agent/static/vendor /app/agent/static/vendor
 COPY agent /app/agent
 RUN chmod +x /app/agent/entrypoint.sh

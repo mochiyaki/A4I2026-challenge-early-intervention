@@ -279,6 +279,7 @@ def test_playwright_cytoscape_graph_filters_inspector_sse_and_state_switch() -> 
     env.pop("GEMINI_API_KEY", None)
     env.pop("GOOGLE_GENAI_USE_VERTEXAI", None)
     env["A4I_STATE"] = "MS"
+    env["A4I_CLASSIC_WORKBENCH"] = "1"
 
     proc = subprocess.Popen(
         [

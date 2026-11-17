@@ -99,6 +99,7 @@ def start_uvicorn_server(port: int) -> subprocess.Popen[bytes]:
     """Boots `uvicorn main:app` on localhost without LLM credentials (deterministic preview)."""
     env = os.environ.copy()
     env.setdefault("A4I_STATE", "MS")
+    env["A4I_CLASSIC_WORKBENCH"] = "1"
     cmd = [
         sys.executable,
         "-m",
