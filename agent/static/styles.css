@@ -1957,6 +1957,12 @@ code {
   overflow-wrap: anywhere;
 }
 
+.slot-hold-status.warn {
+  background: var(--breach-tint);
+  border-left-color: var(--breach);
+  color: var(--breach-dark);
+}
+
 .hop-reason-note {
   font-size: 0.75rem;
   font-weight: 600;

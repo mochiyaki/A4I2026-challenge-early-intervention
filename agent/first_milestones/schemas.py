@@ -18,6 +18,14 @@ _AUDIT_DEMOGRAPHIC_KEY_RE = re.compile(r"^audit_[a-z0-9_]*$", re.IGNORECASE)
 _TRACT_GEOID_RE = re.compile(r"^\d{11}$")
 _STATE_CODE_RE = re.compile(r"^[A-Z]{2}$")
 
+StatutoryTransitionTier = Literal[
+    "tier_1_standard_part_c_45d",
+    "tier_2_lea_transition_planning_27_32m",
+    "tier_3_tightened_transition_33_34m",
+    "tier_4_less_than_45d_exemption_dual_handoff_34_5_35_9m",
+    "tier_5_part_b_section_619_lea_direct_36m_plus",
+]
+
 
 def _find_forbidden_audit_keys(
     value: Any,
@@ -87,7 +95,7 @@ class ChildProfile(BaseModel):
     tract_children_under_5: int = Field(default=0, ge=0)
     tract_poverty_pct: float = Field(default=0.0, ge=0.0, le=100.0)
     tract_zero_vehicle_pct: float = Field(default=0.0, ge=0.0, le=100.0)
-    child_age_months: int | None = Field(default=None, ge=0)
+    child_age_months: int | float | None = Field(default=None, ge=0)
     concern_domain: str = "Expressive Speech/Language"
     needs_medicaid: bool = True
     needs_bilingual: bool = True
@@ -123,6 +131,87 @@ class GuardrailAlert(BaseModel):
     code: str = Field(..., min_length=1)
     severity: str = Field(..., min_length=1)
     message: str = Field(..., min_length=1)
+
+
+class PacketReadinessResult(BaseModel):
+    """Hop-0 IDEA Part C intake packet gatekeeper report (`check_intake_packet_readiness`)."""
+
+    model_config = ConfigDict(extra="allow")
+
+    status: str = "ok"
+    packet_status: str | None = None
+    ready_for_referral_handoff: bool | None = None
+    ready: bool | None = None
+    readiness_score: int | None = Field(default=None, ge=0, le=100)
+    bias_firewall_verified: str | None = None
+    intake_summary: dict[str, Any] = Field(default_factory=dict)
+    statutory_transition_tier: str | dict[str, Any] | None = None
+    days_until_age_3: int | None = Field(default=None, ge=0)
+    effective_deadline_days: int | None = Field(default=None, ge=0)
+    dual_lea_handoff_required: bool | None = None
+    exemption_303_209_b_1_iii: bool | None = None
+    interpreter_language_flag: dict[str, Any] | None = None
+    insurance_verification: dict[str, Any] | None = None
+    nemt_eligibility: dict[str, Any] | None = None
+    missing_intake_items: list[dict[str, Any]] = Field(default_factory=list)
+    bounce_prevention_warnings: list[dict[str, Any]] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_audit_keys_before(cls, data: Any) -> Any:
+        return _enforce_no_audit_keys(data, "PacketReadinessResult")
+
+    @model_validator(mode="after")
+    def _reject_audit_keys_after(self) -> PacketReadinessResult:
+        if self.model_extra:
+            _enforce_no_audit_keys(self.model_extra, "PacketReadinessResult")
+        return self
+
+
+class SlotHoldRecord(BaseModel):
+    """Concurrency-safe 48-hour CareNode slot reservation record (`slot_ledger`)."""
+
+    model_config = ConfigDict(extra="allow")
+
+    hold_id: str = Field(..., min_length=1)
+    state_code: str
+    case_reference: str = ""
+    coordinator_id: str = ""
+    eval_hub_id: str = ""
+    vendor_id: str = ""
+    provider_id: str | None = None
+    status: str = "ACTIVE"
+    hold_hours: int | None = Field(default=None, ge=1, le=168)
+    created_at: str = ""
+    expires_at: str = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_audit_keys_before(cls, data: Any) -> Any:
+        return _enforce_no_audit_keys(data, "SlotHoldRecord")
+
+
+class ByodHrsaSiteRow(BaseModel):
+    """Public-domain HRSA Health Center FQHC / Look-Alike screening site (`17 U.S.C. § 105`)."""
+
+    model_config = ConfigDict(extra="allow")
+
+    hrsa_site_id: str | None = None
+    site_name: str
+    health_center_name: str | None = None
+    site_city: str = ""
+    state_code: str
+    county_fips: str | None = None
+    county_name: str | None = None
+    latitude: float
+    longitude: float
+    operating_hours_per_week: float | int | None = None
+    data_provenance: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_audit_keys_before(cls, data: Any) -> Any:
+        return _enforce_no_audit_keys(data, "ByodHrsaSiteRow")
 
 
 class HopStep(BaseModel):
@@ -163,6 +252,9 @@ class RecommendedPathway(BaseModel):
     expected_cumulative_days: int = Field(..., ge=0)
     statutory_45d_headroom_days: int | None = None
     clears_45_day_clock: bool = True
+    clears_part_c_before_age_3: bool | None = None
+    timely_part_c_ifsp_feasible: bool | None = None
+    requires_dual_lea_part_b_handoff: bool | None = None
     domain_matched: bool = True
     observed_corridor_hops: int = Field(default=0, ge=0)
     within_preferred_travel_km: bool = True
@@ -170,6 +262,12 @@ class RecommendedPathway(BaseModel):
     max_family_travel_km: float = Field(default=0.0, ge=0.0)
     eval_hub_distance_km: float = Field(default=0.0, ge=0.0)
     therapy_vendor_distance_km: float = Field(default=0.0, ge=0.0)
+    family_clinic_travel_km: float | None = Field(default=None, ge=0.0)
+    home_visit_vendor_distance_km: float | None = Field(default=None, ge=0.0)
+    mobile_visit_capable: bool | None = None
+    natural_environment_home_visit: bool | None = None
+    active_holds_on_path: int | None = Field(default=None, ge=0)
+    max_node_utilization_ratio: float | None = Field(default=None, ge=0.0)
     all_nodes_medicaid_enrolled: bool | None = None
     all_care_nodes_bilingual: bool | None = None
     nodes: list[str] = Field(default_factory=list)
@@ -227,20 +325,30 @@ class RoutingResult(BaseModel):
     cautionary_historical_bounce_chain: HistoricalBounceChain | None = None
     days_saved_vs_bounce_loop: int | None = None
     guardrail_alerts: list[GuardrailAlert] = Field(default_factory=list)
-    packet_readiness: dict[str, Any] | None = None
+    packet_readiness: PacketReadinessResult | dict[str, Any] | None = None
     before_vs_after_rerouting_cohort: dict[str, Any] | None = None
     statutory_transition_tier: str | dict[str, Any] | None = None
+    days_until_age_3: int | None = Field(default=None, ge=0)
+    effective_deadline_days: int | None = Field(default=None, ge=0)
+    dual_lea_handoff_required: bool | None = None
+    active_slot_holds_in_state: int | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def _verify_routing_firewall(self) -> RoutingResult:
         for alt in self.alternative_compliant_pathways:
             _enforce_no_audit_keys(alt, "RoutingResult.alternative_compliant_pathways")
         if self.packet_readiness is not None:
-            _enforce_no_audit_keys(self.packet_readiness, "RoutingResult.packet_readiness")
+            raw_pkt = (
+                self.packet_readiness.model_dump()
+                if isinstance(self.packet_readiness, BaseModel)
+                else self.packet_readiness
+            )
+            _enforce_no_audit_keys(raw_pkt, "RoutingResult.packet_readiness")
         if self.before_vs_after_rerouting_cohort is not None:
             _enforce_no_audit_keys(
                 self.before_vs_after_rerouting_cohort,
                 "RoutingResult.before_vs_after_rerouting_cohort",
+                allowed_container_keys=frozenset({"post_output_demographic_parity"}),
             )
         if self.statutory_transition_tier is not None:
             _enforce_no_audit_keys(
@@ -308,6 +416,10 @@ class ViablePathsResult(BaseModel):
     pruned_high_bounce_edges_count: int = Field(default=0, ge=0)
     pruned_congested_or_bounce_nodes_count: int = Field(default=0, ge=0)
     guardrail_alerts: list[GuardrailAlert] = Field(default_factory=list)
+    statutory_transition_tier: str | dict[str, Any] | None = None
+    days_until_age_3: int | None = Field(default=None, ge=0)
+    effective_deadline_days: int | None = Field(default=None, ge=0)
+    dual_lea_handoff_required: bool | None = None
 
     @model_validator(mode="after")
     def _verify_tract_context_firewall(self) -> ViablePathsResult:
@@ -502,12 +614,14 @@ class EquityAuditResult(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
+    status: str = "ok"
     execution_engine: str
     state_code: str
     governance_attestation: GovernanceAttestation
     breach_vs_timely_neighborhood_equity: list[EquityOutcomeStratum] = Field(default_factory=list)
     furthest_tracts_from_bilingual_eval_hub: list[dict[str, Any]] = Field(default_factory=list)
     statewide_nsch_screening_context: list[NschStratum] = Field(default_factory=list)
+    before_vs_after_rerouting_cohort: dict[str, Any] | None = None
 
 
 class ScreeningPriorityTract(BaseModel):
@@ -522,6 +636,9 @@ class ScreeningPriorityTract(BaseModel):
     zero_vehicle_pct: float = Field(..., ge=0.0, le=100.0)
     non_racial_outreach_priority_score: float = Field(..., ge=0.0)
     verified_downstream_45d_pathway: dict[str, Any]
+    byod_nearest_fqhc_km: float | None = Field(default=None, ge=0.0)
+    byod_fqhc_site_name: str | None = None
+    byod_fqhc_city: str | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -543,8 +660,11 @@ class ScreeningOutreachResult(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
+    status: str = "ok"
+    execution_engine: str | None = None
     state_code: str
     formula_note: str
+    byod_provenance: str | None = None
     priority_screening_tracts: list[ScreeningPriorityTract] = Field(default_factory=list)
 
 
@@ -564,6 +684,9 @@ class OutreachZoneRow(BaseModel):
     mobility_support_recommended: bool
     outreach_priority_score: float = Field(..., ge=0.0)
     post_output_equity_context: dict[str, float] = Field(default_factory=dict)
+    byod_nearest_fqhc_km: float | None = Field(default=None, ge=0.0)
+    byod_fqhc_site_name: str | None = None
+    byod_fqhc_city: str | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -589,8 +712,10 @@ class OutreachZonesResult(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
+    status: str = "ok"
     engine: str
     synthetic_provenance_notice: str
+    byod_provenance: str | None = None
     iso_gql_query: str
     filters_applied: dict[str, Any] = Field(default_factory=dict)
     hidden_ei_deserts_count: int = Field(..., ge=0)
@@ -651,11 +776,14 @@ class PathwayBrief(BaseModel):
     outreach_zones: OutreachZonesResult
     caregiver_notes: CaregiverNotes
     runtime: dict[str, Any] | None = None
-    packet_readiness: dict[str, Any] | None = None
-    slot_holds: list[dict[str, Any]] = Field(default_factory=list)
+    packet_readiness: PacketReadinessResult | dict[str, Any] | None = None
+    slot_holds: list[SlotHoldRecord | dict[str, Any]] = Field(default_factory=list)
     bq_telemetry: list[dict[str, Any]] | dict[str, Any] | None = None
     before_vs_after_rerouting_cohort: dict[str, Any] | None = None
     statutory_transition_tier: str | dict[str, Any] | None = None
+    byod_provenance: str | None = None
+    byod_hrsa_sites: list[ByodHrsaSiteRow | dict[str, Any]] | None = None
+    referral_history: dict[str, Any] | None = None
 
     @field_validator("state_code")
     @classmethod
@@ -670,11 +798,24 @@ class PathwayBrief(BaseModel):
         for field_label, val in (
             ("PathwayBrief.packet_readiness", self.packet_readiness),
             ("PathwayBrief.slot_holds", self.slot_holds),
-            ("PathwayBrief.before_vs_after_rerouting_cohort", self.before_vs_after_rerouting_cohort),
             ("PathwayBrief.statutory_transition_tier", self.statutory_transition_tier),
+            ("PathwayBrief.byod_hrsa_sites", self.byod_hrsa_sites),
         ):
             if val:
-                _enforce_no_audit_keys(val, field_label)
+                serialized = (
+                    val.model_dump()
+                    if isinstance(val, BaseModel)
+                    else [x.model_dump() if isinstance(x, BaseModel) else x for x in val]
+                    if isinstance(val, list)
+                    else val
+                )
+                _enforce_no_audit_keys(serialized, field_label)
+        if self.before_vs_after_rerouting_cohort:
+            _enforce_no_audit_keys(
+                self.before_vs_after_rerouting_cohort,
+                "PathwayBrief.before_vs_after_rerouting_cohort",
+                allowed_container_keys=frozenset({"post_output_demographic_parity"}),
+            )
         return self
 
 
@@ -749,6 +890,7 @@ class RunStreamRequestModel(BaseModel):
 
 SSEEventType = Literal[
     "agent_start",
+    "sub_agent",
     "sub_agent_delegate",
     "tool_call",
     "tool_result",
@@ -783,6 +925,7 @@ __all__ = [
     "AgencyKpiRow",
     "BottleneckHubRow",
     "BottleneckHubsResult",
+    "ByodHrsaSiteRow",
     "CaregiverNotes",
     "ChatRequestModel",
     "ChildProfile",
@@ -801,6 +944,7 @@ __all__ = [
     "NschStratum",
     "OutreachZoneRow",
     "OutreachZonesResult",
+    "PacketReadinessResult",
     "PathwayBrief",
     "RecommendedPathway",
     "RoutingResult",
@@ -810,6 +954,8 @@ __all__ = [
     "ScreeningOutreachResult",
     "ScreeningPriorityTract",
     "SimulateRequestModel",
+    "SlotHoldRecord",
+    "StatutoryTransitionTier",
     "ViablePathCandidate",
     "ViablePathsResult",
 ]

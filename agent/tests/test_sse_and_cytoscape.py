@@ -266,12 +266,125 @@ def test_health_exposes_sub_agent_topology_and_vendored_cytoscape_bundle() -> No
     assert "/run" in health_json["sse_endpoints"]
 
 
+def test_feat_triage_gatekeeper_slot_ledger_geo_and_thinking_budgets(tmp_path: Path) -> None:
+    """Verifies Option B thinking budgets, Packet Gatekeeper, SQLite Slot Ledger, and TIGER GeoJSON coexist with SSE."""
+    from first_milestones.agent import root_agent
+
+    # 1. Option B Thinking Budgets: Pro coordinator = 128, Flash sub-agents = 0
+    assert root_agent.model == "gemini-2.5-pro"
+    assert root_agent.generate_content_config.thinking_config.thinking_budget == 128
+    assert len(root_agent.sub_agents) == 3
+    for sub in root_agent.sub_agents:
+        assert sub.model == "gemini-2.5-flash"
+        assert sub.generate_content_config.thinking_config.thinking_budget == 0
+
+    ledger_db = tmp_path / "test_slot_ledger.db"
+    with patch.dict(os.environ, {"A4I_SLOT_LEDGER_DB": str(ledger_db)}):
+        client = TestClient(app)
+
+        # 2. Packet Gatekeeper ready vs blocked + anti-bias firewall
+        r_ready = client.post(
+            "/api/gatekeeper",
+            json={
+                "child_age_months": 30.0,
+                "referral_concern": "autism_evaluation",
+                "developmental_screen_completed": True,
+                "parental_consent_signed": True,
+                "audiology_clearance_completed": True,
+                "vision_screening_completed": True,
+                "pediatric_medical_summary_attached": True,
+                "insurance_status": "medicaid",
+                "preferred_language": "Spanish",
+            },
+        )
+        assert r_ready.status_code == 200
+        ready_json = r_ready.json()
+        assert ready_json["ready"] is True
+        assert ready_json["packet_status"] == "READY_FOR_EHR_HANDOFF"
+        assert ready_json["missing_items"] == []
+
+        r_blocked = client.post(
+            "/api/gatekeeper",
+            json={
+                "child_age_months": 30.0,
+                "referral_concern": "speech_delay",
+                "developmental_screen_completed": False,
+                "parental_consent_signed": False,
+                "audiology_clearance_completed": False,
+                "insurance_status": "medicaid",
+                "preferred_language": "Spanish",
+            },
+        )
+        assert r_blocked.status_code == 200
+        blocked_json = r_blocked.json()
+        assert blocked_json["ready"] is False
+        assert blocked_json["packet_status"] == "BLOCKED_MISSING_PREREQUISITES"
+        assert len(blocked_json["missing_items"]) >= 2
+
+        r_firewall = client.post(
+            "/api/gatekeeper",
+            json={"child_age_months": 30.0, "audit_race_ethnicity": "Black"},
+        )
+        assert r_firewall.status_code == 422
+
+        # 3. SQLite 48h Slot Hold Ledger reserve + brief cache refresh + release
+        r_slots_init = client.get("/api/slots?state=MS")
+        assert r_slots_init.status_code == 200
+        assert r_slots_init.json()["active_holds_count"] == 0
+
+        r_brief_before = client.get("/api/brief?state=MS")
+        assert r_brief_before.status_code == 200
+        routing_data = r_brief_before.json().get("routing", {})
+        rec_path = routing_data.get("recommended_pathway") or {}
+        rec_hub = (
+            rec_path.get("hops", [{}, {}])[1].get("target_provider_id")
+            if len(rec_path.get("hops", [])) >= 2
+            else "SYN-PROV-MS-017"
+        )
+
+        r_res = client.post(
+            "/api/slots/reserve",
+            json={
+                "provider_id": rec_hub,
+                "state_code": "MS",
+                "home_tract_geoid": "28049003500",
+                "referral_concern": "autism_evaluation",
+                "child_age_months": 30.0,
+                "preferred_language": "Spanish",
+                "insurance_status": "medicaid",
+            },
+        )
+        assert r_res.status_code == 200
+        res_json = r_res.json()
+        assert res_json["status"] == "reserved"
+        hold_id = res_json["hold"]["hold_id"]
+        assert hold_id.startswith("HOLD-MS-")
+        assert res_json["capacity_snapshot"]["monthly_slot_capacity"] >= res_json["capacity_snapshot"]["eval_hub_open_slots"]
+
+        r_slots_after = client.get("/api/slots?state=MS")
+        assert r_slots_after.json()["active_holds_count"] == 1
+
+        r_rel = client.post("/api/slots/release", json={"hold_id": hold_id})
+        assert r_rel.status_code == 200
+        assert r_rel.json()["status"] == "released"
+        assert client.get("/api/slots?state=MS").json()["active_holds_count"] == 0
+
+        # 4. TIGER GeoJSON endpoint for MS and CA
+        for st, prefix in (("MS", "28"), ("CA", "06")):
+            r_geo = client.get(f"/api/geo?state={st}")
+            assert r_geo.status_code == 200
+            geo_json = r_geo.json()
+            assert geo_json["type"] == "FeatureCollection"
+            assert len(geo_json["features"]) >= 10
+            assert all(str(f["properties"]["tract_geoid"]).startswith(prefix) for f in geo_json["features"])
+
+
 # ---------------------------------------------------------------------------
 # 2. Headless Chromium Playwright Tests: Cytoscape.js Graph & Live SSE UI
 # ---------------------------------------------------------------------------
 
 
-def test_playwright_cytoscape_graph_filters_inspector_sse_and_state_switch() -> None:
+def test_playwright_cytoscape_graph_filters_inspector_sse_and_state_switch(tmp_path: Path) -> None:
     port = _find_free_port()
     base_url = f"http://127.0.0.1:{port}"
     env = os.environ.copy()
@@ -279,7 +392,7 @@ def test_playwright_cytoscape_graph_filters_inspector_sse_and_state_switch() -> 
     env.pop("GEMINI_API_KEY", None)
     env.pop("GOOGLE_GENAI_USE_VERTEXAI", None)
     env["A4I_STATE"] = "MS"
-    env["A4I_CLASSIC_WORKBENCH"] = "1"
+    env["A4I_SLOT_LEDGER_DB"] = str(tmp_path / "pw_slot_ledger.db")
 
     proc = subprocess.Popen(
         [
@@ -409,7 +522,35 @@ def test_playwright_cytoscape_graph_filters_inspector_sse_and_state_switch() -> 
             assert tapped_edge_info["target"] in edge_inspector_txt
             assert tapped_edge_info["channel"] in edge_inspector_txt
 
-            # 4. Test live SSE `/run` streaming chat in the browser
+            # 4. Verify feat/first-milestones-triage UI cards coexist seamlessly:
+            #    Gatekeeper (no [object Object]), SQLite 48h Slot Hold, TIGER SVG maps, and Before-vs-After Equity
+            page.wait_for_selector("#tigerCorridorMap svg .tiger-tract", timeout=10000)
+            assert page.locator("#tigerCorridorMap svg .tiger-tract").count() >= 10
+
+            page.locator("#gkScreenToggle").uncheck()
+            with page.expect_response(lambda r: "/api/gatekeeper" in r.url and r.status == 200, timeout=10000):
+                page.locator("#verifyPacketBtn").click()
+            gk_txt = page.locator("#gatekeeperResult").inner_text()
+            assert "BLOCKED_MISSING_PREREQUISITES" in gk_txt
+            assert "[object Object]" not in gk_txt
+            assert "M-CHAT-R/F" in gk_txt or "ASQ-3" in gk_txt
+            page.locator("#gkScreenToggle").check()
+            with page.expect_response(lambda r: "/api/gatekeeper" in r.url and r.status == 200, timeout=10000):
+                page.locator("#verifyPacketBtn").click()
+            assert "READY_FOR_EHR_HANDOFF" in page.locator("#gatekeeperResult").inner_text()
+
+            with page.expect_response(lambda r: "/api/slots/reserve" in r.url and r.status == 200, timeout=10000):
+                page.locator("#reserveSlotBtn").click()
+            hold_txt = page.locator("#slotHoldStatus").inner_text()
+            assert "HOLD-MS-" in hold_txt
+            assert "48-Hour Slot Hold Confirmed" in hold_txt or "48h Slot Hold" in hold_txt
+
+            page.locator('[data-tab="outreach"]').click()
+            page.wait_for_selector("#tigerDesertMap svg .tiger-tract", timeout=10000)
+            assert page.locator("#beforeAfterSubgroupTable tbody tr").count() >= 3
+            page.locator('[data-tab="pathway"]').click()
+
+            # 5. Test live SSE `/run` streaming chat in the browser
             before_agent_bubbles = page.locator("#chatMessages .msg-agent").count()
             page.locator("#chatInput").fill(
                 "Route a 32-month-old toddler in tract 28049003500 needing Spanish Autism screen on Medicaid"
@@ -437,7 +578,7 @@ def test_playwright_cytoscape_graph_filters_inspector_sse_and_state_switch() -> 
             assert "find_viable_45d_paths" in last_bubble_txt
             assert "28049003500" in last_bubble_txt
 
-            # 5. Test switching MS -> CA re-renders Cytoscape with SYN-PROV-CA-* vertices
+            # 6. Test switching MS -> CA re-renders Cytoscape & TIGER map with SYN-PROV-CA-* / 06*
             with page.expect_response(
                 lambda r: "/api/brief" in r.url and "state=CA" in r.url and r.status == 200,
                 timeout=15000,
@@ -454,6 +595,7 @@ def test_playwright_cytoscape_graph_filters_inspector_sse_and_state_switch() -> 
             ca_cy_nodes = page.evaluate("() => window.__cyInstance.nodes().map((n) => n.id())")
             assert len(ca_cy_nodes) >= 5
             assert all(nid.startswith("SYN-PROV-CA-") for nid in ca_cy_nodes)
+            assert page.locator("#tigerCorridorMap svg .tiger-tract").count() >= 10
             assert page_errors == []
 
             context.close()

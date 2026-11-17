@@ -6,19 +6,21 @@ Compatible with:
   - `adk deploy agent_engine` (Vertex AI Agent Engine)
 
 Architecture:
-  - Coordinator (`first_milestones_coordinator`, default `gemini-2.5-pro` with Gemini
-    fallback chain) holds governed granular tools and delegates multi-track workflows
-    across three specialized `gemini-2.5-flash` sub-agents:
-      1. `triage_pathway_router` (Track 1 `<=45`-day ISO GQL + spatial routing, zero `audit_*`)
-      2. `network_bottleneck_auditor` (Track 2 prefix-deduplicated bounce & counterfactual audit)
-      3. `equity_and_caregiver_specialist` (Post-output `audit_*` equity, Track 3 hidden EI
-         deserts, 6-row statewide NSCH context, and bilingual EN/ES caregiver action notes)
+  - Coordinator (`first_milestones_coordinator`, default `gemini-2.5-pro` with Option B
+    `thinking_budget=128` and Gemini fallback chain) holds governed granular tools and
+    delegates multi-track workflows across three specialized `gemini-2.5-flash`
+    sub-agents (`thinking_budget=0` for low-latency specialist tool execution):
+      1. `triage_pathway_router` (Track 1 Hop-0 packet gatekeeper, `<=45`-day ISO GQL +
+         spatial routing, and 48h slot-hold ledger — strictly zero `audit_*`)
+      2. `network_bottleneck_auditor` (Track 2 `REFERS_TO` chain history, prefix-deduplicated
+         bounce/betweenness audit, agency KPIs, and counterfactual simulation)
+      3. `equity_and_caregiver_specialist` (Post-output `audit_*` equity & cohort parity,
+         Track 3 hidden EI deserts, public-domain BYOD HRSA FQHC sites, 6-row statewide
+         NSCH context, and bilingual EN/ES caregiver action notes)
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-import importlib
 import os
 from typing import Any
 
@@ -26,7 +28,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools.base_toolset import BaseToolset
 from google.genai import types
 
-from .brief_builder import _compute_statutory_transition_tier, generate_complete_45d_brief
+from .brief_builder import generate_complete_45d_brief
 from .guardrails import guardrail_after_model_callback, guardrail_before_tool_callback
 from .mcp_integration import load_managed_mcp_tools
 from .prompts import (
@@ -37,183 +39,87 @@ from .prompts import (
 )
 from .tools import (
     audit_multihop_bounce_hubs,
+    check_intake_packet_readiness,
     detect_regional_bottleneck_hubs,
     find_compliant_45d_pathways,
     find_viable_45d_paths,
     get_referral_history,
+    list_slot_holds,
+    load_byod_hrsa_sites,
     prioritize_community_screening_tracts,
     rank_outreach_zones,
+    release_slot_hold,
+    reserve_pathway_slot,
     run_post_output_equity_audit,
     simulate_hub_intervention,
 )
-from .tools.bq_client import get_config, load_local_state_frames
+from .tools.bq_client import VALID_STATES, get_config
 from .tools.reference_lookups import (
+    BYOD_HRSA_PROVENANCE,
     lookup_carenode_directory,
     lookup_regional_agency_kpis,
     lookup_statewide_nsch_strata,
     lookup_tract_routing_context,
 )
 
-try:
-    from .tools.packet_gatekeeper import check_intake_packet_readiness  # type: ignore[import-not-found]
-except ImportError:
 
-    def check_intake_packet_readiness(
-        child_age_months: int = 32,
-        consent_signed: bool = True,
-        screening_tool_completed: bool = True,
-        primary_language: str = "Spanish",
-        insurance_status: str = "Medicaid",
-        concern_domain: str = "Social-Communication / Autism Screen",
-        has_household_vehicle: bool = False,
-        referral_channel: str = "ehr_electronic_portal",
-    ) -> dict[str, Any]:
-        """Validates Hop-0 IDEA Part C intake packet readiness before referral transmission.
+def lookup_byod_hrsa_screening_sites(
+    state_code: str = "",
+    top_n: int = 8,
+) -> dict[str, Any]:
+    """Lists real public-domain HRSA FQHC / Look-Alike community screening sites (`17 U.S.C. § 105`).
 
-        Args:
-            child_age_months: Child age in months (`0-35` Part C, `>=36` Part B § 619).
-            consent_signed: Whether caregiver referral consent is signed.
-            screening_tool_completed: Whether a standardized developmental screen/concern is attached.
-            primary_language: Family preferred language (`English`, `Spanish`, etc.).
-            insurance_status: Coverage type (`Medicaid`, `Commercial`, etc.).
-            concern_domain: Primary developmental concern domain.
-            has_household_vehicle: Whether household has reliable vehicle access.
-            referral_channel: Transmission channel (`ehr_electronic_portal` vs `paper_fax`).
-        """
-        try:
-            mod = importlib.import_module("first_milestones.tools.packet_gatekeeper")
-            fn = getattr(mod, "check_intake_packet_readiness", None)
-            if callable(fn):
-                return fn(
-                    child_age_months=child_age_months,
-                    consent_signed=consent_signed,
-                    screening_tool_completed=screening_tool_completed,
-                    primary_language=primary_language,
-                    insurance_status=insurance_status,
-                    concern_domain=concern_domain,
-                    has_household_vehicle=has_household_vehicle,
-                    referral_channel=referral_channel,
-                )
-        except Exception:  # noqa: BLE001
-            pass
+    Wraps `load_byod_hrsa_sites` into a compact JSON-serializable tool response for Track 3
+    mobile developmental screening outreach planning (strictly free of `audit_*` columns).
 
-        cfg = get_config()
-        missing: list[str] = []
-        if not consent_signed:
-            missing.append("signed_parental_consent")
-        if not screening_tool_completed:
-            missing.append("developmental_screening_summary")
-        if not str(primary_language or "").strip():
-            missing.append("primary_language")
-        if not str(insurance_status or "").strip():
-            missing.append("insurance_status")
-        if not str(concern_domain or "").strip():
-            missing.append("concern_domain")
-
-        tier = _compute_statutory_transition_tier(child_age_months)
-        aged_out = int(child_age_months) >= 36
-        ready = (len(missing) == 0) and (not aged_out)
-        warnings: list[str] = []
-        if referral_channel == "paper_fax":
-            warnings.append("Upgrade paper_fax to ehr_electronic_portal to prevent Hop-1 intake bounce.")
-        if not has_household_vehicle:
-            warnings.append("Zero-vehicle household: attach Medicaid NEMT or Natural Environment home visit request.")
-        if aged_out:
-            warnings.append("Child >=36 months is ineligible for Part C; route to IDEA Part B Section 619 via LEA.")
-
+    Args:
+        state_code: Optional 2-letter state code (`MS`, `AL`, `GA`, `TX`, `CA`, `NY`);
+            defaults to active request state.
+        top_n: Maximum HRSA delivery sites to return (`1-15`, default `8`).
+    """
+    cfg = get_config()
+    raw_state = (state_code or cfg["state"]).strip().upper()
+    if raw_state not in VALID_STATES:
         return {
-            "status": "ineligible_part_c_aged_out" if aged_out else ("ready" if ready else "incomplete_packet"),
-            "state_code": cfg["state"],
-            "ready": ready,
-            "missing_items": missing,
-            "statutory_transition_tier": tier,
-            "warnings": warnings,
-            "synthetic_provenance_notice": "100% [Synthetic] Hop-0 gatekeeper telemetry.",
+            "status": "validation_error",
+            "error_code": "INVALID_STATE_CODE",
+            "state_code": raw_state,
+            "message": f"Unsupported state_code={state_code!r}. Valid states: {sorted(VALID_STATES)}.",
+            "sites": [],
         }
+    try:
+        limit = 8 if top_n is None else max(1, min(int(top_n), 15))
+    except (TypeError, ValueError):
+        limit = 8
 
+    df = load_byod_hrsa_sites(raw_state)
+    total_sites = int(len(df))
+    keep_cols = [
+        c
+        for c in (
+            "hrsa_site_id",
+            "site_name",
+            "health_center_name",
+            "site_city",
+            "state_code",
+            "county_fips",
+            "county_name",
+            "latitude",
+            "longitude",
+            "operating_hours_per_week",
+        )
+        if c in df.columns
+    ]
+    records = df[keep_cols].head(limit).to_dict(orient="records") if not df.empty else []
+    return {
+        "status": "ok",
+        "state_code": raw_state,
+        "provenance": BYOD_HRSA_PROVENANCE,
+        "total_sites_in_state": total_sites,
+        "returned_count": len(records),
+        "sites": records,
+    }
 
-try:
-    from .tools.slot_ledger import reserve_pathway_slot  # type: ignore[import-not-found]
-except ImportError:
-    _FALLBACK_SLOT_HOLDS: list[dict[str, Any]] = []
-
-    def reserve_pathway_slot(
-        provider_id: str = "",
-        child_tract_geoid: str = "",
-        concern_domain: str = "Social-Communication / Autism Screen",
-        needs_medicaid: bool = True,
-        needs_bilingual: bool = True,
-        hold_hours: int = 48,
-        case_reference: str = "",
-    ) -> dict[str, Any]:
-        """Places a soft 48-hour slot hold on a verified Part C evaluation or therapy provider.
-
-        Args:
-            provider_id: Target `SYN-PROV-*` ID (defaults to first uncongested Eval Hub in active state).
-            child_tract_geoid: Optional 11-digit Census tract GEOID.
-            concern_domain: Primary developmental concern domain.
-            needs_medicaid: Whether Medicaid enrollment is required.
-            needs_bilingual: Whether Spanish-bilingual capacity is required.
-            hold_hours: Soft hold duration in hours (`1-168`, defaults to `48`).
-            case_reference: Optional coordinator case token.
-        """
-        try:
-            mod = importlib.import_module("first_milestones.tools.slot_ledger")
-            fn = getattr(mod, "reserve_pathway_slot", None)
-            if callable(fn):
-                return fn(
-                    provider_id=provider_id,
-                    child_tract_geoid=child_tract_geoid,
-                    concern_domain=concern_domain,
-                    needs_medicaid=needs_medicaid,
-                    needs_bilingual=needs_bilingual,
-                    hold_hours=hold_hours,
-                    case_reference=case_reference,
-                )
-        except Exception:  # noqa: BLE001
-            pass
-
-        cfg = get_config()
-        state = cfg["state"]
-        prov_df = load_local_state_frames(state)["providers"]
-        chosen_pid = provider_id.strip().upper()
-        matched = prov_df[prov_df["provider_id"] == chosen_pid] if chosen_pid else prov_df[
-            prov_df["node_role"].isin(["Multidisciplinary_Eval_Hub", "EI_Therapy_Vendor"])
-        ].head(1)
-        if matched.empty:
-            return {
-                "status": "validation_error",
-                "error_code": "PROVIDER_NOT_FOUND",
-                "state_code": state,
-                "message": f"Provider {chosen_pid or '(none)'} not found in {state}.",
-            }
-        row = matched.iloc[0]
-        pid = str(row["provider_id"])
-        now = datetime.now(timezone.utc)
-        hours = max(1, min(168, int(hold_hours)))
-        hold_record = {
-            "hold_id": f"HOLD-{state}-{len(_FALLBACK_SLOT_HOLDS) + 1:03d}",
-            "state_code": state,
-            "provider_id": pid,
-            "provider_name": str(row["synthetic_organization_name"]),
-            "node_role": str(row["node_role"]),
-            "child_tract_geoid": child_tract_geoid,
-            "concern_domain": concern_domain,
-            "needs_medicaid": bool(needs_medicaid),
-            "needs_bilingual": bool(needs_bilingual),
-            "hold_hours": hours,
-            "created_at": now.isoformat(),
-            "expires_at": (now + timedelta(hours=hours)).isoformat(),
-            "status": "active",
-            "case_reference": case_reference or "HOP1-PENDING",
-        }
-        _FALLBACK_SLOT_HOLDS.append(hold_record)
-        return {
-            "status": "reserved",
-            "hold": hold_record,
-            "active_holds_count": len(_FALLBACK_SLOT_HOLDS),
-            "synthetic_provenance_notice": "100% [Synthetic] CareNode slot ledger.",
-        }
 
 DEFAULT_MODEL = os.environ.get("A4I_GEMINI_MODEL", "gemini-2.5-pro").strip() or "gemini-2.5-pro"
 _DEFAULT_FALLBACK_STR = "gemini-2.5-flash,gemini-3-flash-preview,gemini-3.1-pro-preview"
@@ -226,7 +132,7 @@ SUBAGENT_MODEL = os.environ.get("A4I_SUBAGENT_MODEL", "gemini-2.5-flash").strip(
 
 
 def _build_generate_content_config(model_name: Any) -> types.GenerateContentConfig:
-    """Builds a low-latency GenerateContentConfig with model-appropriate thinking_budget."""
+    """Builds a low-latency GenerateContentConfig with Option B model-appropriate thinking_budget."""
     raw_name = model_name if isinstance(model_name, str) else str(getattr(model_name, "model", ""))
     low = (raw_name or "").strip().lower()
     if "2.5-pro" in low:
@@ -284,6 +190,7 @@ SHARED_TOOLS: list[Any] = [
     find_compliant_45d_pathways,
     find_viable_45d_paths,
     reserve_pathway_slot,
+    list_slot_holds,
     get_referral_history,
     audit_multihop_bounce_hubs,
     detect_regional_bottleneck_hubs,
@@ -291,13 +198,14 @@ SHARED_TOOLS: list[Any] = [
     run_post_output_equity_audit,
     prioritize_community_screening_tracts,
     rank_outreach_zones,
+    lookup_byod_hrsa_screening_sites,
     *managed_mcp_tools,
 ]
 
 SUBAGENT_METADATA: dict[str, dict[str, Any]] = {
     "triage_pathway_router": {
         "name": "triage_pathway_router",
-        "role": "Track 1 <=45-Day Pathway & Mobility Router",
+        "role": "Track 1 <=45-Day Pathway, Gatekeeper & Slot-Hold Router",
         "track": "track_1_routing",
         "model": SUBAGENT_MODEL,
         "tools": [
@@ -305,13 +213,14 @@ SUBAGENT_METADATA: dict[str, dict[str, Any]] = {
             "find_compliant_45d_pathways",
             "find_viable_45d_paths",
             "reserve_pathway_slot",
+            "list_slot_holds",
             "lookup_tract_routing_context",
             "lookup_carenode_directory",
         ],
     },
     "network_bottleneck_auditor": {
         "name": "network_bottleneck_auditor",
-        "role": "Track 2 Multi-Hop Bounce & Counterfactual Auditor",
+        "role": "Track 2 Multi-Hop Bounce, History & Counterfactual Auditor",
         "track": "track_2_audit",
         "model": SUBAGENT_MODEL,
         "tools": [
@@ -325,13 +234,14 @@ SUBAGENT_METADATA: dict[str, dict[str, Any]] = {
     },
     "equity_and_caregiver_specialist": {
         "name": "equity_and_caregiver_specialist",
-        "role": "Post-Output Equity, Track 3 Outreach & EN/ES Caregiver Specialist",
+        "role": "Post-Output Equity, Track 3 BYOD Outreach & EN/ES Caregiver Specialist",
         "track": "track_3_equity_and_caregiver",
         "model": SUBAGENT_MODEL,
         "tools": [
             "run_post_output_equity_audit",
             "prioritize_community_screening_tracts",
             "rank_outreach_zones",
+            "lookup_byod_hrsa_screening_sites",
             "generate_complete_45d_brief",
             "lookup_statewide_nsch_strata",
             "lookup_tract_routing_context",
@@ -346,9 +256,9 @@ def create_triage_sub_agent(model_name: str = SUBAGENT_MODEL) -> LlmAgent:
         name="triage_pathway_router",
         model=model_name,
         description=(
-            "Track 1 specialist for <=45-day IDEA Part C multi-hop ISO GQL + spatial "
-            "child referral routing, 36-month aging-out alerts, and zero-vehicle NEMT "
-            "(strictly isolated from post-output audit_* demographic columns)."
+            "Track 1 specialist for Hop-0 packet readiness, <=45-day IDEA Part C multi-hop "
+            "ISO GQL + spatial child referral routing, 48h slot holds, 5-tier 36-month "
+            "transition rules, and zero-vehicle NEMT (strictly isolated from audit_* columns)."
         ),
         instruction=TRIAGE_SUB_INSTRUCTION,
         tools=[
@@ -356,6 +266,7 @@ def create_triage_sub_agent(model_name: str = SUBAGENT_MODEL) -> LlmAgent:
             find_compliant_45d_pathways,
             find_viable_45d_paths,
             reserve_pathway_slot,
+            list_slot_holds,
             *triage_mcp_tools,
         ],
         generate_content_config=_build_generate_content_config(model_name),
@@ -370,9 +281,9 @@ def create_audit_sub_agent(model_name: str = SUBAGENT_MODEL) -> LlmAgent:
         name="network_bottleneck_auditor",
         model=model_name,
         description=(
-            "Track 2 specialist for prefix-deduplicated -{2,4}-> ReferralGraph bounce-hub "
-            "detection, betweenness flow attribution, OSEP Indicator C7 agency KPIs, and "
-            "counterfactual paper_fax-to-EHR intervention simulation."
+            "Track 2 specialist for REFERS_TO chain history, prefix-deduplicated -{2,4}-> "
+            "ReferralGraph bounce-hub detection, betweenness flow attribution, OSEP Indicator C7 "
+            "agency KPIs, and counterfactual paper_fax-to-EHR intervention simulation."
         ),
         instruction=AUDIT_SUB_INSTRUCTION,
         tools=[
@@ -394,8 +305,8 @@ def create_equity_sub_agent(model_name: str = SUBAGENT_MODEL) -> LlmAgent:
         name="equity_and_caregiver_specialist",
         model=model_name,
         description=(
-            "Specialist for strictly post-output audit_* neighborhood equity audits, "
-            "Track 3 hidden Early Intervention desert & mobile screening prioritization, "
+            "Specialist for strictly post-output audit_* neighborhood equity & cohort parity audits, "
+            "Track 3 hidden Early Intervention desert & public-domain HRSA FQHC screening outreach, "
             "6-row Statewide HRSA NSCH screening context, and warm English/Español caregiver notes."
         ),
         instruction=EQUITY_SUB_INSTRUCTION,
@@ -403,6 +314,7 @@ def create_equity_sub_agent(model_name: str = SUBAGENT_MODEL) -> LlmAgent:
             run_post_output_equity_audit,
             prioritize_community_screening_tracts,
             rank_outreach_zones,
+            lookup_byod_hrsa_screening_sites,
             generate_complete_45d_brief,
             *equity_mcp_tools,
         ],
@@ -459,6 +371,11 @@ __all__ = [
     "create_sub_agents",
     "create_triage_sub_agent",
     "get_model_candidates",
+    "get_referral_history",
+    "list_slot_holds",
+    "load_byod_hrsa_sites",
+    "lookup_byod_hrsa_screening_sites",
+    "release_slot_hold",
     "reserve_pathway_slot",
     "root_agent",
 ]

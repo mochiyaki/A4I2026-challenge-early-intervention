@@ -486,15 +486,22 @@ def test_strict_subagent_tool_separation_and_anti_bias_isolation() -> None:
     audit_tools = _tool_names(create_audit_sub_agent())
     equity_tools = _tool_names(create_equity_sub_agent())
 
-    # 1. Triage router owns Track 1 routing tools and NEVER sees post-output equity or NSCH tools
-    assert {"find_compliant_45d_pathways", "find_viable_45d_paths"} <= triage_tools
+    # 1. Triage router owns Track 1 routing, Hop-0 gatekeeper & 48h slot hold tools — NEVER equity or NSCH
+    assert {
+        "check_intake_packet_readiness",
+        "find_compliant_45d_pathways",
+        "find_viable_45d_paths",
+        "reserve_pathway_slot",
+        "list_slot_holds",
+    } <= triage_tools
     assert "run_post_output_equity_audit" not in triage_tools
     assert "lookup_statewide_nsch_strata" not in triage_tools
     assert "audit_multihop_bounce_hubs" not in triage_tools
     assert "generate_complete_45d_brief" not in triage_tools
 
-    # 2. Network bottleneck auditor owns Track 2 graph audit + counterfactual + agency KPIs
+    # 2. Network bottleneck auditor owns Track 2 chain history + graph audit + counterfactual + agency KPIs
     assert {
+        "get_referral_history",
         "audit_multihop_bounce_hubs",
         "detect_regional_bottleneck_hubs",
         "simulate_hub_intervention",
@@ -503,15 +510,27 @@ def test_strict_subagent_tool_separation_and_anti_bias_isolation() -> None:
     assert "run_post_output_equity_audit" not in audit_tools
     assert "find_compliant_45d_pathways" not in audit_tools
 
-    # 3. Equity & caregiver specialist owns post-output equity, Track 3 outreach, NSCH, and brief builder
+    # 3. Equity & caregiver specialist owns post-output equity, Track 3 BYOD outreach, NSCH, and brief builder
     assert {
         "run_post_output_equity_audit",
         "prioritize_community_screening_tracts",
         "rank_outreach_zones",
+        "lookup_byod_hrsa_screening_sites",
         "generate_complete_45d_brief",
         "lookup_statewide_nsch_strata",
     } <= equity_tools
     assert "simulate_hub_intervention" not in equity_tools
+
+    # 4. Coordinator SHARED_TOOLS excludes shortcut generate_complete_45d_brief
+    coord_tools = _tool_names(root_agent)
+    assert "generate_complete_45d_brief" not in coord_tools
+    assert {
+        "check_intake_packet_readiness",
+        "reserve_pathway_slot",
+        "list_slot_holds",
+        "get_referral_history",
+        "lookup_byod_hrsa_screening_sites",
+    } <= coord_tools
 
 
 def test_multiple_create_coordinator_agent_calls_have_zero_parent_agent_collision() -> None:
@@ -660,3 +679,80 @@ async def test_live_adk_runner_multi_agent_delegation_and_tool_capture() -> None
     assert "100% [Synthetic]" in reply
     assert "36-month" in reply.lower()
     assert "part b" in reply.lower()
+
+
+def test_option_b_thinking_budgets_and_subagent_metadata_parity() -> None:
+    """Coordinator uses `thinking_budget=128` on 2.5-pro; Flash sub-agents use `thinking_budget=0`."""
+    assert root_agent.generate_content_config is not None
+    assert root_agent.generate_content_config.thinking_config is not None
+    assert root_agent.generate_content_config.thinking_config.thinking_budget == 128
+
+    for sa in root_agent.sub_agents:
+        assert sa.generate_content_config is not None
+        assert sa.generate_content_config.thinking_config is not None
+        assert sa.generate_content_config.thinking_config.thinking_budget == 0
+        meta_tools = set(SUBAGENT_METADATA[sa.name]["tools"])
+        live_callable_names = {
+            getattr(t, "__name__", "")
+            for t in sa.tools
+            if callable(t)
+        }
+        assert meta_tools == live_callable_names
+
+
+def test_cached_and_fresh_brief_five_tiers_gatekeeper_slots_and_byod(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Validates cached/fresh `generate_complete_45d_brief`, 5 statutory tiers, packet gatekeeper, slot ledger, and BYOD HRSA."""
+    from first_milestones.brief_builder import clear_brief_cache
+    from first_milestones.schemas import ByodHrsaSiteRow, PacketReadinessResult, SlotHoldRecord
+
+    monkeypatch.setenv("A4I_SLOT_LEDGER_DB", str(tmp_path / "test_slots.db"))
+    monkeypatch.setenv("A4I_FORCE_LOCAL_PARQUET", "1")
+    clear_brief_cache()
+
+    expected_tiers = [
+        (20, "tier_1_standard_part_c_45d"),
+        (30, "tier_2_lea_transition_planning_27_32m"),
+        (34, "tier_3_tightened_transition_33_34m"),
+        (35, "tier_4_less_than_45d_exemption_dual_handoff_34_5_35_9m"),
+        (37, "tier_5_part_b_section_619_lea_direct_36m_plus"),
+    ]
+    for age_m, expected_tier in expected_tiers:
+        fresh = generate_complete_45d_brief(state_code="MS", child_age_months=age_m, use_cache=False)
+        cached = generate_complete_45d_brief(state_code="MS", child_age_months=age_m, use_cache=True)
+        cached_hit = generate_complete_45d_brief(state_code="MS", child_age_months=age_m, use_cache=True)
+        assert fresh["statutory_transition_tier"] == expected_tier
+        assert cached["statutory_transition_tier"] == expected_tier
+        assert cached_hit["statutory_transition_tier"] == expected_tier
+        validated = PathwayBrief.model_validate(cached_hit)
+        assert validated.before_vs_after_rerouting_cohort is not None
+        assert validated.packet_readiness is not None
+        assert validated.byod_hrsa_sites is not None and len(validated.byod_hrsa_sites) >= 1
+
+    # Dynamic slot_holds refresh on cached brief hit
+    ca_brief_0 = generate_complete_45d_brief(state_code="CA", use_cache=True)
+    assert ca_brief_0["state_code"] == "CA"
+    hops = ca_brief_0["routing"]["recommended_pathway"]["hops"]
+    hold_res = first_milestones.reserve_pathway_slot(
+        state_code="CA",
+        coordinator_id=hops[0]["target_provider_id"],
+        eval_hub_id=hops[1]["target_provider_id"],
+        vendor_id=hops[2]["target_provider_id"],
+        case_reference="CACHE-SLOT-CHECK",
+    )
+    assert hold_res["status"] == "reserved"
+    ca_brief_1 = generate_complete_45d_brief(state_code="CA", use_cache=True)
+    assert len(ca_brief_1["slot_holds"]) == 1
+    PathwayBrief.model_validate(ca_brief_1)
+
+    # Anti-bias firewall on PacketReadinessResult, SlotHoldRecord, ByodHrsaSiteRow, and PathwayBrief
+    with pytest.raises(ValidationError, match="Anti-Bias Routing Firewall"):
+        PacketReadinessResult.model_validate({"status": "ok", "audit_black_share": 0.4})
+    with pytest.raises(ValidationError, match="Anti-Bias Routing Firewall"):
+        SlotHoldRecord.model_validate({"hold_id": "HOLD-MS-1", "state_code": "MS", "audit_hispanic_share": 0.3})
+    with pytest.raises(ValidationError, match="Anti-Bias Routing Firewall"):
+        ByodHrsaSiteRow.model_validate(
+            {"site_name": "FQHC", "state_code": "MS", "latitude": 32.3, "longitude": -90.1, "audit_white_share": 0.5}
+        )
+    with pytest.raises(ValidationError, match="Anti-Bias Routing Firewall"):
+        PathwayBrief.model_validate({**ca_brief_1, "byod_hrsa_sites": [{"site_name": "X", "state_code": "CA", "latitude": 36.0, "longitude": -120.0, "audit_asian_share": 0.2}]})
+

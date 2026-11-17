@@ -801,7 +801,11 @@ class DualBackendGraphClient:
         """Runs `sql` on BigQuery (with multi-state dataset routing) or returns `None` if offline."""
         t0 = time.perf_counter()
         cfg = get_config()
-        effective_project = project_override if project_override is not None else cfg["project"]
+        effective_project = (
+            project_override.strip()
+            if isinstance(project_override, str) and project_override.strip()
+            else cfg["project"]
+        )
         resolved_label = label or _infer_query_label(sql)
         bq = bq_client_override if bq_client_override is not None else self._get_bq()
         if bq is None:
@@ -817,25 +821,23 @@ class DualBackendGraphClient:
             )
             return None
         configured_ds = cfg["dataset"]
-        target_ds = (
-            configured_ds
-            if bq_client_override is not None
-            else self.resolve_dataset_for_state(cfg["state"])
-        )
+        if bq_client_override is not None:
+            target_ds = configured_ds
+        else:
+            target_ds = self.resolve_dataset_for_state(cfg["state"])
 
-        # If querying CAN_REFER_TO against a shared dataset that predates v_graph_can_refer_to_edges,
-        # route cleanly to A4I_MULTISTATE_DATASET without altering the shared dataset.
-        if (
-            bq_client_override is None
-            and effective_project
-            and "CAN_REFER_TO" in sql
-            and not self._dataset_has_can_refer_to(bq, effective_project, target_ds)
-        ):
-            ms_ds = self._get_multistate_dataset_name()
-            if ms_ds != target_ds and self._dataset_has_can_refer_to(bq, effective_project, ms_ds):
-                ms_cnt = self._count_state_providers(bq, effective_project, ms_ds, cfg["state"])
-                if ms_cnt is not None and ms_cnt > 0:
-                    target_ds = ms_ds
+            # If querying CAN_REFER_TO against a shared dataset that predates v_graph_can_refer_to_edges,
+            # route cleanly to A4I_MULTISTATE_DATASET without altering the shared dataset.
+            if (
+                effective_project
+                and "CAN_REFER_TO" in sql
+                and not self._dataset_has_can_refer_to(bq, effective_project, target_ds)
+            ):
+                ms_ds = self._get_multistate_dataset_name()
+                if ms_ds != target_ds and self._dataset_has_can_refer_to(bq, effective_project, ms_ds):
+                    ms_cnt = self._count_state_providers(bq, effective_project, ms_ds, cfg["state"])
+                    if ms_cnt is not None and ms_cnt > 0:
+                        target_ds = ms_ds
 
         try:
             if bq_client_override is None:
