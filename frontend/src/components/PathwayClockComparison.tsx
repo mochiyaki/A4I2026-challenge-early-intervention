@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   AlertTriangle,
@@ -7,10 +7,12 @@ import {
   CheckCircle2,
   FileWarning,
   Laptop,
+  Map,
   MapPin,
   Phone,
 } from 'lucide-react';
 import { cleanOrgName } from '../engine/graphTriageEngine';
+import { buildClinicMapPayload } from '../services/googleMapsService';
 import type {
   CandidatePathway,
   HistoricalChainTrace,
@@ -23,6 +25,7 @@ import {
   SPRING_DEFAULT,
   triggerCausalHaptic,
 } from '../utils/applePhysics';
+import { ClinicLocationMapCard } from './ClinicLocationMapCard';
 
 interface PathwayClockComparisonProps {
   intake: ReferralIntakeInput;
@@ -32,6 +35,8 @@ interface PathwayClockComparisonProps {
   selectedPathwayId: string | null;
   onSelectPathway: (id: string) => void;
   historicalTrapChain: HistoricalChainTrace | null;
+  googleMapsApiKey: string;
+  onOpenApiModal: () => void;
 }
 
 const MAX_TIMELINE_DAYS = 85;
@@ -71,11 +76,29 @@ export const PathwayClockComparison: React.FC<PathwayClockComparisonProps> = ({
   selectedPathwayId,
   onSelectPathway,
   historicalTrapChain,
+  googleMapsApiKey,
+  onOpenApiModal,
 }) => {
   const reducedMotion = useReducedMotion();
+  const [showRouteMap, setShowRouteMap] = useState<boolean>(false);
+  const [focusedMapStopId, setFocusedMapStopId] = useState<string | undefined>(
+    undefined
+  );
   const barTransition = reducedMotion
     ? REDUCED_MOTION_TRANSITION
     : SPRING_DEFAULT;
+
+  const mapPayload = useMemo(
+    () =>
+      buildClinicMapPayload(
+        intake,
+        tract,
+        activePathway,
+        null,
+        focusedMapStopId ?? 'eval'
+      ),
+    [intake, tract, activePathway, focusedMapStopId]
+  );
 
   const allOptions = activePathway
     ? [
@@ -360,13 +383,33 @@ export const PathwayClockComparison: React.FC<PathwayClockComparisonProps> = ({
         </div>
       )}
 
-      {/* 3. Verified 4-Step CareNode Sequence */}
+      {/* 3. Verified 4-Step CareNode Sequence + Interactive Google Map Layout */}
       <div className="p-6 sm:p-7 space-y-5">
-        <div>
-          <div className="pm-kicker">Step 2 · CareNode Chain</div>
-          <h2 className="pm-h3 text-[16.5px] mt-0.5">
-            Verified 4-node clinical routing sequence
-          </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="pm-kicker">Step 2 · CareNode Chain &amp; Clinic Locations</div>
+            <h2 className="pm-h3 text-[16.5px] mt-0.5">
+              Verified 4-node clinical routing sequence
+            </h2>
+          </div>
+
+          <button
+            type="button"
+            aria-pressed={showRouteMap}
+            onClick={() => {
+              triggerCausalHaptic(4);
+              setShowRouteMap((prev) => !prev);
+            }}
+            className={`min-h-[40px] px-3.5 py-1.5 rounded-[9px] text-[12.5px] font-semibold border inline-flex items-center gap-1.5 cursor-pointer touch-manipulation transition-colors no-print ${
+              showRouteMap
+                ? 'bg-[var(--pm-accent-soft)] border-[var(--pm-accent)] text-[var(--pm-accent)]'
+                : 'bg-[var(--pm-surface)] hover:bg-[var(--pm-surface-hover)] border-[var(--pm-border-strong)] text-[var(--pm-ink)]'
+            }`}
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            <Map aria-hidden="true" className="w-3.5 h-3.5" />
+            <span>{showRouteMap ? 'Hide Google Map' : 'Show Google Map'}</span>
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3.5">
@@ -412,17 +455,26 @@ export const PathwayClockComparison: React.FC<PathwayClockComparisonProps> = ({
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-[var(--pm-border)] space-y-2.5">
-                  <div className="flex items-center justify-between text-[12.5px] text-[var(--pm-muted)] tabular-nums">
-                    <span className="inline-flex items-center gap-1 truncate">
-                      <MapPin aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />
-                      <span>
+                  <div className="flex items-center justify-between text-[12.5px] text-[var(--pm-muted)] tabular-nums gap-1.5">
+                    <button
+                      type="button"
+                      title={`Show ${cleanOrgName(step.node.synthetic_organization_name)} on Google Map`}
+                      onClick={() => {
+                        triggerCausalHaptic(3);
+                        setFocusedMapStopId(step.node.provider_id);
+                        setShowRouteMap(true);
+                      }}
+                      className="inline-flex items-center gap-1 truncate text-left hover:text-[var(--pm-accent)] cursor-pointer transition-colors"
+                    >
+                      <MapPin aria-hidden="true" className="w-3.5 h-3.5 shrink-0 text-[var(--pm-accent)]" />
+                      <span className="underline decoration-dotted underline-offset-2 truncate">
                         {step.node.city} ({step.distanceFromHomeKm} km)
                       </span>
-                    </span>
+                    </button>
                     {isOrigin ? (
-                      <span className="font-mono-code text-[12px]">Day 0</span>
+                      <span className="font-mono-code text-[12px] shrink-0">Day 0</span>
                     ) : (
-                      <span className="font-mono-code font-semibold text-[var(--pm-compliant)]">
+                      <span className="font-mono-code font-semibold text-[var(--pm-compliant)] shrink-0">
                         +{step.expectedStepWaitDays}d
                       </span>
                     )}
@@ -454,6 +506,17 @@ export const PathwayClockComparison: React.FC<PathwayClockComparisonProps> = ({
             );
           })}
         </div>
+
+        {/* Interactive Google Map Layout for the 4-Node Pathway */}
+        {showRouteMap && (
+          <div className="pt-1 no-print">
+            <ClinicLocationMapCard
+              payload={mapPayload}
+              googleMapsApiKey={googleMapsApiKey}
+              onOpenApiModal={onOpenApiModal}
+            />
+          </div>
+        )}
 
         {/* Alternative Compliant Pathways */}
         {allOptions.length > 1 && (

@@ -12,6 +12,7 @@ import { AgentChatSidebar } from './components/AgentChatSidebar';
 import { AgentModal } from './components/AgentModal';
 import { BriefAndCaregiverTabs } from './components/BriefAndCaregiverTabs';
 import { IntakeSidebar } from './components/IntakeSidebar';
+import { MultiAgentCouncilPanel } from './components/MultiAgentCouncilPanel';
 import { NetworkGraphCanvas } from './components/NetworkGraphCanvas';
 import { PathwayClockComparison } from './components/PathwayClockComparison';
 import { SyntheticBanner } from './components/SyntheticBanner';
@@ -25,6 +26,7 @@ import {
   getStateData,
   reconstructHistoricalChains,
 } from './engine/graphTriageEngine';
+import { runMultiAgentCouncil } from './engine/multiAgentPipeline';
 import {
   buildCoordinatorPrompt,
   getSavedAgentEndpoint,
@@ -32,6 +34,10 @@ import {
   saveAgentEndpoint,
   type LiveAgentResponse,
 } from './services/agentClient';
+import {
+  getSavedGoogleMapsApiKey,
+  saveGoogleMapsApiKey,
+} from './services/googleMapsService';
 import type { ReferralIntakeInput, StateCode } from './types';
 
 function pickDefaultTract(stateCode: StateCode): string {
@@ -76,6 +82,9 @@ export default function App() {
   const [selectedPathwayId, setSelectedPathwayId] = useState<string | null>(null);
   const [agentEndpoint, setAgentEndpoint] = useState<string>(() =>
     getSavedAgentEndpoint()
+  );
+  const [googleMapsApiKey, setGoogleMapsApiKey] = useState<string>(() =>
+    getSavedGoogleMapsApiKey()
   );
   const [agentModalOpen, setAgentModalOpen] = useState(false);
   const [agentPrompt, setAgentPrompt] = useState('');
@@ -164,6 +173,37 @@ export default function App() {
         stateBundle.agencies[0]
       ),
     [intake, selectedTract, activePathway, stateBundle.agencies]
+  );
+
+  /* Reactive 5-Agent Research, Verification, Evidence Attribution & Conclusion Engine */
+  const multiAgentReport = useMemo(
+    () =>
+      runMultiAgentCouncil({
+        intake,
+        tract: selectedTract,
+        activePathway,
+        alternatives: routingResult.alternatives,
+        historicalTrapChain: routingResult.historicalTrapChain,
+        bounceDiagnostics,
+        equityAudit,
+        nschStrata: stateBundle.nsch,
+        agencies: stateBundle.agencies,
+        integrity: stateBundle.integrity,
+        liveAdkResponse: agentResponse,
+      }),
+    [
+      intake,
+      selectedTract,
+      activePathway,
+      routingResult.alternatives,
+      routingResult.historicalTrapChain,
+      bounceDiagnostics,
+      equityAudit,
+      stateBundle.nsch,
+      stateBundle.agencies,
+      stateBundle.integrity,
+      agentResponse,
+    ]
   );
 
   useEffect(() => {
@@ -273,13 +313,12 @@ export default function App() {
         )
       : null;
 
-  /* Polite Live Announcement for Screen Readers (contextual-live-badge-updates) */
   const liveRouteSummary = activePathway
     ? `${selectedTract.county_name}, ${intake.stateCode}: ${
         activePathway.clears45DayClock ? 'Compliant route' : 'Over-45-day route'
       } in ${activePathway.totalExpectedDays} days via ${cleanOrgName(
         activePathway.steps[2].node.synthetic_organization_name
-      )}.`
+      )}. ${multiAgentReport.verificationScoreLabel}.`
     : `${selectedTract.county_name}, ${intake.stateCode}: No standard route clears 45 days; mobile override needed.`;
 
   return (
@@ -302,7 +341,7 @@ export default function App() {
       />
 
       <main id="main-workspace" className="flex-1 pm-wrap py-6 sm:py-7 space-y-6">
-        {/* Executive 4-Card Clinical Bento KPI Strip (ui-ux-pro-max Data-Dense Bento Hierarchy) */}
+        {/* Executive 4-Card Clinical Bento KPI Strip */}
         <section
           aria-label="Statutory referral triage summary metrics"
           className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 tabular-nums"
@@ -435,7 +474,7 @@ export default function App() {
             />
           </div>
 
-          {/* Center Primary Triage Frame & Optional Graph/Audit Sections */}
+          {/* Center Primary Triage, Multi-Agent Council & Optional Graph/Audit Sections */}
           <div className="lg:col-span-8 xl:col-span-5 space-y-6 order-3 lg:order-2 min-w-0">
             <PathwayClockComparison
               intake={intake}
@@ -445,6 +484,16 @@ export default function App() {
               selectedPathwayId={selectedPathwayId}
               onSelectPathway={setSelectedPathwayId}
               historicalTrapChain={routingResult.historicalTrapChain}
+              googleMapsApiKey={googleMapsApiKey}
+              onOpenApiModal={() => setAgentModalOpen(true)}
+            />
+
+            {/* 5-Agent Research, Verification, Evidence Attribution & Precise Conclusion Panel */}
+            <MultiAgentCouncilPanel
+              report={multiAgentReport}
+              agentEndpoint={agentEndpoint}
+              agentLoading={agentLoading}
+              onRunLiveAgent={handleRunLiveAgent}
             />
 
             {viewMode === 'full' ? (
@@ -480,10 +529,10 @@ export default function App() {
               <div className="pm-card p-5 sm:p-6 flex flex-wrap items-center justify-between gap-4">
                 <div className="space-y-1 max-w-lg">
                   <h2 className="pm-h3 text-[16px]">
-                    Focused clinical triage active
+                    Interactive topology &amp; caregiver letters collapsed
                   </h2>
                   <p className="text-[14px] text-[var(--pm-muted)] leading-relaxed">
-                    Expand the 30-node CareNode referral graph (plus accessible edge table), bilingual caregiver notes, bounce-hub audit, and BigQuery ISO GQL queries.
+                    Expand the 30-node CareNode referral graph, accessible flow table, bilingual English/Spanish caregiver letters, and BigQuery ISO GQL queries.
                   </p>
                 </div>
                 <button
@@ -491,14 +540,14 @@ export default function App() {
                   onClick={() => setViewMode('full')}
                   className="pm-btn pm-btn-secondary shrink-0"
                 >
-                  <span>Open graph &amp; audit</span>
+                  <span>Open graph &amp; letters</span>
                   <ArrowRight aria-hidden="true" className="w-4 h-4" />
                 </button>
               </div>
             )}
           </div>
 
-          {/* Right Voice & Chat Triage Agent */}
+          {/* Right Multi-Agent Voice & Chat Triage Assistant */}
           <div
             ref={chatSectionRef}
             className="lg:col-span-12 xl:col-span-4 xl:sticky xl:top-22 order-1 lg:order-3 no-print"
@@ -508,6 +557,7 @@ export default function App() {
               tract={selectedTract}
               activePathway={activePathway}
               agentEndpoint={agentEndpoint}
+              googleMapsApiKey={googleMapsApiKey}
               onApplyIntakePatch={handleUpdateIntake}
               onOpenAgentModal={() => setAgentModalOpen(true)}
               autoFocusMicSignal={micTriggerCount}
@@ -520,10 +570,13 @@ export default function App() {
       <footer className="border-t border-[var(--pm-border)] bg-[var(--pm-card)] mt-8 no-print">
         <div className="pm-wrap py-5 flex flex-wrap items-center justify-between gap-4 text-[13px] text-[var(--pm-muted)]">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <span className="font-semibold text-[var(--pm-ink)]" style={{ fontFamily: 'var(--font-display)' }}>
+            <span
+              className="font-semibold text-[var(--pm-ink)]"
+              style={{ fontFamily: 'var(--font-display)' }}
+            >
               First Milestones · 2026
             </span>
-            <span>34 CFR § 303.310 statutory 45-day IFSP clinical routing</span>
+            <span>34 CFR § 303.310 statutory 45-day IFSP multi-agent routing</span>
           </div>
 
           <details className="credits">
@@ -540,9 +593,12 @@ export default function App() {
       <AgentModal
         open={agentModalOpen}
         currentUrl={agentEndpoint}
-        onSave={(url) => {
+        currentMapsKey={googleMapsApiKey}
+        onSave={(url, mapsKey) => {
           saveAgentEndpoint(url);
           setAgentEndpoint(url);
+          saveGoogleMapsApiKey(mapsKey);
+          setGoogleMapsApiKey(mapsKey);
         }}
         onClose={() => setAgentModalOpen(false)}
       />

@@ -8,8 +8,12 @@ import {
   reconstructHistoricalChains,
   STATE_META,
 } from './graphTriageEngine';
+import { runMultiAgentCouncil } from './multiAgentPipeline';
+import { buildClinicMapPayload } from '../services/googleMapsService';
 import type {
   CandidatePathway,
+  ClinicMapPayload,
+  EvidenceCitationItem,
   ReferralIntakeInput,
   StateCode,
 } from '../types';
@@ -24,6 +28,11 @@ export interface LocalAgentReply {
   spokenLang: 'en-US' | 'es-US';
   intakePatch?: Partial<ReferralIntakeInput>;
   appliedBadges: ChatActionBadge[];
+  collaboratingAgents: string[];
+  preciseConclusion: string;
+  verificationScoreLabel: string;
+  citations: EvidenceCitationItem[];
+  mapCard?: ClinicMapPayload;
   suggestedFollowUps: string[];
 }
 
@@ -37,9 +46,10 @@ const STATE_NAME_MAP: { pattern: RegExp; code: StateCode }[] = [
 ];
 
 /**
- * Parses natural-language voice or text input for state/age/language/vehicle/concern changes,
- * re-runs the ReferralGraph engine on the updated profile, and produces both a clean visual
- * answer and a concise, jargon-free spoken response for the Voice Agent.
+ * Multi-Agent Conversational Coordinator:
+ * Parses natural-language voice or text input, dispatches to the 5-agent
+ * Research + Graph Router + Verifier + Evidence Librarian + Synthesizer pipeline,
+ * and returns structured output with explicit citations and a brief conclusion.
  */
 export function runConversationalGraphAgent(
   rawQuery: string,
@@ -59,7 +69,7 @@ export function runConversationalGraphAgent(
     }
   }
 
-  // 2. Detect Child Age in months (e.g. "20-month-old", "28 months", "31m", "20 meses")
+  // 2. Detect Child Age in months
   const ageMatch =
     q.match(/\b(\d{1,2})\s*(?:-|\s)?(?:month|months|mo|mos|meses)\b/i) ||
     q.match(/\b(\d{1,2})m\b/i);
@@ -73,7 +83,7 @@ export function runConversationalGraphAgent(
 
   // 3. Detect Language / Bilingual preferences
   const asksInSpanish =
-    /[¿¡]|(\b(español|espanol|familia|evaluación|niño|meses|ruta|días)\b)/i.test(q);
+    /[¿¡]|(\b(español|espanol|familia|evaluación|niño|meses|ruta|días|dónde|donde|clínica|clinica|mapa|ubicación|ubicacion|dirección|direccion)\b)/i.test(q);
   if (/\b(spanish|bilingual|español|espanol|hispanohablante)\b/i.test(q)) {
     if (currentIntake.primaryLanguage !== 'Spanish') {
       patch.primaryLanguage = 'Spanish';
@@ -129,7 +139,7 @@ export function runConversationalGraphAgent(
     }
   }
 
-  // Recompute state & routing against effective intake
+  // Recompute state & multi-agent report against effective intake
   const effectiveIntake: ReferralIntakeInput = {
     ...currentIntake,
     ...patch,
@@ -141,7 +151,6 @@ export function runConversationalGraphAgent(
       (t) => t.census_tract_geoid === effectiveIntake.tractGeoid
     ) ?? bundle.tracts[0];
 
-  // If state changed, pick high-need default tract in that state (or zero-vehicle tract if requested)
   if (patch.stateCode) {
     const sorted = !effectiveIntake.hasHouseholdVehicle
       ? [...bundle.tracts].sort((a, b) => b.no_vehicle_rate - a.no_vehicle_rate)
@@ -157,7 +166,6 @@ export function runConversationalGraphAgent(
     }
   }
 
-  // Also check if user mentioned a specific county name in that state!
   const matchedCountyTract = bundle.tracts.find((t) =>
     lower.includes(t.county_name.toLowerCase().replace(' county', ''))
   );
@@ -188,13 +196,50 @@ export function runConversationalGraphAgent(
     bundle.agencies[0]
   );
 
+  const councilReport = runMultiAgentCouncil({
+    intake: effectiveIntake,
+    tract,
+    activePathway: rec,
+    alternatives: routing.alternatives,
+    historicalTrapChain: routing.historicalTrapChain,
+    bounceDiagnostics: bounceHubs,
+    equityAudit: equity,
+    nschStrata: bundle.nsch,
+    agencies: bundle.agencies,
+    integrity: bundle.integrity,
+  });
+
   // Intent Classification
+  const explicitProvMatch = q.match(/\b(SYN-PROV-[A-Z]{2}-\d{3})\b/i);
+  const matchedSpecificProvider = explicitProvMatch
+    ? bundle.providers.find(
+        (p) => p.provider_id.toUpperCase() === explicitProvMatch[1].toUpperCase()
+      ) ?? null
+    : bundle.providers.find((p) =>
+        lower.includes(cleanOrgName(p.synthetic_organization_name).toLowerCase())
+      ) ?? null;
+
+  const mentionsFaxOrBottleneck =
+    /\b(fax|bottleneck|cuellos de botella|bounce|spreadsheet|flat sql)\b/i.test(q);
+  const wantsClinicLocation =
+    /\b(map|mapa|address|addresses|dirección|direccion|directions|cómo llegar|como llegar|ubicación|ubicacion|locate|clinic location|where is the clinic|where are the clinics|show clinic|find the clinic|dónde está la clínica|donde esta la clinica|dónde queda|donde queda)\b/i.test(
+      q
+    ) ||
+    (!mentionsFaxOrBottleneck &&
+      /\b(where is|where are|location|locations|how far|distance|dónde está|donde esta)\b/i.test(
+        q
+      ));
+
+  const wantsMultiAgentBrief =
+    /\b(verify|verification|evidence|source|sources|citation|citations|conclude|conclusion|multi[- ]agent|summarize|dossier|proof)\b/i.test(
+      q
+    );
   const wantsParentNote =
     /\b(parent|parents|caregiver|family note|action note|letter|spanish note|en español|confirmación|familia)\b/i.test(
       q
     );
   const wantsBounceAudit =
-    /\b(bounce|bottleneck|fax|flat sql|spreadsheet|waitlist|why did|breach|hub|fix saves)\b/i.test(
+    /\b(bounce|bottleneck|fax|flat sql|spreadsheet|waitlist|why did|breach|hub|fix saves|cuellos de botella)\b/i.test(
       q
     ) && !/\b(which provider path|which path|route today)\b/i.test(q);
   const wantsEquity =
@@ -202,7 +247,148 @@ export function runConversationalGraphAgent(
       q
     );
 
-  // INTENT A: Parent / Caregiver Note (Spanish or English)
+  // INTENT M: Clinic Location, Interactive Google Map & Multi-Stop Directions
+  if (wantsClinicLocation) {
+    let preferredFocus: 'eval' | 'origin' | 'coordinator' | 'vendor' | 'home' | string = 'eval';
+    if (matchedSpecificProvider) {
+      preferredFocus = matchedSpecificProvider.provider_id;
+    } else if (/\b(origin|screening|pediatric|origen|pediátrica|pediatrica)\b/i.test(q)) {
+      preferredFocus = 'origin';
+    } else if (/\b(coordinator|intake|coordinador|coordinación)\b/i.test(q)) {
+      preferredFocus = 'coordinator';
+    } else if (/\b(therapy|vendor|ifsp|terapia)\b/i.test(q)) {
+      preferredFocus = 'vendor';
+    } else if (/\b(home|tract|neighborhood|vecindario|hogar)\b/i.test(q)) {
+      preferredFocus = 'home';
+    }
+
+    const useSingleProviderOnly =
+      Boolean(matchedSpecificProvider) &&
+      !rec?.steps.some(
+        (s) => s.node.provider_id === matchedSpecificProvider?.provider_id
+      );
+
+    const mapCard = buildClinicMapPayload(
+      effectiveIntake,
+      tract,
+      useSingleProviderOnly ? null : rec,
+      matchedSpecificProvider ?? bundle.providers[0],
+      preferredFocus
+    );
+
+    const focusedStop =
+      mapCard.stops.find((s) => s.id === mapCard.focusedStopId) ?? mapCard.stops[0];
+
+    if (asksInSpanish) {
+      const mdMapEs = [
+        `**Mapa interactivo de clínicas y ruta (${tract.county_name}):**`,
+        `Aquí tiene la ubicación en **Google Maps** centrada en **${focusedStop.name}** (${focusedStop.city}, a **${focusedStop.distanceFromHomeKm} km** de su vecindario).`,
+        mapCard.stops.length > 2
+          ? `Use las pestañas del mapa (**H · 1 · 2 · 3 · 4**) para explorar cada clínica de la ruta de ${rec?.totalExpectedDays ?? '—'} días o abrir indicaciones paso a paso.`
+          : `Puede abrir indicaciones directas en Google Maps con un clic.`,
+      ].join('\n');
+
+      return {
+        markdown: mdMapEs,
+        spokenText: `${focusedStop.name} se encuentra en ${focusedStop.city}, a ${focusedStop.distanceFromHomeKm} kilómetros de ${tract.county_name}. He abierto el mapa interactivo de Google Maps con las paradas de la ruta y las indicaciones.`,
+        spokenLang: 'es-US',
+        intakePatch: Object.keys(patch).length ? patch : undefined,
+        appliedBadges,
+        collaboratingAgents: [
+          'Geospatial Map Agent',
+          'ISO GQL Router',
+          'Statutory Verifier',
+          'Evidence Librarian',
+        ],
+        preciseConclusion: councilReport.preciseConclusion,
+        verificationScoreLabel: councilReport.verificationScoreLabel,
+        citations: councilReport.evidenceLedger.slice(0, 3),
+        mapCard,
+        suggestedFollowUps: [
+          'Escribe la carta para los padres en español',
+          'La familia no tiene auto',
+          'Verificar fuentes y evidencia',
+        ],
+      };
+    }
+
+    const mdMapEn = [
+      `**Interactive Google Map — ${focusedStop.name}** (\`${focusedStop.city}\`, **${focusedStop.distanceFromHomeKm} km** from ${tract.county_name}):`,
+      mapCard.stops.length > 2
+        ? `Select stops **H · 1 · 2 · 3 · 4** on the map below to inspect the home tract centroid and all 4 \`[Synthetic]\` CareNode clinics along the **${rec?.totalExpectedDays ?? '—'}-day** pathway, or launch multi-stop Google Maps directions.`
+        : `Inspect the interactive clinic pin below or launch turn-by-turn Google Maps directions (${mapCard.travelMode === 'transit' ? 'Transit / Medicaid NEMT mode' : 'Driving mode'}).`,
+      mapCard.transportNote ? `• **Transit Guardrail:** ${mapCard.transportNote}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    return {
+      markdown: mdMapEn,
+      spokenText: `${focusedStop.name} is located in ${focusedStop.city}, ${focusedStop.distanceFromHomeKm} kilometers from ${tract.county_name}. I have opened an interactive Google Map showing each clinic stop and directions.`,
+      spokenLang: 'en-US',
+      intakePatch: Object.keys(patch).length ? patch : undefined,
+      appliedBadges,
+      collaboratingAgents: [
+        'Geospatial Map Agent',
+        'ISO GQL Router',
+        'Statutory Verifier',
+        'Evidence Librarian',
+      ],
+      preciseConclusion: councilReport.preciseConclusion,
+      verificationScoreLabel: councilReport.verificationScoreLabel,
+      citations: councilReport.evidenceLedger.slice(0, 3),
+      mapCard,
+      suggestedFollowUps: [
+        'What if the family has no car?',
+        'Draft Spanish note for the parents',
+        'Run multi-agent verification & cite sources',
+      ],
+    };
+  }
+
+  // INTENT 0: Multi-Agent Research, Verification, Evidence & Conclusion Brief
+  if (wantsMultiAgentBrief) {
+    const md = [
+      `**5-Agent Verification & Synthesis (${councilReport.verdictBadge} · ${councilReport.verificationScoreLabel}):**`,
+      ``,
+      ...councilReport.executiveSummaryBullets.map(
+        (b) => `• **${b.heading}:** ${b.body}`
+      ),
+      ``,
+      `**Key Verified Evidence (${councilReport.evidenceLedger.length} indexed sources):**`,
+      ...councilReport.evidenceLedger.slice(0, 4).map(
+        (ev) =>
+          `• \`[${ev.provenanceLabel}]\` **${ev.sourceTitle}** (\`${ev.recordLocator}\`) → ${ev.supportingMetric}`
+      ),
+      ``,
+      `**Precise Conclusion:** ${councilReport.preciseConclusion}`,
+    ].join('\n');
+
+    return {
+      markdown: md,
+      spokenText: councilReport.preciseConclusion,
+      spokenLang: asksInSpanish ? 'es-US' : 'en-US',
+      intakePatch: Object.keys(patch).length ? patch : undefined,
+      appliedBadges,
+      collaboratingAgents: [
+        'Policy Researcher',
+        'ISO GQL Router',
+        'Statutory Verifier',
+        'Evidence Librarian',
+        'Executive Synthesizer',
+      ],
+      preciseConclusion: councilReport.preciseConclusion,
+      verificationScoreLabel: councilReport.verificationScoreLabel,
+      citations: councilReport.evidenceLedger.slice(0, 5),
+      suggestedFollowUps: [
+        'Draft Spanish note for parents',
+        'Show paper-fax bounce hubs',
+        'Check zero-vehicle transport options',
+      ],
+    };
+  }
+
+  // INTENT A: Parent / Caregiver Note
   if (wantsParentNote) {
     const wantsSpanish =
       asksInSpanish ||
@@ -218,10 +404,18 @@ export function runConversationalGraphAgent(
         spokenLang: 'es-US',
         intakePatch: Object.keys(patch).length ? patch : undefined,
         appliedBadges,
+        collaboratingAgents: [
+          'Policy Researcher',
+          'Statutory Verifier',
+          'Executive Synthesizer',
+        ],
+        preciseConclusion: councilReport.preciseConclusion,
+        verificationScoreLabel: councilReport.verificationScoreLabel,
+        citations: councilReport.evidenceLedger.slice(0, 3),
         suggestedFollowUps: [
+          'Run multi-agent verification & cite sources',
           'Read the English caregiver version',
           'What if the family has no car?',
-          'Which fax hub did we avoid?',
         ],
       };
     }
@@ -234,9 +428,17 @@ export function runConversationalGraphAgent(
       spokenLang: 'en-US',
       intakePatch: Object.keys(patch).length ? patch : undefined,
       appliedBadges,
+      collaboratingAgents: [
+        'Policy Researcher',
+        'Statutory Verifier',
+        'Executive Synthesizer',
+      ],
+      preciseConclusion: councilReport.preciseConclusion,
+      verificationScoreLabel: councilReport.verificationScoreLabel,
+      citations: councilReport.evidenceLedger.slice(0, 3),
       suggestedFollowUps: [
         'Translate caregiver note to Spanish',
-        'Show backup provider route',
+        'Run multi-agent verification & cite sources',
         'Why do paper-fax hubs breach 45 days?',
       ],
     };
@@ -270,9 +472,21 @@ export function runConversationalGraphAgent(
       spokenLang: 'en-US',
       intakePatch: Object.keys(patch).length ? patch : undefined,
       appliedBadges,
+      collaboratingAgents: [
+        'ISO GQL Router',
+        'Evidence Librarian',
+        'Executive Synthesizer',
+      ],
+      preciseConclusion: bestFix
+        ? `Prioritize upgrading ${bestFix.coordinator.provider_id} from paper_fax to e-Portal to recover ${bestFix.counterfactualSavedChildDays} delayed child-days and restore ${bestFix.counterfactualSavedChains} breached episodes within 45 days.`
+        : councilReport.preciseConclusion,
+      verificationScoreLabel: councilReport.verificationScoreLabel,
+      citations: councilReport.evidenceLedger.filter(
+        (e) => e.sourceKind === 'synthetic-graph' || e.sourceKind === 'osep-benchmark'
+      ),
       suggestedFollowUps: [
         'Simulate upgrading paper fax to e-Portal',
-        'Which path clears 45 days for today’s toddler?',
+        'Run multi-agent verification & cite sources',
         'Which neighborhoods suffer >45d breaches?',
       ],
     };
@@ -311,9 +525,24 @@ export function runConversationalGraphAgent(
       spokenLang: 'en-US',
       intakePatch: Object.keys(patch).length ? patch : undefined,
       appliedBadges,
+      collaboratingAgents: [
+        'Policy Researcher',
+        'Statutory Verifier',
+        'Evidence Librarian',
+      ],
+      preciseConclusion:
+        breached && timely
+          ? `>45-day referral delays disproportionately affect higher-poverty (${breached.avgPovertyPct.toFixed(1)}%) and zero-vehicle (${breached.avgNoVehiclePct.toFixed(1)}%) neighborhoods while routing preserves 0.0 weight on demographic audit_* attributes.`
+          : councilReport.preciseConclusion,
+      verificationScoreLabel: councilReport.verificationScoreLabel,
+      citations: councilReport.evidenceLedger.filter(
+        (e) =>
+          e.sourceKind === 'fairness-audit' ||
+          e.sourceKind === 'public-census-nsch'
+      ),
       suggestedFollowUps: [
         'Route a zero-vehicle family in this state',
-        'Which path clears 45 days today?',
+        'Run multi-agent verification & cite sources',
         'Generate bilingual caregiver note',
       ],
     };
@@ -327,9 +556,18 @@ export function runConversationalGraphAgent(
       spokenLang: asksInSpanish ? 'es-US' : 'en-US',
       intakePatch: Object.keys(patch).length ? patch : undefined,
       appliedBadges,
+      collaboratingAgents: [
+        'Policy Researcher',
+        'ISO GQL Router',
+        'Statutory Verifier',
+        'Executive Synthesizer',
+      ],
+      preciseConclusion: councilReport.preciseConclusion,
+      verificationScoreLabel: councilReport.verificationScoreLabel,
+      citations: councilReport.evidenceLedger.slice(0, 4),
       suggestedFollowUps: [
         'Simulate upgrading paper fax to e-Portal',
-        'Why are routes delayed in this state?',
+        'Run multi-agent verification & cite sources',
       ],
     };
   }
@@ -343,13 +581,13 @@ export function runConversationalGraphAgent(
 
   if (asksInSpanish) {
     const mdEs = [
-      `✅ **Ruta recomendada en ${tract.county_name} (${rec.totalExpectedDays} días — ${rec.daysMargin} días antes del límite federal de 45 días):**`,
+      `**Ruta verificada en ${tract.county_name} (${rec.totalExpectedDays} días — ${rec.daysMargin} días antes del límite federal de 45 días):**`,
       `1. **Clínica de origen:** ${clinicName} (\`Día 0\`)`,
       `2. **Coordinación Parte C:** ${coordName} (\`+${rec.steps[1].expectedStepWaitDays}d\` por portal electrónico)`,
       `3. **Evaluación Bilingüe Medicaid:** ${evalName} en ${rec.steps[2].node.city} (\`+${rec.steps[2].expectedStepWaitDays}d\`, a **${rec.evalHubDistanceKm} km**)`,
       `4. **Terapia Temprana (IFSP):** ${vendorName} (\`+${rec.steps[3].expectedStepWaitDays}d\` · Total **${rec.totalExpectedDays} días**)`,
       rec.transportAdvisory
-        ? `🚐 **Apoyo de transporte:** Se recomienda transporte gratuito de Medicaid (NEMT) o evaluación móvil.`
+        ? `• **Apoyo de transporte:** Se recomienda transporte gratuito de Medicaid (NEMT) o evaluación móvil.`
         : '',
       `*(Organizaciones 100% \`[Synthetic]\`)*`,
     ]
@@ -362,24 +600,34 @@ export function runConversationalGraphAgent(
       spokenLang: 'es-US',
       intakePatch: Object.keys(patch).length ? patch : undefined,
       appliedBadges,
+      collaboratingAgents: [
+        'Policy Researcher',
+        'ISO GQL Router',
+        'Statutory Verifier',
+        'Evidence Librarian',
+        'Executive Synthesizer',
+      ],
+      preciseConclusion: councilReport.preciseConclusion,
+      verificationScoreLabel: councilReport.verificationScoreLabel,
+      citations: councilReport.evidenceLedger.slice(0, 4),
       suggestedFollowUps: [
+        '¿Dónde está la clínica en el mapa?',
         'Escribe la carta para los padres en español',
         '¿Qué pasa si la familia no tiene auto?',
-        '¿Dónde están los cuellos de botella por fax?',
       ],
     };
   }
 
   const mdEn = [
-    `✅ **Clears the 45-day clock in ${rec.totalExpectedDays} days** (${rec.daysMargin}-day buffer${trapDays ? `, saving **${trapDays - rec.totalExpectedDays} days** vs. the ${trapDays}d paper-fax bounce loop` : ''}) from **${tract.county_name}** (\`${tract.census_tract_geoid}\`):`,
+    `**Verified 45-day path clears in ${rec.totalExpectedDays} days** (${rec.daysMargin}-day buffer${trapDays ? `, saving **${trapDays - rec.totalExpectedDays} days** vs. the ${trapDays}d paper-fax bounce loop` : ''}) from **${tract.county_name}** (\`${tract.census_tract_geoid}\`):`,
     `1. **Origin Screen:** ${clinicName} (\`${rec.steps[0].distanceFromHomeKm} km\`)`,
     `2. **Part C Intake (\`Day ${rec.steps[1].cumulativeDays}\`):** ${coordName} via electronic portal`,
     `3. **Bilingual Medicaid Eval (\`Day ${rec.steps[2].cumulativeDays}\`):** ${evalName} in ${rec.steps[2].node.city} (**${rec.evalHubDistanceKm} km** away)`,
     `4. **IFSP Therapy Start (\`Day ${rec.totalExpectedDays}\`):** ${vendorName} (Medicaid + Part C + Bilingual verified)`,
     ageCliffMonths <= 6
-      ? `⚠️ **36-Month Cliff Alert:** At ${effectiveIntake.childAgeMonths}m, only **${ageCliffMonths} months** remain in Part C—initiate Part B preschool co-notification alongside intake.`
+      ? `• **36-Month Cliff Alert:** At ${effectiveIntake.childAgeMonths}m, only **${ageCliffMonths} months** remain in Part C—initiate Part B preschool co-notification alongside intake.`
       : '',
-    rec.transportAdvisory ? `🚐 **Transport Guardrail:** ${rec.transportAdvisory}` : '',
+    rec.transportAdvisory ? `• **Transport Guardrail:** ${rec.transportAdvisory}` : '',
     `*(All \`SYN-PROV-*\` nodes are 100% \`[Synthetic]\`)*`,
   ]
     .filter(Boolean)
@@ -401,10 +649,20 @@ export function runConversationalGraphAgent(
     spokenLang: 'en-US',
     intakePatch: Object.keys(patch).length ? patch : undefined,
     appliedBadges,
+    collaboratingAgents: [
+      'Policy Researcher',
+      'ISO GQL Router',
+      'Statutory Verifier',
+      'Evidence Librarian',
+      'Executive Synthesizer',
+    ],
+    preciseConclusion: councilReport.preciseConclusion,
+    verificationScoreLabel: councilReport.verificationScoreLabel,
+    citations: councilReport.evidenceLedger.slice(0, 4),
     suggestedFollowUps: [
+      'Where is the clinic? Show map',
+      'Run multi-agent verification & cite sources',
       'Draft Spanish note for the parents',
-      'What if the family has no car?',
-      'Why did flat spreadsheets miss the fax hub?',
     ],
   };
 }

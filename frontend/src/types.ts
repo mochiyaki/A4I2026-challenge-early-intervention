@@ -207,3 +207,97 @@ export interface EquityAuditGroup {
   auditIndigenousPct: number;
   auditWhitePct: number;
 }
+
+export type SpecialistAgentId =
+  | 'intake-researcher'
+  | 'graph-router'
+  | 'compliance-verifier'
+  | 'evidence-librarian'
+  | 'lead-synthesizer';
+
+export type VerificationStatus = 'verified' | 'advisory' | 'escalation';
+
+export type EvidenceSourceKind =
+  | 'federal-statute'
+  | 'public-census-nsch'
+  | 'synthetic-graph'
+  | 'osep-benchmark'
+  | 'fairness-audit';
+
+export interface VerificationCheckItem {
+  id: string;
+  title: string;
+  status: VerificationStatus;
+  ruleCitation: string;
+  measuredValue: string;
+  detail: string;
+}
+
+export interface EvidenceCitationItem {
+  id: string;
+  claim: string;
+  supportingMetric: string;
+  sourceTitle: string;
+  recordLocator: string;
+  sourceKind: EvidenceSourceKind;
+  provenanceLabel: 'Federal Law' | 'Real Public Data' | '100% [Synthetic]' | 'Post-Output Audit';
+}
+
+export interface AgentStepTrace {
+  agentId: SpecialistAgentId;
+  agentName: string;
+  roleTitle: string;
+  toolUsed: string;
+  status: 'completed' | 'advisory';
+  keyFinding: string;
+  artifactsProduced: string[];
+}
+
+export interface MultiAgentReport {
+  generatedIso: string;
+  verdictBadge: string;
+  verdictTone: 'compliant' | 'warning' | 'danger';
+  preciseConclusion: string;
+  executiveSummaryBullets: {
+    heading: string;
+    body: string;
+  }[];
+  immediateActions: string[];
+  verificationScoreLabel: string;
+  passedChecksCount: number;
+  totalChecksCount: number;
+  verificationChecks: VerificationCheckItem[];
+  evidenceLedger: EvidenceCitationItem[];
+  agentTraces: AgentStepTrace[];
+  markdownDossier: string;
+}
+
+export interface MapStopItem {
+  id: string;
+  badgeText: string;
+  shortRole: string;
+  name: string;
+  providerId?: string;
+  address: string;
+  city: string;
+  countyName: string;
+  latitude: number;
+  longitude: number;
+  distanceFromHomeKm: number;
+  cumulativeDays?: number;
+  acceptsMedicaid?: boolean;
+  bilingual?: boolean;
+  isHomeOrigin?: boolean;
+  isSynthetic: boolean;
+}
+
+export interface ClinicMapPayload {
+  title: string;
+  subtitle: string;
+  stateCode: StateCode;
+  travelMode: 'driving' | 'transit';
+  focusedStopId: string;
+  stops: MapStopItem[];
+  directionsUrl: string;
+  transportNote: string | null;
+}

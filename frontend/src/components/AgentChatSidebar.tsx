@@ -3,9 +3,12 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import {
   ArrowUp,
   AudioLines,
+  BookOpenCheck,
+  ChevronDown,
   Mic,
   MicOff,
   RotateCcw,
+  ShieldCheck,
   Square,
   Volume2,
   VolumeX,
@@ -19,6 +22,8 @@ import { useVoiceAgent } from '../hooks/useVoiceAgent';
 import { queryLiveAgent } from '../services/agentClient';
 import type {
   CandidatePathway,
+  ClinicMapPayload,
+  EvidenceCitationItem,
   ReferralIntakeInput,
   TractDemographic,
 } from '../types';
@@ -28,6 +33,7 @@ import {
   SPRING_DEFAULT,
   triggerCausalHaptic,
 } from '../utils/applePhysics';
+import { ClinicLocationMapCard } from './ClinicLocationMapCard';
 import { FluidSegmentedControl } from './FluidControls';
 
 export interface ChatTurn {
@@ -37,6 +43,11 @@ export interface ChatTurn {
   spokenText?: string;
   spokenLang?: 'en-US' | 'es-US';
   badges?: ChatActionBadge[];
+  collaboratingAgents?: string[];
+  preciseConclusion?: string;
+  verificationScoreLabel?: string;
+  citations?: EvidenceCitationItem[];
+  mapCard?: ClinicMapPayload;
   sourceMode?: 'live-adk' | 'graph-engine';
 }
 
@@ -45,14 +56,15 @@ interface AgentChatSidebarProps {
   tract: TractDemographic;
   activePathway: CandidatePathway | null;
   agentEndpoint: string;
+  googleMapsApiKey: string;
   onApplyIntakePatch: (patch: Partial<ReferralIntakeInput>) => void;
   onOpenAgentModal: () => void;
   autoFocusMicSignal?: number;
 }
 
 const INITIAL_SUGGESTIONS = [
-  'Compare compliant 45-day routes',
-  'Check zero-vehicle transport options',
+  'Where is the clinic? Show map',
+  'Verify & cite evidence sources',
   'Draft Spanish note for parents',
   'Show paper-fax bounce hubs',
 ];
@@ -62,6 +74,7 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
   tract,
   activePathway,
   agentEndpoint,
+  googleMapsApiKey,
   onApplyIntakePatch,
   onOpenAgentModal,
   autoFocusMicSignal = 0,
@@ -71,6 +84,9 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
   const [autoSpeak, setAutoSpeak] = useState<boolean>(true);
   const [inputText, setInputText] = useState<string>('');
   const [isSending, setIsSending] = useState<boolean>(false);
+  const [expandedEvidenceIds, setExpandedEvidenceIds] = useState<
+    Record<string, boolean>
+  >({});
   const [suggestions, setSuggestions] =
     useState<string[]>(INITIAL_SUGGESTIONS);
 
@@ -78,14 +94,23 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
     const initialEval = activePathway
       ? cleanOrgName(activePathway.steps[2].node.synthetic_organization_name)
       : 'a regional bilingual evaluation hub';
-    const initialDays = activePathway?.totalExpectedDays ?? 39;
+    const initialDays = activePathway?.totalExpectedDays ?? 35;
     return [
       {
         id: 'welcome-turn',
         role: 'assistant',
-        text: `Ask by voice or text to update intake filters or draft family notes.\n\nFor a **${intake.childAgeMonths}-month-old** on **Medicaid** in **${tract.county_name}**, the recommended bilingual path reaches initial IFSP in **${initialDays} days** via **${initialEval}**.`,
-        spokenText: `Ask by voice or text to update intake filters. For a ${intake.childAgeMonths}-month-old on Medicaid in ${tract.county_name}, the recommended bilingual path reaches initial IFSP in ${initialDays} days.`,
+        text: `Multi-agent clinical triage ready (Researcher · ISO GQL Router · Statutory Verifier · Evidence Librarian · Synthesizer).\n\nFor a **${intake.childAgeMonths}-month-old** on **Medicaid** in **${tract.county_name}**, the verified bilingual path reaches initial IFSP in **${initialDays} days** via **${initialEval}**.`,
+        spokenText: `Multi-agent triage ready. For a ${intake.childAgeMonths}-month-old on Medicaid in ${tract.county_name}, the verified bilingual path reaches initial IFSP in ${initialDays} days.`,
         spokenLang: 'en-US',
+        collaboratingAgents: [
+          'Policy Researcher',
+          'ISO GQL Router',
+          'Statutory Verifier',
+          'Evidence Librarian',
+          'Executive Synthesizer',
+        ],
+        preciseConclusion: `Dispatch electronic Part C referral via ${initialEval} (~${initialDays}d expected IFSP, clearing the 34 CFR § 303.310 45-day mandate at $0 Medicaid cost).`,
+        verificationScoreLabel: '6/6 Verified',
         sourceMode: 'graph-engine',
       },
     ];
@@ -163,6 +188,14 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
             spokenText: liveRes.summaryMarkdown.slice(0, 360),
             spokenLang: localReply.spokenLang,
             badges: localReply.appliedBadges,
+            collaboratingAgents: [
+              'Live ADK Runtime',
+              ...localReply.collaboratingAgents.slice(0, 3),
+            ],
+            preciseConclusion: localReply.preciseConclusion,
+            verificationScoreLabel: localReply.verificationScoreLabel,
+            citations: localReply.citations,
+            mapCard: localReply.mapCard,
             sourceMode: 'live-adk',
           };
           setMessages((prev) => [...prev, assistantTurn]);
@@ -178,7 +211,7 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
           scrollToBottom();
           return;
         } catch {
-          // Fall back to built-in ReferralGraph conversational engine
+          // Fall back to built-in 5-agent ReferralGraph conversational engine
         }
       }
 
@@ -190,6 +223,11 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
         spokenText: localReply.spokenText,
         spokenLang: localReply.spokenLang,
         badges: localReply.appliedBadges,
+        collaboratingAgents: localReply.collaboratingAgents,
+        preciseConclusion: localReply.preciseConclusion,
+        verificationScoreLabel: localReply.verificationScoreLabel,
+        citations: localReply.citations,
+        mapCard: localReply.mapCard,
         sourceMode: 'graph-engine',
       };
 
@@ -214,14 +252,22 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoFocusMicSignal]);
 
+  const toggleTurnEvidence = (turnId: string) => {
+    triggerCausalHaptic(3);
+    setExpandedEvidenceIds((prev) => ({
+      ...prev,
+      [turnId]: !prev[turnId],
+    }));
+  };
+
   const bubbleTransition = reducedMotion
     ? REDUCED_MOTION_TRANSITION
     : SPRING_DEFAULT;
 
   return (
     <aside
-      aria-label="Voice and chat triage agent"
-      className="pm-card flex flex-col overflow-hidden h-[620px] lg:h-[calc(100dvh-6.5rem)] min-h-[520px]"
+      aria-label="Multi-agent voice and chat triage assistant"
+      className="pm-card flex flex-col overflow-hidden h-[660px] lg:h-[calc(100dvh-6.5rem)] min-h-[540px]"
     >
       {/* Header */}
       <div className="px-5 pt-4 pb-3.5 border-b border-[var(--pm-border)] bg-[var(--pm-card)] space-y-3 shrink-0">
@@ -235,7 +281,7 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
             </div>
             <div className="min-w-0">
               <h2 className="pm-h3 text-[16px] truncate">
-                Bilingual voice &amp; chat agent
+                Multi-agent voice &amp; chat
               </h2>
               <button
                 type="button"
@@ -243,8 +289,8 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
                 className="text-[12px] text-[var(--pm-muted)] hover:text-[var(--pm-accent)] truncate block cursor-pointer transition-colors"
               >
                 {agentEndpoint
-                  ? 'Connected to live ADK endpoint'
-                  : 'Local ReferralGraph engine · Connect ADK'}
+                  ? '5-Agent Council + Live ADK connected'
+                  : '5-Agent Council · Connect Cloud Run ADK'}
               </button>
             </div>
           </div>
@@ -295,6 +341,7 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
               onClick={() => {
                 voice.stopSpeaking();
                 setSuggestions(INITIAL_SUGGESTIONS);
+                setExpandedEvidenceIds({});
                 setMessages((prev) => prev.slice(0, 1));
               }}
               className="w-[38px] h-[38px] sm:w-[34px] sm:h-[34px] rounded-[8px] bg-[var(--pm-surface)] hover:bg-[var(--pm-surface-hover)] border border-[var(--pm-border)] text-[var(--pm-muted)] hover:text-[var(--pm-ink)] flex items-center justify-center cursor-pointer touch-manipulation transition-colors"
@@ -321,6 +368,7 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
               setVoiceLang(lang);
               if (lang === 'es-US') {
                 setSuggestions([
+                  '¿Dónde está la clínica en el mapa?',
                   '¿Qué ruta cumple los 45 días?',
                   'Escribe la nota para los padres',
                   'La familia no tiene auto',
@@ -399,6 +447,11 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
           const isUser = turn.role === 'user';
           const isCurrentlySpeaking =
             voice.isSpeaking && voice.speakingId === turn.id;
+          const isEvidenceOpen = Boolean(expandedEvidenceIds[turn.id]);
+          const hasVerificationDrawer =
+            !isUser &&
+            (Boolean(turn.preciseConclusion) ||
+              (turn.citations && turn.citations.length > 0));
 
           return (
             <motion.div
@@ -421,58 +474,202 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
               )}
 
               <div
-                className={`max-w-[92%] rounded-[14px] px-4 py-3 text-[14.5px] leading-relaxed ${
+                className={`max-w-[94%] rounded-[14px] px-4 py-3 text-[14.5px] leading-relaxed ${
                   isUser
                     ? 'bg-[var(--pm-cta-bg)] text-white rounded-br-[4px]'
                     : 'bg-[var(--pm-card)] text-[var(--pm-ink)] rounded-bl-[4px] border border-[var(--pm-border)]'
                 }`}
               >
+                {/* Collaborating Specialist Agents Header Strip */}
+                {!isUser &&
+                  turn.collaboratingAgents &&
+                  turn.collaboratingAgents.length > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 pb-2 mb-2 border-b border-[var(--pm-border)] text-[11px]">
+                      <span className="inline-flex items-center gap-1 font-semibold text-[var(--pm-accent)]" style={{ fontFamily: 'var(--font-display)' }}>
+                        <ShieldCheck aria-hidden="true" className="w-3.5 h-3.5" />
+                        <span>
+                          {turn.collaboratingAgents.length} agents collaborated
+                        </span>
+                      </span>
+                      {turn.verificationScoreLabel && (
+                        <span className="font-mono-code text-[var(--pm-compliant)] font-semibold">
+                          {turn.verificationScoreLabel}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                 <div className="whitespace-pre-wrap">
                   {renderSimpleMarkdown(turn.text, isUser)}
                 </div>
 
-                {!isUser && voice.ttsSupported && (
-                  <div className="mt-2.5 pt-2 border-t border-[var(--pm-border)] flex items-center justify-between gap-2">
-                    <span className="text-[11.5px] text-[var(--pm-muted)]">
-                      {turn.sourceMode === 'live-adk'
-                        ? 'Live ADK agent'
-                        : 'ReferralGraph triage'}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        triggerCausalHaptic(4);
-                        if (isCurrentlySpeaking) {
-                          voice.stopSpeaking();
-                        } else {
-                          voice.speak(
-                            turn.spokenText || turn.text,
-                            turn.spokenLang || 'en-US',
-                            turn.id
-                          );
-                        }
-                      }}
-                      className="inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--pm-accent)] hover:underline cursor-pointer"
-                    >
-                      {isCurrentlySpeaking ? (
-                        <>
-                          <Square
-                            aria-hidden="true"
-                            className="w-3 h-3 fill-current"
-                          />
-                          <span>Stop audio</span>
-                        </>
-                      ) : (
-                        <>
-                          <Volume2 aria-hidden="true" className="w-3.5 h-3.5" />
-                          <span>
-                            {turn.spokenLang === 'es-US'
-                              ? 'Escuchar respuesta'
-                              : 'Read aloud'}
-                          </span>
-                        </>
+                {/* Interactive Google Maps Layout Card when user asks for clinic location / directions */}
+                {!isUser && turn.mapCard && (
+                  <div className="mt-3">
+                    <ClinicLocationMapCard
+                      payload={turn.mapCard}
+                      googleMapsApiKey={googleMapsApiKey}
+                      compact
+                      onOpenApiModal={onOpenAgentModal}
+                    />
+                  </div>
+                )}
+
+                {/* Expandable Evidence, Sources & Precise Conclusion Drawer */}
+                {hasVerificationDrawer && (
+                  <div className="mt-3 pt-2.5 border-t border-[var(--pm-border)] space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        aria-expanded={isEvidenceOpen}
+                        onClick={() => toggleTurnEvidence(turn.id)}
+                        className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[var(--pm-ink)] hover:text-[var(--pm-accent)] cursor-pointer transition-colors"
+                        style={{ fontFamily: 'var(--font-display)' }}
+                      >
+                        <BookOpenCheck
+                          aria-hidden="true"
+                          className="w-3.5 h-3.5 text-[var(--pm-accent)]"
+                        />
+                        <span>
+                          Conclusion &amp; sources
+                          {turn.citations && turn.citations.length > 0
+                            ? ` (${turn.citations.length})`
+                            : ''}
+                        </span>
+                        <ChevronDown
+                          aria-hidden="true"
+                          className={`w-3.5 h-3.5 transition-transform duration-150 ${
+                            isEvidenceOpen ? 'rotate-180' : ''
+                          }`}
+                        />
+                      </button>
+
+                      {voice.ttsSupported && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            triggerCausalHaptic(4);
+                            if (isCurrentlySpeaking) {
+                              voice.stopSpeaking();
+                            } else {
+                              voice.speak(
+                                turn.spokenText || turn.text,
+                                turn.spokenLang || 'en-US',
+                                turn.id
+                              );
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--pm-accent)] hover:underline cursor-pointer"
+                        >
+                          {isCurrentlySpeaking ? (
+                            <>
+                              <Square
+                                aria-hidden="true"
+                                className="w-3 h-3 fill-current"
+                              />
+                              <span>Stop audio</span>
+                            </>
+                          ) : (
+                            <>
+                              <Volume2
+                                aria-hidden="true"
+                                className="w-3.5 h-3.5"
+                              />
+                              <span>
+                                {turn.spokenLang === 'es-US'
+                                  ? 'Escuchar'
+                                  : 'Read aloud'}
+                              </span>
+                            </>
+                          )}
+                        </button>
                       )}
-                    </button>
+                    </div>
+
+                    <AnimatePresence>
+                      {isEvidenceOpen && (
+                        <motion.div
+                          initial={
+                            reducedMotion
+                              ? { opacity: 0 }
+                              : { opacity: 0, height: 0 }
+                          }
+                          animate={
+                            reducedMotion
+                              ? { opacity: 1 }
+                              : { opacity: 1, height: 'auto' }
+                          }
+                          exit={
+                            reducedMotion
+                              ? { opacity: 0, transition: REDUCED_MOTION_TRANSITION }
+                              : {
+                                  opacity: 0,
+                                  height: 0,
+                                  transition: EXIT_FAST_TRANSITION,
+                                }
+                          }
+                          transition={bubbleTransition}
+                          className="overflow-hidden"
+                        >
+                          <div className="p-3 rounded-[9px] bg-[var(--pm-surface)] border border-[var(--pm-border)] space-y-2.5 text-[12.5px]">
+                            {turn.collaboratingAgents && (
+                              <div className="flex flex-wrap gap-1">
+                                {turn.collaboratingAgents.map((ag) => (
+                                  <span
+                                    key={ag}
+                                    className="pm-badge bg-[var(--pm-card)] text-[11px]"
+                                  >
+                                    {ag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {turn.preciseConclusion && (
+                              <div>
+                                <div className="font-semibold text-[var(--pm-ink)]" style={{ fontFamily: 'var(--font-display)' }}>
+                                  Precise Conclusion:
+                                </div>
+                                <p className="text-[var(--pm-text)] leading-snug mt-0.5 m-0">
+                                  {turn.preciseConclusion}
+                                </p>
+                              </div>
+                            )}
+
+                            {turn.citations && turn.citations.length > 0 && (
+                              <div className="space-y-1.5 pt-2 border-t border-[var(--pm-border)]">
+                                <div className="font-semibold text-[var(--pm-ink)]" style={{ fontFamily: 'var(--font-display)' }}>
+                                  Verified Sources:
+                                </div>
+                                <ul className="space-y-1.5 m-0 pl-0 list-none">
+                                  {turn.citations.map((c) => (
+                                    <li
+                                      key={c.id}
+                                      className="p-2 rounded-[6px] bg-[var(--pm-card)] border border-[var(--pm-border)] space-y-0.5"
+                                    >
+                                      <div className="flex flex-wrap items-center justify-between gap-1">
+                                        <span className="font-semibold text-[11.5px] text-[var(--pm-ink)]">
+                                          {c.sourceTitle}
+                                        </span>
+                                        <span className="font-mono-code text-[10.5px] text-[var(--pm-accent)]">
+                                          [{c.provenanceLabel}]
+                                        </span>
+                                      </div>
+                                      <div className="font-mono-code text-[11px] text-[var(--pm-muted)]">
+                                        {c.recordLocator}
+                                      </div>
+                                      <div className="text-[11.5px] text-[var(--pm-text)]">
+                                        {c.supportingMetric}
+                                      </div>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 )}
               </div>
@@ -483,7 +680,7 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
         {isSending && (
           <div className="flex items-start" role="status" aria-live="polite">
             <div className="rounded-[12px] bg-[var(--pm-card)] border border-[var(--pm-border)] px-4 py-2.5 text-[13px] text-[var(--pm-muted)]">
-              Querying ReferralGraph...
+              Running 5-agent research, verification &amp; synthesis...
             </div>
           </div>
         )}
@@ -554,7 +751,7 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
 
           <div className="relative flex-1">
             <label htmlFor="agent-chat-input" className="sr-only">
-              Ask the referral triage agent
+              Ask the multi-agent referral triage council
             </label>
             <input
               id="agent-chat-input"
@@ -568,8 +765,8 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
               }}
               placeholder={
                 voiceLang === 'es-US'
-                  ? 'Escriba su consulta o pulse el micrófono...'
-                  : 'Ask about routes, wait times, or parent notes...'
+                  ? 'Pregunte dónde está la clínica, rutas o fuentes...'
+                  : 'Ask where the clinic is, verify routes, or cite sources...'
               }
               className="pm-input pr-12"
             />

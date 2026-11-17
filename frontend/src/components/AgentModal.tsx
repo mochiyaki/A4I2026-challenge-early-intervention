@@ -7,7 +7,7 @@ import {
   useReducedMotion,
   useTransform,
 } from 'motion/react';
-import { AlertCircle, PlugZap, X } from 'lucide-react';
+import { AlertCircle, KeyRound, PlugZap, X } from 'lucide-react';
 import {
   EXIT_FAST_TRANSITION,
   PointerVelocityTracker,
@@ -21,7 +21,8 @@ import {
 interface AgentModalProps {
   open: boolean;
   currentUrl: string;
-  onSave: (url: string) => void;
+  currentMapsKey: string;
+  onSave: (url: string, mapsKey: string) => void;
   onClose: () => void;
 }
 
@@ -42,11 +43,13 @@ function validateEndpointUrl(raw: string): string | null {
 export const AgentModal: React.FC<AgentModalProps> = ({
   open,
   currentUrl,
+  currentMapsKey,
   onSave,
   onClose,
 }) => {
   const reducedMotion = useReducedMotion();
   const [draft, setDraft] = useState(currentUrl);
+  const [draftMapsKey, setDraftMapsKey] = useState(currentMapsKey);
   const [validationError, setValidationError] = useState<string | null>(null);
   const sheetY = useMotionValue(0);
   const scrimAlpha = useTransform(sheetY, [0, 280], [1, 0.25]);
@@ -58,10 +61,11 @@ export const AgentModal: React.FC<AgentModalProps> = ({
   useEffect(() => {
     if (open) {
       setDraft(currentUrl);
+      setDraftMapsKey(currentMapsKey);
       setValidationError(null);
       sheetY.set(0);
     }
-  }, [open, currentUrl, sheetY]);
+  }, [open, currentUrl, currentMapsKey, sheetY]);
 
   /* Escape route dismissal (ui-ux-pro-max escape-routes) */
   useEffect(() => {
@@ -125,7 +129,7 @@ export const AgentModal: React.FC<AgentModalProps> = ({
       return;
     }
     triggerCausalHaptic(6);
-    onSave(draft.trim());
+    onSave(draft.trim(), draftMapsKey.trim());
     onClose();
   };
 
@@ -181,7 +185,7 @@ export const AgentModal: React.FC<AgentModalProps> = ({
                     <PlugZap aria-hidden="true" className="w-4 h-4" />
                   </div>
                   <h2 id="adk-modal-title" className="pm-h3 text-[18px]">
-                    Connect ADK or Cloud Run endpoint
+                    Cloud Run ADK &amp; Google Maps API
                   </h2>
                 </div>
                 <button
@@ -233,22 +237,40 @@ export const AgentModal: React.FC<AgentModalProps> = ({
                 </div>
               ) : (
                 <p id="adk-endpoint-help" className="text-[12px] text-[var(--pm-muted)]">
-                  Accepts HTTPS Cloud Run or localhost ADK endpoints. Press Esc to close without saving.
+                  Accepts HTTPS Cloud Run or localhost ADK endpoints. Leave blank to run the built-in 5-agent engine.
                 </p>
               )}
             </div>
 
-            <pre className="pm-stage-dark p-4 text-[12px] font-mono-code overflow-x-auto leading-relaxed m-0">
+            <div className="space-y-1.5 pt-1 border-t border-[var(--pm-border)]">
+              <label
+                htmlFor="google-maps-api-key"
+                className="flex items-center gap-1.5 pm-label"
+              >
+                <KeyRound aria-hidden="true" className="w-3.5 h-3.5 text-[var(--pm-accent)]" />
+                <span>Google Maps JavaScript API key (optional)</span>
+              </label>
+              <input
+                id="google-maps-api-key"
+                type="password"
+                autoComplete="off"
+                placeholder="AIzaSy... (or set VITE_GOOGLE_MAPS_API_KEY)"
+                value={draftMapsKey}
+                onChange={(e) => setDraftMapsKey(e.target.value)}
+                className="pm-input font-mono-code text-[13px]"
+              />
+              <p className="text-[12px] text-[var(--pm-muted)] leading-snug">
+                Interactive Google Maps coordinate embeds &amp; multi-stop Directions links work immediately without a key. Adding a Maps JS key unlocks multi-pin vector polylines and InfoWindows.
+              </p>
+            </div>
+
+            <pre className="pm-stage-dark p-3.5 text-[11.5px] font-mono-code overflow-x-auto leading-relaxed m-0">
               {`{
-  "prompt": "Route today's IDEA Part C referral...",
+  "prompt": "Where is the evaluation clinic?",
   "state_code": "MS",
   "child_home_tract_geoid": "28011950200",
-  "child_age_months": 20,
   "accepts_medicaid": true,
-  "bilingual_required": true,
-  "primary_language": "Spanish",
-  "concern_domain": "Speech & Language Delay",
-  "has_household_vehicle": true
+  "bilingual_required": true
 }`}
             </pre>
 
@@ -257,20 +279,21 @@ export const AgentModal: React.FC<AgentModalProps> = ({
                 type="button"
                 onClick={() => {
                   setDraft('');
+                  setDraftMapsKey('');
                   setValidationError(null);
-                  onSave('');
+                  onSave('', '');
                   onClose();
                 }}
                 className="pm-btn pm-btn-secondary"
               >
-                Use local graph
+                Reset defaults
               </button>
               <button
                 type="button"
                 onClick={handleCommitSave}
                 className="pm-btn pm-btn-primary"
               >
-                Save endpoint
+                Save settings
               </button>
             </div>
           </motion.div>
