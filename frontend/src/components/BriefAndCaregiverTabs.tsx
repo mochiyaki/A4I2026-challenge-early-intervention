@@ -9,6 +9,7 @@ import {
   Network,
   Play,
   Send,
+  ShieldCheck,
 } from 'lucide-react';
 import { cleanOrgName } from '../engine/graphTriageEngine';
 import type { LiveAgentResponse } from '../services/agentClient';
@@ -20,6 +21,7 @@ import type {
   PartCAgency,
 } from '../types';
 import {
+  EXIT_FAST_TRANSITION,
   REDUCED_MOTION_TRANSITION,
   SPRING_DEFAULT,
   triggerCausalHaptic,
@@ -88,15 +90,17 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
   const panelTransition = reducedMotion
     ? REDUCED_MOTION_TRANSITION
     : SPRING_DEFAULT;
+  const exitTransition = reducedMotion
+    ? REDUCED_MOTION_TRANSITION
+    : EXIT_FAST_TRANSITION;
 
   return (
-    <section className="ts-card p-6 sm:p-8 space-y-6">
-      {/* Header + Software Tab Bar (zero overshoot, 240ms) */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[rgba(29,37,48,0.1)] pb-5 no-print">
+    <section className="pm-card p-6 sm:p-7 space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--pm-border)] pb-5 no-print">
         <div>
-          <h2 className="ts-h2 text-[20px]">
-            Coordinator brief.{' '}
-            <span className="ts-muted">Family letters and network audit.</span>
+          <div className="pm-kicker">Step 4 · Action &amp; Audit</div>
+          <h2 className="pm-h2 text-[20px] mt-0.5">
+            Coordinator brief, caregiver letters &amp; graph audit
           </h2>
         </div>
 
@@ -110,7 +114,7 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
                 value: 'caregiver',
                 label: (
                   <>
-                    <FileText className="w-3.5 h-3.5" />
+                    <FileText aria-hidden="true" className="w-3.5 h-3.5" />
                     <span>Family notes</span>
                   </>
                 ),
@@ -119,7 +123,7 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
                 value: 'bounce',
                 label: (
                   <>
-                    <Network className="w-3.5 h-3.5" />
+                    <Network aria-hidden="true" className="w-3.5 h-3.5" />
                     <span>Bounce hubs</span>
                   </>
                 ),
@@ -128,7 +132,7 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
                 value: 'equity',
                 label: (
                   <>
-                    <BarChart3 className="w-3.5 h-3.5" />
+                    <BarChart3 aria-hidden="true" className="w-3.5 h-3.5" />
                     <span>Equity audit</span>
                   </>
                 ),
@@ -137,7 +141,7 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
                 value: 'gql',
                 label: (
                   <>
-                    <Code2 className="w-3.5 h-3.5" />
+                    <Code2 aria-hidden="true" className="w-3.5 h-3.5" />
                     <span>ISO GQL &amp; ADK</span>
                   </>
                 ),
@@ -150,80 +154,96 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
       </div>
 
       <AnimatePresence mode="wait">
-        {/* TAB 1: Caregiver Letters — Clean 2-level panels (no box-in-box-in-box) */}
+        {/* TAB 1: High-Legibility Atkinson Hyperlegible Bilingual Caregiver Letters */}
         {activeTab === 'caregiver' && (
           <motion.div
             key="caregiver"
             initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
+            exit={{ opacity: 0, y: -3, transition: exitTransition }}
             transition={panelTransition}
             className="space-y-5"
           >
-            <div className="ts-measure">
-              <h3 className="ts-h3 text-[16px]">
-                Plain-language caregiver confirmation
+            <div className="pm-measure">
+              <h3 className="pm-h3 text-[16px]">
+                Plain-language bilingual caregiver confirmation
               </h3>
-              <p className="text-[14px] text-[#556070] mt-1 leading-relaxed">
-                Confirms $0 Medicaid Part C coverage, bilingual evaluation staffing, and each scheduled step before Day 45.
+              <p className="text-[14px] text-[var(--pm-muted)] mt-1 leading-relaxed">
+                Set in{' '}
+                <strong className="font-bold text-[var(--pm-ink)]">
+                  Atkinson Hyperlegible
+                </strong>{' '}
+                for low-vision clarity—confirming $0 Medicaid Part C coverage, bilingual evaluation staffing, and each scheduled step before Day 45.
               </p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              {/* English Note */}
-              <div className="ts-panel p-5 space-y-3.5">
-                <div className="flex items-center justify-between gap-2 pb-3 border-b border-[rgba(29,37,48,0.1)]">
-                  <span className="text-[14px] font-medium text-[#1D2530]">
-                    English family note
-                  </span>
+              <div className="pm-panel p-5 space-y-3.5">
+                <div className="flex items-center justify-between gap-2 pb-3 border-b border-[var(--pm-border)]">
+                  <span className="pm-label">English family note</span>
                   <button
                     type="button"
                     onClick={() => handleCopy('en', finalEn)}
-                    className="ts-btn ts-btn-secondary min-h-[34px] py-1 px-3 text-[12.5px] no-print"
+                    className="pm-btn pm-btn-secondary pm-btn-compact no-print"
                   >
                     {copiedKey === 'en' ? (
                       <>
-                        <Check className="w-3.5 h-3.5 text-[#2C5877]" />
+                        <Check
+                          aria-hidden="true"
+                          className="w-3.5 h-3.5 text-[var(--pm-compliant)]"
+                        />
                         <span>Copied note</span>
                       </>
                     ) : (
                       <>
-                        <Copy className="w-3.5 h-3.5 text-[#556070]" />
-                        <span>Copy English note</span>
+                        <Copy
+                          aria-hidden="true"
+                          className="w-3.5 h-3.5 text-[var(--pm-muted)]"
+                        />
+                        <span>Copy English</span>
                       </>
                     )}
                   </button>
                 </div>
-                <pre className="whitespace-pre-wrap font-sans text-[14px] text-[#1D2530] leading-relaxed m-0">
+                <pre
+                  className="whitespace-pre-wrap text-[14.5px] text-[var(--pm-text)] leading-relaxed m-0"
+                  style={{ fontFamily: 'var(--font-body)' }}
+                >
                   {finalEn}
                 </pre>
               </div>
 
-              {/* Spanish Note */}
-              <div className="ts-panel p-5 space-y-3.5">
-                <div className="flex items-center justify-between gap-2 pb-3 border-b border-[rgba(29,37,48,0.1)]">
-                  <span className="text-[14px] font-medium text-[#1D2530]">
-                    Nota familiar en español
-                  </span>
+              <div className="pm-panel p-5 space-y-3.5">
+                <div className="flex items-center justify-between gap-2 pb-3 border-b border-[var(--pm-border)]">
+                  <span className="pm-label">Nota familiar en español</span>
                   <button
                     type="button"
                     onClick={() => handleCopy('es', finalEs)}
-                    className="ts-btn ts-btn-secondary min-h-[34px] py-1 px-3 text-[12.5px] no-print"
+                    className="pm-btn pm-btn-secondary pm-btn-compact no-print"
                   >
                     {copiedKey === 'es' ? (
                       <>
-                        <Check className="w-3.5 h-3.5 text-[#2C5877]" />
+                        <Check
+                          aria-hidden="true"
+                          className="w-3.5 h-3.5 text-[var(--pm-compliant)]"
+                        />
                         <span>Nota copiada</span>
                       </>
                     ) : (
                       <>
-                        <Copy className="w-3.5 h-3.5 text-[#556070]" />
-                        <span>Copiar nota en español</span>
+                        <Copy
+                          aria-hidden="true"
+                          className="w-3.5 h-3.5 text-[var(--pm-muted)]"
+                        />
+                        <span>Copiar español</span>
                       </>
                     )}
                   </button>
                 </div>
-                <pre className="whitespace-pre-wrap font-sans text-[14px] text-[#1D2530] leading-relaxed m-0">
+                <pre
+                  className="whitespace-pre-wrap text-[14.5px] text-[var(--pm-text)] leading-relaxed m-0"
+                  style={{ fontFamily: 'var(--font-body)' }}
+                >
                   {finalEs}
                 </pre>
               </div>
@@ -231,50 +251,56 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
           </motion.div>
         )}
 
-        {/* TAB 2: Regional Bounce Hub Diagnosis — Zero violet, clean hairline tables */}
+        {/* TAB 2: Regional Bounce Hub Diagnosis */}
         {activeTab === 'bounce' && (
           <motion.div
             key="bounce"
             initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
+            exit={{ opacity: 0, y: -3, transition: exitTransition }}
             transition={panelTransition}
             className="space-y-6 tabular-nums"
           >
             {topFixHub && (
-              <div className="ts-panel p-5 sm:p-6 flex flex-wrap items-center justify-between gap-5">
+              <div className="pm-panel p-5 sm:p-6 flex flex-wrap items-center justify-between gap-5">
                 <div className="space-y-1.5 max-w-2xl">
-                  <div className="ts-label text-[#2C5877]">
-                    Priority network intervention
+                  <div className="pm-badge pm-badge-accent">
+                    <span>Priority Network Intervention</span>
                   </div>
-                  <h3 className="ts-h3 text-[17px]">
-                    Move{' '}
-                    <code className="font-mono-code text-[15px] text-[#2C5877]">
+                  <h3 className="pm-h3 text-[17px] pt-1">
+                    Upgrade{' '}
+                    <code className="font-mono-code text-[14.5px] text-[var(--pm-accent)]">
                       {topFixHub.coordinator.provider_id}
                     </code>{' '}
                     ({cleanOrgName(topFixHub.coordinator.synthetic_organization_name)}) from paper fax to e-Portal
                   </h3>
-                  <p className="text-[14px] text-[#556070] leading-relaxed">
-                    Flat SQL shows a{' '}
-                    <strong className="font-medium text-[#1D2530]">
+                  <p className="text-[14px] text-[var(--pm-muted)] leading-relaxed">
+                    Flat SQL shows only a{' '}
+                    <strong className="font-bold text-[var(--pm-ink)]">
                       {topFixHub.coordinator.median_internal_wait_days}-day internal wait
                     </strong>{' '}
-                    (waitlist {topFixHub.coordinator.active_waitlist_count}), while downstream fax bounces pushed{' '}
-                    <strong className="font-medium text-[#1D2530]">{topFixHub.chainsOver45d}</strong>{' '}
+                    (waitlist {topFixHub.coordinator.active_waitlist_count}), whereas downstream paper-fax bounces pushed{' '}
+                    <strong className="font-bold text-[var(--pm-ink)]">
+                      {topFixHub.chainsOver45d}
+                    </strong>{' '}
                     of {topFixHub.routedEpisodes} episodes past Day 45.
                   </p>
                 </div>
 
-                <dl className="flex items-center gap-5 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-[rgba(29,37,48,0.1)] w-full sm:w-auto">
+                <dl className="flex items-center gap-5 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-[var(--pm-border)] w-full sm:w-auto">
                   <div>
-                    <dt className="ts-label">Child-days saved</dt>
-                    <dd className="font-mono-code text-[22px] font-medium text-[#2C5877] mt-0.5">
+                    <dt className="text-[12px] text-[var(--pm-muted)] font-medium">
+                      Child-days saved
+                    </dt>
+                    <dd className="font-mono-code text-[22px] font-semibold text-[var(--pm-compliant)] mt-0.5">
                       +{topFixHub.counterfactualSavedChildDays}d
                     </dd>
                   </div>
-                  <div className="border-l border-[rgba(29,37,48,0.12)] pl-5">
-                    <dt className="ts-label">Cases moved &le;45d</dt>
-                    <dd className="font-mono-code text-[22px] font-medium text-[#1D2530] mt-0.5">
+                  <div className="border-l border-[var(--pm-border)] pl-5">
+                    <dt className="text-[12px] text-[var(--pm-muted)] font-medium">
+                      Cases moved &le;45d
+                    </dt>
+                    <dd className="font-mono-code text-[22px] font-semibold text-[var(--pm-ink)] mt-0.5">
                       {topFixHub.counterfactualSavedChains}
                     </dd>
                   </div>
@@ -283,40 +309,46 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
             )}
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              {/* Naive Flat Sort */}
               <div className="space-y-3">
                 <div>
-                  <div className="ts-label">Flat SQL baseline</div>
-                  <h4 className="ts-h3 text-[15.5px] mt-0.5">
-                    Sorted by <code className="font-mono-code text-[13.5px]">active_waitlist_count DESC</code>
+                  <div className="pm-kicker">Flat SQL Baseline</div>
+                  <h4 className="pm-h3 text-[15.5px] mt-0.5">
+                    Sorted by{' '}
+                    <code className="font-mono-code text-[13px]">
+                      active_waitlist_count DESC
+                    </code>
                   </h4>
-                  <p className="text-[13.5px] text-[#556070] mt-0.5">
-                    Flags busy downstream hubs instead of upstream re-referral loops.
+                  <p className="text-[13.5px] text-[var(--pm-muted)] mt-0.5">
+                    Flags busy downstream hubs while missing upstream re-referral loops.
                   </p>
                 </div>
-                <div className="rounded-[12px] border border-[rgba(29,37,48,0.12)] overflow-x-auto">
-                  <table className="w-full text-[13px] text-left">
-                    <thead className="bg-[#F8F7F4] text-[#556070] border-b border-[rgba(29,37,48,0.1)]">
+                <div className="pm-table-wrap">
+                  <table className="pm-table">
+                    <thead>
                       <tr>
-                        <th className="py-2.5 px-3.5 font-medium">Provider</th>
-                        <th className="py-2.5 px-3.5 font-medium">Role</th>
-                        <th className="py-2.5 px-3.5 font-medium text-right">Waitlist</th>
-                        <th className="py-2.5 px-3.5 font-medium text-right">Internal</th>
+                        <th scope="col">Provider</th>
+                        <th scope="col">Role</th>
+                        <th scope="col" className="text-right">
+                          Waitlist
+                        </th>
+                        <th scope="col" className="text-right">
+                          Internal
+                        </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[rgba(29,37,48,0.08)]">
+                    <tbody>
                       {naiveTopWaitlist.map((p) => (
                         <tr key={p.provider_id}>
-                          <td className="py-2.5 px-3.5 font-mono-code font-medium text-[#1D2530]">
+                          <td className="font-mono-code font-semibold text-[var(--pm-ink)]">
                             {p.provider_id}
                           </td>
-                          <td className="py-2.5 px-3.5 text-[#556070]">
+                          <td className="text-[var(--pm-muted)]">
                             {p.node_role.replace(/_/g, ' ')}
                           </td>
-                          <td className="py-2.5 px-3.5 text-right font-mono-code font-medium text-[#8F5B1E]">
+                          <td className="text-right font-mono-code font-semibold text-[var(--pm-warning)]">
                             {p.active_waitlist_count}
                           </td>
-                          <td className="py-2.5 px-3.5 text-right font-mono-code text-[#1D2530]">
+                          <td className="text-right font-mono-code text-[var(--pm-ink)]">
                             {p.median_internal_wait_days}d
                           </td>
                         </tr>
@@ -326,44 +358,53 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
                 </div>
               </div>
 
-              {/* Multi-hop Coordinator Breach Ranking */}
               <div className="space-y-3">
                 <div>
-                  <div className="ts-label text-[#2C5877]">Multi-hop graph audit</div>
-                  <h4 className="ts-h3 text-[15.5px] mt-0.5">
+                  <div className="pm-kicker text-[var(--pm-accent)]">
+                    Multi-Hop Graph Audit
+                  </div>
+                  <h4 className="pm-h3 text-[15.5px] mt-0.5">
                     Coordinators ranked by &gt;45-day episode breaches
                   </h4>
-                  <p className="text-[13.5px] text-[#556070] mt-0.5">
+                  <p className="text-[13.5px] text-[var(--pm-muted)] mt-0.5">
                     Surfaces 5–6d internal-wait hubs whose fax handoffs trigger 70d+ delays.
                   </p>
                 </div>
-                <div className="rounded-[12px] border border-[rgba(29,37,48,0.12)] overflow-x-auto">
-                  <table className="w-full text-[13px] text-left">
-                    <thead className="bg-[#F8F7F4] text-[#556070] border-b border-[rgba(29,37,48,0.1)]">
+                <div className="pm-table-wrap">
+                  <table className="pm-table">
+                    <thead>
                       <tr>
-                        <th className="py-2.5 px-3.5 font-medium">Coordinator</th>
-                        <th className="py-2.5 px-3.5 font-medium text-right">Internal</th>
-                        <th className="py-2.5 px-3.5 font-medium text-right">3+ hops</th>
-                        <th className="py-2.5 px-3.5 font-medium text-right">&gt;45d breach</th>
-                        <th className="py-2.5 px-3.5 font-medium text-right">Mean</th>
+                        <th scope="col">Coordinator</th>
+                        <th scope="col" className="text-right">
+                          Internal
+                        </th>
+                        <th scope="col" className="text-right">
+                          3+ hops
+                        </th>
+                        <th scope="col" className="text-right">
+                          &gt;45d breach
+                        </th>
+                        <th scope="col" className="text-right">
+                          Mean
+                        </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[rgba(29,37,48,0.08)]">
+                    <tbody>
                       {bounceDiagnostics.map((b) => (
                         <tr key={b.coordinator.provider_id}>
-                          <td className="py-2.5 px-3.5 font-mono-code font-medium text-[#1D2530]">
+                          <td className="font-mono-code font-semibold text-[var(--pm-ink)]">
                             {b.coordinator.provider_id}
                           </td>
-                          <td className="py-2.5 px-3.5 text-right font-mono-code text-[#2C5877] font-medium">
+                          <td className="text-right font-mono-code text-[var(--pm-accent)] font-semibold">
                             {b.coordinator.median_internal_wait_days}d
                           </td>
-                          <td className="py-2.5 px-3.5 text-right font-mono-code text-[#556070]">
+                          <td className="text-right font-mono-code text-[var(--pm-muted)]">
                             {b.chains3PlusHops}/{b.routedEpisodes}
                           </td>
-                          <td className="py-2.5 px-3.5 text-right font-mono-code font-medium text-[#B43E2F]">
+                          <td className="text-right font-mono-code font-semibold text-[var(--pm-danger)]">
                             {b.chainsOver45d}/{b.routedEpisodes} ({b.breachRatePct}%)
                           </td>
-                          <td className="py-2.5 px-3.5 text-right font-mono-code font-medium text-[#1D2530]">
+                          <td className="text-right font-mono-code font-semibold text-[var(--pm-ink)]">
                             {b.meanEpisodeWaitDays}d
                           </td>
                         </tr>
@@ -382,22 +423,28 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
                   100
                 ).toFixed(1);
                 return (
-                  <div key={ag.agency_id} className="ts-panel p-4 text-[13px] space-y-1.5">
+                  <div key={ag.agency_id} className="pm-panel p-4 text-[13px] space-y-1.5">
                     <div className="flex justify-between items-center">
-                      <span className="font-mono-code text-[12px] text-[#556070]">
+                      <span className="font-mono-code text-[12px] text-[var(--pm-muted)]">
                         {ag.agency_id}
                       </span>
-                      <span className="font-mono-code font-medium text-[#2C5877]">
+                      <span className="pm-badge pm-badge-compliant font-mono-code">
                         {timelyPct}% timely
                       </span>
                     </div>
-                    <div className="font-medium text-[14.5px] text-[#1D2530]">
+                    <div className="pm-h3 text-[14.5px]">
                       {cleanOrgName(ag.synthetic_agency_name)}
                     </div>
-                    <div className="text-[#556070]">{ag.served_counties}</div>
-                    <div className="text-[12.5px] text-[#556070] pt-1.5 border-t border-[rgba(29,37,48,0.08)]">
-                      Capacity delays: <strong className="font-medium text-[#1D2530]">{ag.ifsp_delayed_capacity_count}</strong>{' '}
-                      · Family delays: <strong className="font-medium text-[#1D2530]">{ag.ifsp_delayed_family_count}</strong>
+                    <div className="text-[var(--pm-muted)]">{ag.served_counties}</div>
+                    <div className="text-[12.5px] text-[var(--pm-muted)] pt-1.5 border-t border-[var(--pm-border)]">
+                      Capacity delays:{' '}
+                      <strong className="font-bold text-[var(--pm-ink)]">
+                        {ag.ifsp_delayed_capacity_count}
+                      </strong>{' '}
+                      · Family delays:{' '}
+                      <strong className="font-bold text-[var(--pm-ink)]">
+                        {ag.ifsp_delayed_family_count}
+                      </strong>
                     </div>
                   </div>
                 );
@@ -406,57 +453,78 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
           </motion.div>
         )}
 
-        {/* TAB 3: Post-Output Equity Audit — Zero violet, clean 2-level layout */}
+        {/* TAB 3: Post-Output Equity Audit */}
         {activeTab === 'equity' && (
           <motion.div
             key="equity"
             initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
+            exit={{ opacity: 0, y: -3, transition: exitTransition }}
             transition={panelTransition}
             className="space-y-6 tabular-nums"
           >
-            <div className="ts-panel p-4 text-[13.5px] text-[#27303D] leading-relaxed">
-              <strong className="font-medium text-[#1D2530]">Post-output fairness guardrail:</strong>{' '}
-              Demographic <code className="font-mono-code text-[12.5px]">audit_*</code> columns carry zero weight in route ranking or agent prompts. They join strictly after path selection on{' '}
-              <code className="font-mono-code text-[12.5px]">child_home_tract_geoid = census_tract_geoid</code>.
+            <div className="p-4 rounded-[12px] bg-[var(--pm-compliant-soft)] border border-[var(--pm-compliant-border)] flex items-start gap-3 text-[13.5px] text-[var(--pm-ink)]">
+              <ShieldCheck
+                aria-hidden="true"
+                className="w-4 h-4 text-[var(--pm-compliant)] shrink-0 mt-1"
+              />
+              <div className="leading-relaxed">
+                <strong className="font-bold">Post-output fairness guardrail:</strong>{' '}
+                Demographic <code className="font-mono-code text-[12px]">audit_*</code> columns carry zero weight in route ranking or agent prompts. They join strictly after path selection on{' '}
+                <code className="font-mono-code text-[12px]">
+                  child_home_tract_geoid = census_tract_geoid
+                </code>
+                .
+              </div>
             </div>
 
-            <div className="rounded-[12px] border border-[rgba(29,37,48,0.12)] overflow-x-auto">
-              <table className="w-full text-[13px] text-left">
-                <thead className="bg-[#F8F7F4] text-[#556070] border-b border-[rgba(29,37,48,0.1)]">
+            <div className="pm-table-wrap">
+              <table className="pm-table">
+                <thead>
                   <tr>
-                    <th className="py-3 px-4 font-medium">Historical outcome</th>
-                    <th className="py-3 px-4 font-medium text-right">Episodes</th>
-                    <th className="py-3 px-4 font-medium text-right">Tract poverty</th>
-                    <th className="py-3 px-4 font-medium text-right">Zero vehicle</th>
-                    <th className="py-3 px-4 font-medium text-right">audit_black</th>
-                    <th className="py-3 px-4 font-medium text-right">audit_hispanic</th>
-                    <th className="py-3 px-4 font-medium text-right">audit_white</th>
+                    <th scope="col">Historical outcome</th>
+                    <th scope="col" className="text-right">
+                      Episodes
+                    </th>
+                    <th scope="col" className="text-right">
+                      Tract poverty
+                    </th>
+                    <th scope="col" className="text-right">
+                      Zero vehicle
+                    </th>
+                    <th scope="col" className="text-right">
+                      audit_black
+                    </th>
+                    <th scope="col" className="text-right">
+                      audit_hispanic
+                    </th>
+                    <th scope="col" className="text-right">
+                      audit_white
+                    </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[rgba(29,37,48,0.08)]">
+                <tbody>
                   {equityAudit.map((row) => (
                     <tr key={row.label}>
-                      <td className="py-3 px-4 font-medium text-[#1D2530]">
+                      <td className="font-semibold text-[var(--pm-ink)]">
                         {row.label}
                       </td>
-                      <td className="py-3 px-4 text-right font-mono-code font-medium text-[#1D2530]">
+                      <td className="text-right font-mono-code font-semibold text-[var(--pm-ink)]">
                         {row.episodes}
                       </td>
-                      <td className="py-3 px-4 text-right font-mono-code text-[#27303D]">
+                      <td className="text-right font-mono-code">
                         {row.avgPovertyPct.toFixed(1)}%
                       </td>
-                      <td className="py-3 px-4 text-right font-mono-code text-[#27303D]">
+                      <td className="text-right font-mono-code">
                         {row.avgNoVehiclePct.toFixed(1)}%
                       </td>
-                      <td className="py-3 px-4 text-right font-mono-code text-[#556070]">
+                      <td className="text-right font-mono-code text-[var(--pm-muted)]">
                         {row.auditBlackPct.toFixed(1)}%
                       </td>
-                      <td className="py-3 px-4 text-right font-mono-code text-[#556070]">
+                      <td className="text-right font-mono-code text-[var(--pm-muted)]">
                         {row.auditHispanicPct.toFixed(1)}%
                       </td>
-                      <td className="py-3 px-4 text-right font-mono-code text-[#556070]">
+                      <td className="text-right font-mono-code text-[var(--pm-muted)]">
                         {row.auditWhitePct.toFixed(1)}%
                       </td>
                     </tr>
@@ -467,49 +535,69 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
 
             <div className="space-y-3.5">
               <div>
-                <h3 className="ts-h3 text-[16px]">
+                <h3 className="pm-h3 text-[16px]">
                   Statewide HRSA NSCH developmental screening strata
                 </h3>
-                <p className="text-[13.5px] text-[#556070] mt-0.5">
-                  Replaces the all-zero ACS <code className="font-mono-code text-[12.5px]">limited_english_rate</code>{' '}
-                  field without joining onto tract rows.
+                <p className="text-[13.5px] text-[var(--pm-muted)] mt-0.5">
+                  Replaces the all-zero ACS{' '}
+                  <code className="font-mono-code text-[12px]">
+                    limited_english_rate
+                  </code>{' '}
+                  field without joining onto census tract rows.
                 </p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {nschStrata.map((s) => {
-                  const screenPct = (s.standardized_screening_rate_pct * 100).toFixed(1);
+                  const screenNum = Number(
+                    (s.standardized_screening_rate_pct * 100).toFixed(1)
+                  );
                   const followPct = (s.followup_requested_pct * 100).toFixed(1);
                   const isNonEng = s.primary_home_language.includes('Non-English');
                   return (
                     <div
                       key={s.survey_stratum_id}
-                      className="ts-panel p-4 text-[13px] space-y-2.5"
+                      className="pm-panel p-4 text-[13px] space-y-2.5"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-mono-code text-[12px] text-[#556070]">
+                        <span className="font-mono-code text-[12px] text-[var(--pm-muted)]">
                           {s.survey_stratum_id}
                         </span>
-                        <span className="ts-chip bg-white">
+                        <span className="pm-badge bg-[var(--pm-card)]">
                           {s.household_income_fpl_band}
                         </span>
                       </div>
-                      <div className="font-medium text-[14px] text-[#1D2530]">
+                      <div className="pm-label text-[14px]">
                         {s.primary_home_language}
                       </div>
-                      <div className="w-full bg-[#E6E2D9] h-1.5 rounded-full overflow-hidden">
+                      <div
+                        role="progressbar"
+                        aria-label={`${s.primary_home_language} standardized screening rate`}
+                        aria-valuenow={screenNum}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        className="w-full bg-[var(--pm-surface-hover)] h-2 rounded-full overflow-hidden"
+                      >
                         <div
-                          style={{ width: `${Math.min(100, Number(screenPct) * 1.8)}%` }}
+                          style={{ width: `${Math.min(100, screenNum * 1.8)}%` }}
                           className={`h-full rounded-full ${
-                            isNonEng ? 'bg-[#2C5877]' : 'bg-[#1D2530]'
+                            isNonEng
+                              ? 'bg-[var(--pm-cta-bg)]'
+                              : 'bg-[var(--pm-compliant)]'
                           }`}
                         />
                       </div>
-                      <div className="flex justify-between text-[12.5px] text-[#556070]">
+                      <div className="flex justify-between text-[12.5px] text-[var(--pm-muted)]">
                         <span>
-                          Screened: <strong className="font-medium text-[#1D2530]">{screenPct}%</strong>
+                          Screened:{' '}
+                          <strong className="font-bold text-[var(--pm-ink)]">
+                            {screenNum.toFixed(1)}%
+                          </strong>
                         </span>
                         <span>
-                          Follow-up: <strong className="font-medium text-[#1D2530]">{followPct}%</strong>
+                          Follow-up:{' '}
+                          <strong className="font-bold text-[var(--pm-ink)]">
+                            {followPct}%
+                          </strong>
                         </span>
                       </div>
                     </div>
@@ -526,27 +614,27 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
             key="gql"
             initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
+            exit={{ opacity: 0, y: -3, transition: exitTransition }}
             transition={panelTransition}
             className="space-y-6"
           >
-            <div className="ts-panel p-5 space-y-3.5 no-print">
+            <div className="pm-panel p-5 space-y-3.5 no-print">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2.5">
                   <label
                     htmlFor="adk-coordinator-prompt"
-                    className="ts-h3 text-[15.5px]"
+                    className="pm-h3 text-[15.5px]"
                   >
                     ADK triage prompt
                   </label>
-                  <span className="ts-chip bg-white font-mono-code text-[11.5px]">
+                  <span className="pm-badge bg-[var(--pm-card)] font-mono-code text-[11.5px]">
                     {agentEndpoint || 'Local ReferralGraph engine'}
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={onOpenAgentModal}
-                  className="ts-link text-[13px]"
+                  className="text-[13px] font-semibold text-[var(--pm-accent)] hover:underline cursor-pointer"
                 >
                   Configure endpoint
                 </button>
@@ -557,27 +645,27 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
                 rows={4}
                 value={agentPrompt}
                 onChange={(e) => onAgentPromptChange(e.target.value)}
-                className="ts-input font-mono-code text-[12.5px] leading-relaxed"
+                className="pm-input font-mono-code text-[12.5px] leading-relaxed"
               />
 
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-[13px] text-[#556070]">
-                  Sends structured referral JSON and prompt to your Cloud Run or ADK service.
+                <p className="text-[13px] text-[var(--pm-muted)]">
+                  Sends structured referral JSON and coordinator prompt to your Cloud Run or ADK service.
                 </p>
                 <button
                   type="button"
                   onClick={onRunLiveAgent}
                   disabled={agentLoading}
-                  className="ts-btn ts-btn-primary"
+                  className="pm-btn pm-btn-primary"
                 >
                   {agentLoading ? (
                     <>
-                      <Play className="w-3.5 h-3.5 animate-spin" />
+                      <Play aria-hidden="true" className="w-3.5 h-3.5 animate-spin" />
                       <span>Querying ADK...</span>
                     </>
                   ) : (
                     <>
-                      <Send className="w-3.5 h-3.5" />
+                      <Send aria-hidden="true" className="w-3.5 h-3.5" />
                       <span>Run ADK agent</span>
                     </>
                   )}
@@ -585,17 +673,23 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
               </div>
 
               {agentError && (
-                <div className="p-3.5 rounded-[10px] bg-[rgba(180,62,47,0.08)] border border-[rgba(180,62,47,0.24)] text-[13px] text-[#B43E2F]">
+                <div
+                  role="alert"
+                  className="p-3.5 rounded-[10px] bg-[var(--pm-danger-soft)] border border-[var(--pm-danger-border)] text-[13px] text-[var(--pm-danger)]"
+                >
                   {agentError}
                 </div>
               )}
 
               {agentResponse && (
-                <div className="p-4 rounded-[10px] bg-white border border-[rgba(29,37,48,0.12)] space-y-1.5">
-                  <div className="ts-label text-[#2C5877]">
-                    Live ADK response
+                <div className="p-4 rounded-[10px] bg-[var(--pm-card)] border border-[var(--pm-border)] space-y-1.5">
+                  <div className="pm-kicker text-[var(--pm-accent)]">
+                    Live ADK Response
                   </div>
-                  <pre className="whitespace-pre-wrap font-sans text-[13.5px] text-[#1D2530] leading-relaxed m-0">
+                  <pre
+                    className="whitespace-pre-wrap text-[14px] text-[var(--pm-text)] leading-relaxed m-0"
+                    style={{ fontFamily: 'var(--font-body)' }}
+                  >
                     {agentResponse.summaryMarkdown}
                   </pre>
                 </div>
@@ -605,32 +699,38 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h3 className="ts-h3 text-[16px]">
+                  <h3 className="pm-h3 text-[16px]">
                     BigQuery Property Graph &amp; ISO/IEC 39075 GQL
                   </h3>
-                  <p className="text-[13.5px] text-[#556070] mt-0.5">
-                    Correlates <code className="font-mono-code text-[12.5px]">case_chain_id</code> for historical loops and queries <code className="font-mono-code text-[12.5px]">GRAPH_TABLE(...)</code> for today&apos;s child.
+                  <p className="text-[13.5px] text-[var(--pm-muted)] mt-0.5">
+                    Correlates <code className="font-mono-code text-[12px]">case_chain_id</code> for historical loops and queries <code className="font-mono-code text-[12px]">GRAPH_TABLE(...)</code> for today&apos;s child.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => handleCopy('gql', isoGqlSnippet)}
-                  className="ts-btn ts-btn-secondary no-print"
+                  className="pm-btn pm-btn-secondary pm-btn-compact no-print"
                 >
                   {copiedKey === 'gql' ? (
                     <>
-                      <Check className="w-3.5 h-3.5 text-[#2C5877]" />
+                      <Check
+                        aria-hidden="true"
+                        className="w-3.5 h-3.5 text-[var(--pm-compliant)]"
+                      />
                       <span>Copied GQL</span>
                     </>
                   ) : (
                     <>
-                      <Copy className="w-3.5 h-3.5 text-[#556070]" />
+                      <Copy
+                        aria-hidden="true"
+                        className="w-3.5 h-3.5 text-[var(--pm-muted)]"
+                      />
                       <span>Copy GQL query</span>
                     </>
                   )}
                 </button>
               </div>
-              <pre className="ts-stage-dark p-5 text-[12.5px] font-mono-code overflow-x-auto leading-relaxed m-0">
+              <pre className="pm-stage-dark p-5 text-[12.5px] font-mono-code overflow-x-auto leading-relaxed m-0">
                 {isoGqlSnippet}
               </pre>
             </div>

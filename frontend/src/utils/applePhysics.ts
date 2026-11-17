@@ -1,28 +1,38 @@
 import type { Transition } from 'motion/react';
 
 /**
- * Taste-Skill UI transition (motion.md: cubic-bezier(0.2, 0.8, 0.2, 1), 240ms, zero overshoot).
- * "No curve passes its mark: no bounce, no overshoot."
+ * ui-ux-pro-max Motion Architecture (pro-rules.md §7):
+ * - Snappy ease-out entrances (200ms, [0.16, 1, 0.3, 1])
+ * - Exit animations ~65% duration of enter (130ms) so UI never feels sluggish
+ * - GPU-friendly transform & opacity only
  */
 export const SPRING_DEFAULT: Transition = {
-  duration: 0.24,
-  ease: [0.2, 0.8, 0.2, 1],
+  duration: 0.2,
+  ease: [0.16, 1, 0.3, 1],
 };
 
 /**
- * Snappy control transition for switches and micro-indicators (motion.md: 180ms, zero overshoot).
+ * Crisp micro-control transition for switches, tabs, and state pills (150ms).
  */
 export const SPRING_SNAPPY: Transition = {
-  duration: 0.18,
-  ease: [0.2, 0.8, 0.2, 1],
+  duration: 0.15,
+  ease: [0.16, 1, 0.3, 1],
 };
 
 /**
- * Panel / dialog entrance transition (motion.md: --m-panel 200ms, cubic-bezier(0.22, 1, 0.36, 1)).
+ * Modal / popover entrance transition (200ms ease-out).
  */
 export const SPRING_SHEET: Transition = {
   duration: 0.2,
-  ease: [0.22, 1, 0.36, 1],
+  ease: [0.16, 1, 0.3, 1],
+};
+
+/**
+ * Exit transition (~65% of enter duration — pro-rules.md exit-faster-than-enter).
+ */
+export const EXIT_FAST_TRANSITION: Transition = {
+  duration: 0.13,
+  ease: [0.4, 0, 1, 1],
 };
 
 /**
@@ -68,7 +78,7 @@ interface Sample {
 }
 
 /**
- * Rolling pointer history (~90ms) to compute smooth release velocity (px/s).
+ * Rolling pointer history (~100ms) to compute smooth release velocity (px/s).
  */
 export class PointerVelocityTracker {
   private samples: Sample[] = [];

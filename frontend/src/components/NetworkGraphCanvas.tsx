@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { Pause, Play } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Pause, Play, Table2 } from 'lucide-react';
 import { cleanOrgName } from '../engine/graphTriageEngine';
 import type {
   BounceHubSummary,
@@ -11,6 +11,7 @@ import type {
   ReferralHandoff,
 } from '../types';
 import {
+  EXIT_FAST_TRANSITION,
   REDUCED_MOTION_TRANSITION,
   SPRING_DEFAULT,
   triggerCausalHaptic,
@@ -25,6 +26,8 @@ interface NetworkGraphCanvasProps {
   historicalTrapChain: HistoricalChainTrace | null;
   bounceDiagnostics: BounceHubSummary[];
 }
+
+type GraphViewMode = 'compare' | 'breaches' | 'all' | 'table';
 
 const ROLE_COLUMNS: { role: NodeRole; title: string; x: number }[] = [
   { role: 'Screening_Pediatric_Clinic', title: '1. Screening clinics (8)', x: 115 },
@@ -42,11 +45,17 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
   bounceDiagnostics,
 }) => {
   const reducedMotion = useReducedMotion();
-  const [filterMode, setFilterMode] = useState<'compare' | 'breaches' | 'all'>('compare');
+  const [filterMode, setFilterMode] = useState<GraphViewMode>('compare');
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [pulsePaused, setPulsePaused] = useState(false);
   const [pulseCycleKey, setPulseCycleKey] = useState(0);
   const lastRestartRef = useRef(0);
+
+  const providerMap = useMemo(() => {
+    const m = new Map<string, CareNode>();
+    for (const p of providers) m.set(p.provider_id, p);
+    return m;
+  }, [providers]);
 
   const layout = useMemo(() => {
     const pos = new Map<string, { x: number; y: number; node: CareNode }>();
@@ -148,6 +157,21 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
     }));
   }, [referrals]);
 
+  /* Accessible Flow & Adjacency Rows (ui-ux-pro-max charts.csv A11y Fallback) */
+  const accessibleFlowRows = useMemo(() => {
+    return [...uniqueEdges]
+      .sort((a, b) => {
+        const aRec = activeEdgeKeys.has(a.key) ? 1 : 0;
+        const bRec = activeEdgeKeys.has(b.key) ? 1 : 0;
+        if (aRec !== bRec) return bRec - aRec;
+        const aTrap = trapEdgeKeys.has(a.key) ? 1 : 0;
+        const bTrap = trapEdgeKeys.has(b.key) ? 1 : 0;
+        if (aTrap !== bTrap) return bTrap - aTrap;
+        return b.avgWait - a.avgWait;
+      })
+      .slice(0, 14);
+  }, [uniqueEdges, activeEdgeKeys, trapEdgeKeys]);
+
   const topBounceHubIds = useMemo(() => {
     return new Set(
       bounceDiagnostics
@@ -165,9 +189,8 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
     (b) => b.coordinator.provider_id === inspectedNode?.provider_id
   );
 
-  /* Restart 3.2s diagram pulse from first beat when pointer enters (diagrams.md §Motion) */
   const handleStagePointerEnter = () => {
-    if (pulsePaused || reducedMotion) return;
+    if (pulsePaused || reducedMotion || filterMode === 'table') return;
     const now = performance.now();
     if (now - lastRestartRef.current > 800) {
       lastRestartRef.current = now;
@@ -178,24 +201,33 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
   return (
     <section
       onPointerEnter={handleStagePointerEnter}
-      className="ts-card p-6 sm:p-8 space-y-5"
+      className="pm-card p-6 sm:p-7 space-y-5"
     >
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="ts-h2 text-[20px]">
-            {stateCode} referral graph.{' '}
-            <span className="ts-muted">30 synthetic CareNodes across four roles.</span>
+          <div className="pm-kicker">Step 3 · Network Topology</div>
+          <h2 className="pm-h2 text-[20px] mt-0.5">
+            {stateCode} ReferralGraph topology (30 synthetic CareNodes)
           </h2>
         </div>
 
-        <div className="no-print">
-          <FluidSegmentedControl
+        <div className="no-print overflow-x-auto max-w-full">
+          <FluidSegmentedControl<GraphViewMode>
             layoutId="graph-view-segment"
-            ariaLabel="Referral graph edge filter"
+            ariaLabel="Referral graph view and accessible table toggle"
             options={[
               { value: 'compare', label: 'Route vs. loop' },
               { value: 'breaches', label: 'Fax breaches' },
               { value: 'all', label: 'All 149 edges' },
+              {
+                value: 'table',
+                label: (
+                  <>
+                    <Table2 aria-hidden="true" className="w-3.5 h-3.5" />
+                    <span>Accessible table</span>
+                  </>
+                ),
+              },
             ]}
             value={filterMode}
             onChange={setFilterMode}
@@ -203,328 +235,491 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
         </div>
       </div>
 
+      {/* Non-Color-Only Visual Legend */}
+      {filterMode !== 'table' && (
+        <div className="flex flex-wrap items-center gap-4 text-[12.5px] text-[var(--pm-muted)]">
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              aria-hidden="true"
+              className="w-5 h-0.5 bg-[#38BDF8] inline-block"
+            />
+            <span>Solid sky line: Recommended electronic route</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              aria-hidden="true"
+              className="w-5 border-t-2 border-dashed border-[#F87171] inline-block"
+            />
+            <span>Dashed red line: Paper-fax bounce chain</span>
+          </span>
+          <span className="text-[12px]">
+            Tip: Tab or click any CareNode circle to inspect waitlists.
+          </span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-5 items-start">
-        {/* Harbour Slate Diagram Stage with 3.2s Comet Pulse & 32px Pause Disc (House Rule 1: no caption below) */}
-        <div
-          className={`xl:col-span-3 ts-stage-dark relative p-3 overflow-x-auto ${
-            pulsePaused ? 'ts-diagram-paused' : ''
-          }`}
-        >
-          <svg
-            viewBox="0 0 960 440"
-            className="w-full min-w-[680px] h-auto select-none"
-            role="img"
-            aria-label={`${stateCode} multi-hop Part C referral graph showing 30 CareNodes`}
+        {filterMode === 'table' ? (
+          /* Accessible Adjacency & Hop Flow Table Fallback (charts.csv Priority Rule) */
+          <div className="xl:col-span-3 pm-table-wrap">
+            <table className="pm-table tabular-nums">
+              <caption className="sr-only">
+                {stateCode} ReferralGraph prioritized handoff edges showing recommended electronic hops and highest-delay paper-fax bounce edges
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Status</th>
+                  <th scope="col">Source CareNode</th>
+                  <th scope="col">Target CareNode</th>
+                  <th scope="col">Channel</th>
+                  <th scope="col" className="text-right">
+                    Mean Wait
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {accessibleFlowRows.map((edge) => {
+                  const isRec = activeEdgeKeys.has(edge.key);
+                  const isTrap = trapEdgeKeys.has(edge.key);
+                  const srcNode = providerMap.get(edge.src);
+                  const dstNode = providerMap.get(edge.dst);
+                  return (
+                    <tr
+                      key={edge.key}
+                      onClick={() => setSelectedNodeId(edge.dst)}
+                      className="cursor-pointer"
+                    >
+                      <td>
+                        {isRec ? (
+                          <span className="pm-badge pm-badge-compliant">
+                            <CheckCircle2 aria-hidden="true" className="w-3 h-3" />
+                            <span>Active route</span>
+                          </span>
+                        ) : isTrap || edge.hasBounce ? (
+                          <span className="pm-badge pm-badge-danger">
+                            <AlertTriangle aria-hidden="true" className="w-3 h-3" />
+                            <span>Fax bounce</span>
+                          </span>
+                        ) : (
+                          <span className="pm-badge">Historical</span>
+                        )}
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedNodeId(edge.src);
+                          }}
+                          className="text-left hover:text-[var(--pm-accent)] cursor-pointer"
+                        >
+                          <div className="font-mono-code text-[12px] font-semibold text-[var(--pm-ink)]">
+                            {edge.src}
+                          </div>
+                          <div className="text-[12px] text-[var(--pm-muted)] truncate max-w-[180px]">
+                            {srcNode
+                              ? cleanOrgName(srcNode.synthetic_organization_name)
+                              : edge.src}
+                          </div>
+                        </button>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedNodeId(edge.dst);
+                          }}
+                          className="text-left hover:text-[var(--pm-accent)] cursor-pointer"
+                        >
+                          <div className="font-mono-code text-[12px] font-semibold text-[var(--pm-ink)]">
+                            {edge.dst}
+                          </div>
+                          <div className="text-[12px] text-[var(--pm-muted)] truncate max-w-[180px]">
+                            {dstNode
+                              ? cleanOrgName(dstNode.synthetic_organization_name)
+                              : edge.dst}
+                          </div>
+                        </button>
+                      </td>
+                      <td>
+                        <span className="font-mono-code text-[12px]">
+                          {edge.hasFax ? 'paper_fax' : 'e-Portal / phone'}
+                        </span>
+                      </td>
+                      <td className="text-right font-mono-code font-semibold text-[var(--pm-ink)]">
+                        {edge.avgWait}d
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          /* High-Contrast Clinical Navy Topology Stage with Keyboard-Focusable CareNodes */
+          <div
+            className={`xl:col-span-3 pm-stage-dark relative p-3 overflow-x-auto ${
+              pulsePaused ? 'pm-diagram-paused' : ''
+            }`}
           >
-            <defs>
-              <marker
-                id="arrow-harbour"
-                viewBox="0 0 10 10"
-                refX="9"
-                refY="5"
-                markerWidth="5"
-                markerHeight="5"
-                orient="auto-start-reverse"
-              >
-                <path d="M 0 0 L 10 5 L 0 10 z" fill="#7FB3D5" />
-              </marker>
-              <marker
-                id="arrow-breach"
-                viewBox="0 0 10 10"
-                refX="9"
-                refY="5"
-                markerWidth="5"
-                markerHeight="5"
-                orient="auto-start-reverse"
-              >
-                <path d="M 0 0 L 10 5 L 0 10 z" fill="#D97768" />
-              </marker>
-            </defs>
-
-            {ROLE_COLUMNS.map((col) => (
-              <g key={col.role}>
-                <line
-                  x1={col.x}
-                  y1={38}
-                  x2={col.x}
-                  y2={418}
-                  stroke="rgba(243,241,236,0.08)"
-                  strokeDasharray="3 5"
-                />
-                <text
-                  x={col.x}
-                  y={24}
-                  textAnchor="middle"
-                  fill="#9AA5B4"
-                  fontSize="11.5"
-                  fontWeight="500"
-                  fontFamily="Geist, system-ui, sans-serif"
+            <svg
+              viewBox="0 0 960 440"
+              className="w-full min-w-[680px] h-auto select-none"
+              role="group"
+              aria-label={`${stateCode} multi-hop Part C referral graph showing 30 keyboard-selectable CareNodes`}
+            >
+              <defs>
+                <marker
+                  id="arrow-sky"
+                  viewBox="0 0 10 10"
+                  refX="9"
+                  refY="5"
+                  markerWidth="5"
+                  markerHeight="5"
+                  orient="auto-start-reverse"
                 >
-                  {col.title}
-                </text>
-              </g>
-            ))}
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#38BDF8" />
+                </marker>
+                <marker
+                  id="arrow-breach"
+                  viewBox="0 0 10 10"
+                  refX="9"
+                  refY="5"
+                  markerWidth="5"
+                  markerHeight="5"
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#F87171" />
+                </marker>
+              </defs>
 
-            {uniqueEdges.map((edge) => {
-              const p1 = layout.get(edge.src);
-              const p2 = layout.get(edge.dst);
-              if (!p1 || !p2) return null;
+              {ROLE_COLUMNS.map((col) => (
+                <g key={col.role}>
+                  <line
+                    x1={col.x}
+                    y1={38}
+                    x2={col.x}
+                    y2={418}
+                    stroke="rgba(248,250,252,0.1)"
+                    strokeDasharray="3 5"
+                  />
+                  <text
+                    x={col.x}
+                    y={24}
+                    textAnchor="middle"
+                    fill="#94A3B8"
+                    fontSize="11.5"
+                    fontWeight="600"
+                    fontFamily="Plus Jakarta Sans, system-ui, sans-serif"
+                  >
+                    {col.title}
+                  </text>
+                </g>
+              ))}
 
-              const isRec = activeEdgeKeys.has(edge.key);
-              const isTrap = trapEdgeKeys.has(edge.key);
+              {uniqueEdges.map((edge) => {
+                const p1 = layout.get(edge.src);
+                const p2 = layout.get(edge.dst);
+                if (!p1 || !p2) return null;
 
-              if (filterMode === 'compare' && !isRec && !isTrap) {
+                const isRec = activeEdgeKeys.has(edge.key);
+                const isTrap = trapEdgeKeys.has(edge.key);
+
+                if (filterMode === 'compare' && !isRec && !isTrap) {
+                  return (
+                    <path
+                      key={edge.key}
+                      d={`M ${p1.x} ${p1.y} C ${(p1.x + p2.x) / 2} ${p1.y}, ${(p1.x + p2.x) / 2} ${p2.y}, ${p2.x} ${p2.y}`}
+                      fill="none"
+                      stroke="#475569"
+                      strokeOpacity={0.25}
+                      strokeWidth={1}
+                    />
+                  );
+                }
+
+                if (
+                  filterMode === 'breaches' &&
+                  !edge.hasFax &&
+                  !edge.hasBounce &&
+                  !isRec
+                ) {
+                  return null;
+                }
+
+                const sameCol = Math.abs(p1.x - p2.x) < 20;
+                const pathD = sameCol
+                  ? `M ${p1.x} ${p1.y} C ${p1.x + 65} ${(p1.y + p2.y) / 2}, ${p2.x + 65} ${(p1.y + p2.y) / 2}, ${p2.x} ${p2.y}`
+                  : `M ${p1.x} ${p1.y} C ${(p1.x + p2.x) / 2} ${p1.y}, ${(p1.x + p2.x) / 2} ${p2.y}, ${p2.x} ${p2.y}`;
+
+                const stroke = isRec
+                  ? '#38BDF8'
+                  : isTrap || edge.hasBounce
+                    ? '#F87171'
+                    : edge.hasFax
+                      ? '#FBBF24'
+                      : '#64748B';
+
+                const width = isRec ? 2.8 : isTrap ? 2.2 : edge.hasBounce ? 1.7 : 1;
+                const opacity =
+                  isRec || isTrap ? 0.96 : filterMode === 'all' ? 0.4 : 0.72;
+
                 return (
                   <path
                     key={edge.key}
-                    d={`M ${p1.x} ${p1.y} C ${(p1.x + p2.x) / 2} ${p1.y}, ${(p1.x + p2.x) / 2} ${p2.y}, ${p2.x} ${p2.y}`}
+                    d={pathD}
                     fill="none"
-                    stroke="#526071"
-                    strokeOpacity={0.2}
-                    strokeWidth={1}
-                  />
-                );
-              }
-
-              if (filterMode === 'breaches' && !edge.hasFax && !edge.hasBounce && !isRec) {
-                return null;
-              }
-
-              const sameCol = Math.abs(p1.x - p2.x) < 20;
-              const pathD = sameCol
-                ? `M ${p1.x} ${p1.y} C ${p1.x + 65} ${(p1.y + p2.y) / 2}, ${p2.x + 65} ${(p1.y + p2.y) / 2}, ${p2.x} ${p2.y}`
-                : `M ${p1.x} ${p1.y} C ${(p1.x + p2.x) / 2} ${p1.y}, ${(p1.x + p2.x) / 2} ${p2.y}, ${p2.x} ${p2.y}`;
-
-              const stroke = isRec
-                ? '#7FB3D5'
-                : isTrap || edge.hasBounce
-                  ? '#D97768'
-                  : edge.hasFax
-                    ? '#C89B5B'
-                    : '#64748B';
-
-              const width = isRec ? 2.6 : isTrap ? 2.1 : edge.hasBounce ? 1.6 : 1;
-              const opacity = isRec || isTrap ? 0.94 : filterMode === 'all' ? 0.38 : 0.68;
-
-              return (
-                <path
-                  key={edge.key}
-                  d={pathD}
-                  fill="none"
-                  stroke={stroke}
-                  strokeWidth={width}
-                  strokeOpacity={opacity}
-                  strokeDasharray={!isRec && (isTrap || edge.hasFax) ? '5 4' : undefined}
-                  markerEnd={
-                    isRec
-                      ? 'url(#arrow-harbour)'
-                      : isTrap
-                        ? 'url(#arrow-breach)'
-                        : undefined
-                  }
-                />
-              );
-            })}
-
-            {activePathway &&
-              activePathway.steps.slice(0, -1).map((st, idx) => {
-                const nxt = activePathway.steps[idx + 1];
-                const key = `${st.node.provider_id}__${nxt.node.provider_id}`;
-                if (uniqueEdges.some((e) => e.key === key)) return null;
-                const p1 = layout.get(st.node.provider_id);
-                const p2 = layout.get(nxt.node.provider_id);
-                if (!p1 || !p2) return null;
-                return (
-                  <path
-                    key={`prospective-${key}`}
-                    d={`M ${p1.x} ${p1.y} C ${(p1.x + p2.x) / 2} ${p1.y}, ${(p1.x + p2.x) / 2} ${p2.y}, ${p2.x} ${p2.y}`}
-                    fill="none"
-                    stroke="#7FB3D5"
-                    strokeWidth={2.6}
-                    markerEnd="url(#arrow-harbour)"
+                    stroke={stroke}
+                    strokeWidth={width}
+                    strokeOpacity={opacity}
+                    strokeDasharray={
+                      !isRec && (isTrap || edge.hasFax) ? '6 4' : undefined
+                    }
+                    markerEnd={
+                      isRec
+                        ? 'url(#arrow-sky)'
+                        : isTrap
+                          ? 'url(#arrow-breach)'
+                          : undefined
+                    }
                   />
                 );
               })}
 
-            {/* 3.2s Staggered Ripple Comet Pulses along Recommended Route (diagrams.md) */}
-            {!reducedMotion &&
-              activeOrderedCurves.map((curve) => (
-                <path
-                  key={`comet-${pulseCycleKey}-${curve.key}`}
-                  d={curve.d}
-                  fill="none"
-                  stroke="#F3F1EC"
-                  strokeWidth={3}
-                  strokeLinecap="round"
-                  style={{ animationDelay: `${curve.delaySec}s` }}
-                  className="ts-diagram-comet pointer-events-none"
-                />
-              ))}
-
-            {Array.from(layout.values()).map(({ x, y, node }) => {
-              const isRec = activeNodeIds.has(node.provider_id);
-              const isBounceHub = topBounceHubIds.has(node.provider_id);
-              const isSelected = inspectedNode?.provider_id === node.provider_id;
-              const shortNum = node.provider_id.slice(-3);
-
-              const fill = isRec
-                ? '#3B6D90'
-                : isBounceHub
-                  ? '#B43E2F'
-                  : node.bilingual_services_listed && node.accepts_medicaid
-                    ? '#43556A'
-                    : '#2B3645';
-
-              return (
-                <g
-                  key={node.provider_id}
-                  transform={`translate(${x}, ${y})`}
-                  onPointerDown={() => {
-                    triggerCausalHaptic(4);
-                    setSelectedNodeId(node.provider_id);
-                  }}
-                  className="cursor-pointer"
-                >
-                  <circle r={17} fill="transparent" />
-                  {isSelected && (
-                    <circle
-                      r={14.5}
+              {activePathway &&
+                activePathway.steps.slice(0, -1).map((st, idx) => {
+                  const nxt = activePathway.steps[idx + 1];
+                  const key = `${st.node.provider_id}__${nxt.node.provider_id}`;
+                  if (uniqueEdges.some((e) => e.key === key)) return null;
+                  const p1 = layout.get(st.node.provider_id);
+                  const p2 = layout.get(nxt.node.provider_id);
+                  if (!p1 || !p2) return null;
+                  return (
+                    <path
+                      key={`prospective-${key}`}
+                      d={`M ${p1.x} ${p1.y} C ${(p1.x + p2.x) / 2} ${p1.y}, ${(p1.x + p2.x) / 2} ${p2.y}, ${p2.x} ${p2.y}`}
                       fill="none"
-                      stroke="#F3F1EC"
-                      strokeOpacity={0.9}
-                      strokeWidth={1.5}
+                      stroke="#38BDF8"
+                      strokeWidth={2.8}
+                      markerEnd="url(#arrow-sky)"
                     />
-                  )}
-                  <circle
-                    r={isRec ? 11 : 8.5}
-                    fill={fill}
-                    stroke={isRec ? '#F3F1EC' : '#18202A'}
-                    strokeWidth={1.8}
+                  );
+                })}
+
+              {!reducedMotion &&
+                activeOrderedCurves.map((curve) => (
+                  <path
+                    key={`comet-${pulseCycleKey}-${curve.key}`}
+                    d={curve.d}
+                    fill="none"
+                    stroke="#F8FAFC"
+                    strokeWidth={3}
+                    strokeLinecap="round"
+                    style={{ animationDelay: `${curve.delaySec}s` }}
+                    className="pm-diagram-comet pointer-events-none"
                   />
-                  <text
-                    x={0}
-                    y={3}
-                    textAnchor="middle"
-                    fill="#F3F1EC"
-                    fontSize="8.5"
-                    fontWeight="500"
-                    fontFamily="Geist Mono, ui-monospace, monospace"
+                ))}
+
+              {Array.from(layout.values()).map(({ x, y, node }) => {
+                const isRec = activeNodeIds.has(node.provider_id);
+                const isBounceHub = topBounceHubIds.has(node.provider_id);
+                const isSelected = inspectedNode?.provider_id === node.provider_id;
+                const shortNum = node.provider_id.slice(-3);
+
+                const fill = isRec
+                  ? '#0284C7'
+                  : isBounceHub
+                    ? '#DC2626'
+                    : node.bilingual_services_listed && node.accepts_medicaid
+                      ? '#334155'
+                      : '#1E293B';
+
+                return (
+                  <g
+                    key={node.provider_id}
+                    transform={`translate(${x}, ${y})`}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`${cleanOrgName(node.synthetic_organization_name)} (${node.provider_id}), ${node.city}, internal wait ${node.median_internal_wait_days} days${isRec ? ', active recommended node' : ''}${isBounceHub ? ', high-breach fax hub' : ''}`}
+                    onClick={() => {
+                      triggerCausalHaptic(4);
+                      setSelectedNodeId(node.provider_id);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedNodeId(node.provider_id);
+                      }
+                    }}
+                    className="cursor-pointer focus:outline-none"
                   >
-                    {shortNum}
-                  </text>
-                  {(isRec || isBounceHub) && (
+                    <circle r={18} fill="transparent" />
+                    {isBounceHub && !isRec && (
+                      <circle
+                        r={13}
+                        fill="none"
+                        stroke="#FCA5A5"
+                        strokeDasharray="3 2"
+                        strokeWidth={1.3}
+                      />
+                    )}
+                    {isSelected && (
+                      <circle
+                        r={15.5}
+                        fill="none"
+                        stroke="#38BDF8"
+                        strokeWidth={2}
+                      />
+                    )}
+                    <circle
+                      r={isRec ? 11.5 : 8.5}
+                      fill={fill}
+                      stroke={isRec ? '#F8FAFC' : '#0F172A'}
+                      strokeWidth={1.8}
+                    />
                     <text
                       x={0}
-                      y={-14}
+                      y={3}
                       textAnchor="middle"
-                      fill={isRec ? '#BDD9EC' : '#E9A297'}
-                      fontSize="10"
-                      fontWeight="500"
-                      fontFamily="Geist, system-ui, sans-serif"
+                      fill="#F8FAFC"
+                      fontSize="8.5"
+                      fontWeight="600"
+                      fontFamily="Fira Code, ui-monospace, monospace"
                     >
-                      {node.city}
+                      {shortNum}
                     </text>
-                  )}
-                </g>
-              );
-            })}
-          </svg>
+                    {(isRec || isBounceHub) && (
+                      <text
+                        x={0}
+                        y={-15}
+                        textAnchor="middle"
+                        fill={isRec ? '#BAE6FD' : '#FECACA'}
+                        fontSize="10"
+                        fontWeight="600"
+                        fontFamily="Plus Jakarta Sans, system-ui, sans-serif"
+                      >
+                        {node.city}
+                      </text>
+                    )}
+                  </g>
+                );
+              })}
+            </svg>
 
-          {/* Signature 32px Round Pause Disc at Bottom-Right (motion.md §Pause) */}
-          {!reducedMotion && (
-            <button
-              type="button"
-              aria-label={pulsePaused ? 'Play route pulse' : 'Pause route pulse'}
-              title={pulsePaused ? 'Play route pulse' : 'Pause route pulse'}
-              onClick={() => setPulsePaused((p) => !p)}
-              className="no-print absolute bottom-3 right-3 w-8 h-8 rounded-full bg-[#222C39] hover:bg-[#2E3B4C] text-[#F3F1EC] border border-[rgba(243,241,236,0.2)] flex items-center justify-center cursor-pointer transition-colors"
-            >
-              {pulsePaused ? (
-                <Play className="w-3.5 h-3.5 translate-x-[0.5px]" />
-              ) : (
-                <Pause className="w-3.5 h-3.5" />
-              )}
-            </button>
-          )}
-        </div>
+            {!reducedMotion && (
+              <button
+                type="button"
+                aria-label={pulsePaused ? 'Play route pulse' : 'Pause route pulse'}
+                aria-pressed={pulsePaused}
+                title={pulsePaused ? 'Play route pulse' : 'Pause route pulse'}
+                onClick={() => setPulsePaused((p) => !p)}
+                className="no-print absolute bottom-3 right-3 w-9 h-9 rounded-full bg-[#1E293B] hover:bg-[#334155] text-[#F8FAFC] border border-[rgba(248,250,252,0.24)] flex items-center justify-center cursor-pointer touch-manipulation transition-colors"
+              >
+                {pulsePaused ? (
+                  <Play aria-hidden="true" className="w-3.5 h-3.5 translate-x-[0.5px]" />
+                ) : (
+                  <Pause aria-hidden="true" className="w-3.5 h-3.5" />
+                )}
+              </button>
+            )}
+          </div>
+        )}
 
-        {/* 2-Level CareNode Inspector — Open hairline rows, zero nested white-in-grey-in-white boxes */}
+        {/* CareNode Inspector Panel */}
         {inspectedNode && (
           <AnimatePresence mode="wait">
             <motion.div
               key={inspectedNode.provider_id}
               initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
+              exit={
+                reducedMotion
+                  ? { opacity: 0, transition: REDUCED_MOTION_TRANSITION }
+                  : { opacity: 0, y: -4, transition: EXIT_FAST_TRANSITION }
+              }
               transition={reducedMotion ? REDUCED_MOTION_TRANSITION : SPRING_DEFAULT}
-              className="ts-panel p-5 space-y-4 tabular-nums"
+              className="pm-panel p-5 space-y-4 tabular-nums"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="ts-label">Selected CareNode</span>
-                <span className="font-mono-code text-[12.5px] font-medium text-[#2C5877]">
+                <span className="pm-kicker">CareNode Inspector</span>
+                <span className="font-mono-code text-[12px] font-semibold text-[var(--pm-accent)]">
                   {inspectedNode.provider_id}
                 </span>
               </div>
 
               <div>
-                <h3 className="font-medium text-[15px] text-[#1D2530] leading-snug">
+                <h3 className="pm-h3 text-[15px] leading-snug">
                   {cleanOrgName(inspectedNode.synthetic_organization_name)}
                 </h3>
-                <p className="text-[13px] text-[#556070] mt-0.5">
+                <p className="text-[13px] text-[var(--pm-muted)] mt-0.5">
                   {inspectedNode.city}, {inspectedNode.county_name}
                 </p>
               </div>
 
-              <dl className="grid grid-cols-2 gap-3 py-3 border-y border-[rgba(29,37,48,0.1)]">
+              <dl className="grid grid-cols-2 gap-3 py-3 border-y border-[var(--pm-border)]">
                 <div>
-                  <dt className="ts-label">Internal wait</dt>
-                  <dd className="font-mono-code text-[18px] font-medium text-[#1D2530] mt-0.5">
+                  <dt className="text-[11.5px] text-[var(--pm-muted)] font-medium">
+                    Internal wait
+                  </dt>
+                  <dd className="font-mono-code text-[18px] font-semibold text-[var(--pm-ink)] mt-0.5">
                     {inspectedNode.median_internal_wait_days}d
                   </dd>
                 </div>
-                <div className="border-l border-[rgba(29,37,48,0.1)] pl-3">
-                  <dt className="ts-label">Active waitlist</dt>
-                  <dd className="font-mono-code text-[18px] font-medium text-[#1D2530] mt-0.5">
-                    {inspectedNode.active_waitlist_count} children
+                <div className="border-l border-[var(--pm-border)] pl-3">
+                  <dt className="text-[11.5px] text-[var(--pm-muted)] font-medium">
+                    Active waitlist
+                  </dt>
+                  <dd className="font-mono-code text-[18px] font-semibold text-[var(--pm-ink)] mt-0.5">
+                    {inspectedNode.active_waitlist_count} kids
                   </dd>
                 </div>
               </dl>
 
               <dl className="space-y-2 text-[13px]">
                 <div className="flex justify-between gap-2">
-                  <dt className="text-[#556070]">Role</dt>
-                  <dd className="font-medium text-[#1D2530] text-right">
+                  <dt className="text-[var(--pm-muted)]">Role</dt>
+                  <dd className="font-semibold text-[var(--pm-ink)] text-right">
                     {inspectedNode.node_role.replace(/_/g, ' ')}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-2">
-                  <dt className="text-[#556070]">Medicaid</dt>
-                  <dd className="font-medium text-[#1D2530]">
+                  <dt className="text-[var(--pm-muted)]">Medicaid</dt>
+                  <dd className="font-semibold text-[var(--pm-ink)]">
                     {inspectedNode.accepts_medicaid ? 'Accepted' : 'Not listed'}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-2">
-                  <dt className="text-[#556070]">Bilingual eval</dt>
-                  <dd className="font-medium text-[#1D2530]">
-                    {inspectedNode.bilingual_services_listed ? 'Available' : 'English only'}
+                  <dt className="text-[var(--pm-muted)]">Bilingual eval</dt>
+                  <dd className="font-semibold text-[var(--pm-ink)]">
+                    {inspectedNode.bilingual_services_listed
+                      ? 'Available'
+                      : 'English only'}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-2">
-                  <dt className="text-[#556070]">Part C status</dt>
-                  <dd className="font-medium text-[#1D2530]">
-                    {inspectedNode.part_c_vendor_enrolled ? 'Enrolled vendor' : 'Screening clinic'}
+                  <dt className="text-[var(--pm-muted)]">Part C status</dt>
+                  <dd className="font-semibold text-[var(--pm-ink)]">
+                    {inspectedNode.part_c_vendor_enrolled
+                      ? 'Enrolled vendor'
+                      : 'Screening clinic'}
                   </dd>
                 </div>
               </dl>
 
               {inspectedCoordDiag && (
-                <div className="pt-3 border-t border-[rgba(180,62,47,0.24)] text-[13px] text-[#1D2530] space-y-1">
-                  <div className="font-medium text-[#B43E2F]">
-                    Downstream 45-day breach rate: {inspectedCoordDiag.breachRatePct}%
+                <div className="p-3 rounded-[9px] bg-[var(--pm-danger-soft)] border border-[var(--pm-danger-border)] text-[12.5px] text-[var(--pm-ink)] space-y-1">
+                  <div className="font-semibold text-[var(--pm-danger)] flex items-center gap-1.5">
+                    <AlertTriangle aria-hidden="true" className="w-3.5 h-3.5" />
+                    <span>
+                      Downstream breach rate: {inspectedCoordDiag.breachRatePct}%
+                    </span>
                   </div>
-                  <p className="text-[12.5px] text-[#556070] leading-relaxed">
-                    {inspectedCoordDiag.chainsOver45d} of {inspectedCoordDiag.routedEpisodes} episodes exceeded 45 days (mean{' '}
-                    {inspectedCoordDiag.meanEpisodeWaitDays}d; {inspectedCoordDiag.faxSharePct}% paper fax).
+                  <p className="text-[var(--pm-muted)] leading-relaxed">
+                    {inspectedCoordDiag.chainsOver45d} of{' '}
+                    {inspectedCoordDiag.routedEpisodes} episodes exceeded 45 days (mean{' '}
+                    {inspectedCoordDiag.meanEpisodeWaitDays}d;{' '}
+                    {inspectedCoordDiag.faxSharePct}% paper fax).
                   </p>
                 </div>
               )}

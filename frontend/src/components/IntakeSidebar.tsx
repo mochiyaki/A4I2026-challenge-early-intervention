@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 import { STATE_META } from '../engine/graphTriageEngine';
 import type { ReferralIntakeInput, StateCode, TractDemographic } from '../types';
 import {
@@ -12,6 +12,7 @@ interface IntakeSidebarProps {
   intake: ReferralIntakeInput;
   tracts: TractDemographic[];
   selectedTract: TractDemographic;
+  activePreset: 'default20m' | 'zeroVehicle' | 'agingOut31m' | null;
   onChange: (next: Partial<ReferralIntakeInput>) => void;
   onSelectPreset: (preset: 'default20m' | 'zeroVehicle' | 'agingOut31m') => void;
 }
@@ -38,6 +39,7 @@ export const IntakeSidebar: React.FC<IntakeSidebarProps> = ({
   intake,
   tracts,
   selectedTract,
+  activePreset,
   onChange,
   onSelectPreset,
 }) => {
@@ -45,54 +47,59 @@ export const IntakeSidebar: React.FC<IntakeSidebarProps> = ({
   const isNearAgeOut = monthsToAgeOut <= 6;
 
   return (
-    <aside aria-label="Referral intake controls" className="ts-card p-6 space-y-6">
-      {/* Section Header — Two-sentence contrast run-on (system.md & copy.md) */}
+    <aside aria-label="Referral intake controls" className="pm-card p-5 sm:p-6 space-y-5">
+      {/* Section Header & Quick Clinical Case Presets */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="ts-h3 text-[19px]">
-            Referral intake.{' '}
-            <span className="ts-muted">Day 0 profile.</span>
+        <div>
+          <div className="pm-kicker">Step 1 · Day 0 Intake</div>
+          <h2 className="pm-h3 text-[18px] mt-1">
+            Child &amp; household profile
           </h2>
+          <p className="text-[13.5px] text-[var(--pm-muted)] mt-1 leading-relaxed">
+            Filters in-state CareNodes by language staffing, Medicaid enrollment, and household transit access.
+          </p>
         </div>
 
-        <p className="text-[14px] text-[#556070] leading-relaxed">
-          Filter eligible clinics by home language, Medicaid coverage, and travel distance.
-        </p>
-
-        {/* Sample referral presets — uniform system styling, zero rainbow pills */}
+        {/* Sample referral presets — explicit aria-pressed state */}
         <div className="space-y-1.5 pt-1 no-print">
-          <div className="ts-label">Load preset case</div>
-          <div className="flex flex-wrap gap-1.5">
-            <button
-              type="button"
-              onClick={() => onSelectPreset('default20m')}
-              className="px-2.5 py-1.5 rounded-[7px] text-[12.5px] font-medium bg-[#F8F7F4] hover:bg-[#E6E2D9] text-[#1D2530] border border-[rgba(29,37,48,0.14)] cursor-pointer transition-colors"
-            >
-              20m Spanish Medicaid
-            </button>
-            <button
-              type="button"
-              onClick={() => onSelectPreset('zeroVehicle')}
-              className="px-2.5 py-1.5 rounded-[7px] text-[12.5px] font-medium bg-[#F8F7F4] hover:bg-[#E6E2D9] text-[#1D2530] border border-[rgba(29,37,48,0.14)] cursor-pointer transition-colors"
-            >
-              Zero-vehicle rural
-            </button>
-            <button
-              type="button"
-              onClick={() => onSelectPreset('agingOut31m')}
-              className="px-2.5 py-1.5 rounded-[7px] text-[12.5px] font-medium bg-[#F8F7F4] hover:bg-[#E6E2D9] text-[#1D2530] border border-[rgba(29,37,48,0.14)] cursor-pointer transition-colors"
-            >
-              31m age-out cliff
-            </button>
+          <div className="text-[12px] font-semibold text-[var(--pm-muted)]" style={{ fontFamily: 'var(--font-display)' }}>
+            Sample triage scenarios
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                { id: 'default20m', label: '20m Spanish Medicaid' },
+                { id: 'zeroVehicle', label: 'Zero-vehicle rural' },
+                { id: 'agingOut31m', label: '31m age-out cliff' },
+              ] as const
+            ).map((preset) => {
+              const isSelected = activePreset === preset.id;
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => onSelectPreset(preset.id)}
+                  className={`min-h-[36px] px-3 py-1.5 rounded-[8px] text-[12.5px] font-semibold border cursor-pointer touch-manipulation transition-colors ${
+                    isSelected
+                      ? 'bg-[var(--pm-accent-soft)] border-[var(--pm-accent)] text-[var(--pm-accent)]'
+                      : 'bg-[var(--pm-surface)] hover:bg-[var(--pm-surface-hover)] border-[var(--pm-border)] text-[var(--pm-ink)]'
+                  }`}
+                  style={{ fontFamily: 'var(--font-display)' }}
+                >
+                  {preset.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
 
       {/* 1. State Network */}
-      <div className="space-y-2 pt-4 border-t border-[rgba(29,37,48,0.1)]">
+      <div className="space-y-2 pt-4 border-t border-[var(--pm-border)]">
         <div className="flex items-center justify-between">
-          <span className="text-[14px] font-medium text-[#1D2530]">State network</span>
-          <span className="font-mono-code text-[12.5px] text-[#556070] tabular-nums">
+          <span className="pm-label">State Part C network</span>
+          <span className="font-mono-code text-[12px] text-[var(--pm-muted)] tabular-nums">
             FIPS {STATE_META[intake.stateCode].fips}
           </span>
         </div>
@@ -104,22 +111,22 @@ export const IntakeSidebar: React.FC<IntakeSidebarProps> = ({
           onChange={(stateCode) => onChange({ stateCode })}
           fullWidth
         />
-        <p className="text-[13px] text-[#556070] tabular-nums">
+        <p className="text-[12.5px] text-[var(--pm-muted)] tabular-nums">
           {STATE_META[intake.stateCode].name} · OSEP timely IFSP:{' '}
-          <span className="font-medium text-[#1D2530]">
+          <strong className="font-semibold text-[var(--pm-ink)]">
             {STATE_META[intake.stateCode].osepRange}
-          </span>
+          </strong>
         </p>
       </div>
 
-      {/* 2. Home Census Tract — Visible label + open hairline readout (no 3-level nested box) */}
-      <div className="space-y-3 pt-4 border-t border-[rgba(29,37,48,0.1)]">
+      {/* 2. Home Census Tract */}
+      <div className="space-y-2.5 pt-4 border-t border-[var(--pm-border)]">
         <label
           htmlFor="tract-select"
-          className="flex items-center justify-between text-[14px] font-medium text-[#1D2530]"
+          className="flex items-center justify-between pm-label"
         >
           <span>Home census tract</span>
-          <span className="text-[12.5px] font-normal text-[#556070] tabular-nums">
+          <span className="text-[12px] font-normal text-[var(--pm-muted)] tabular-nums">
             {tracts.length} tracts
           </span>
         </label>
@@ -127,7 +134,7 @@ export const IntakeSidebar: React.FC<IntakeSidebarProps> = ({
           id="tract-select"
           value={selectedTract.census_tract_geoid}
           onChange={(e) => onChange({ tractGeoid: e.target.value })}
-          className="ts-input cursor-pointer"
+          className="pm-input cursor-pointer"
         >
           {tracts.map((t) => (
             <option key={t.census_tract_geoid} value={t.census_tract_geoid}>
@@ -137,26 +144,27 @@ export const IntakeSidebar: React.FC<IntakeSidebarProps> = ({
           ))}
         </select>
 
-        <dl className="grid grid-cols-3 gap-3 pt-2 tabular-nums">
+        {/* ACS Tract Readout Strip */}
+        <dl className="grid grid-cols-3 gap-2.5 p-3 rounded-[10px] bg-[var(--pm-surface)] border border-[var(--pm-border)] tabular-nums">
           <div>
-            <dt className="ts-label">Under 5</dt>
-            <dd className="font-mono-code text-[16px] font-medium text-[#1D2530] mt-0.5">
+            <dt className="text-[11.5px] text-[var(--pm-muted)] font-medium">Under 5</dt>
+            <dd className="font-mono-code text-[15px] font-semibold text-[var(--pm-ink)] mt-0.5">
               {selectedTract.children_under_5_count.toLocaleString()}
             </dd>
           </div>
-          <div className="border-x border-[rgba(29,37,48,0.1)] px-3">
-            <dt className="ts-label">Poverty</dt>
-            <dd className="font-mono-code text-[16px] font-medium text-[#1D2530] mt-0.5">
+          <div className="border-x border-[var(--pm-border)] px-2.5">
+            <dt className="text-[11.5px] text-[var(--pm-muted)] font-medium">Poverty</dt>
+            <dd className="font-mono-code text-[15px] font-semibold text-[var(--pm-ink)] mt-0.5">
               {(selectedTract.poverty_rate * 100).toFixed(1)}%
             </dd>
           </div>
           <div>
-            <dt className="ts-label">No vehicle</dt>
+            <dt className="text-[11.5px] text-[var(--pm-muted)] font-medium">Zero car</dt>
             <dd
-              className={`font-mono-code text-[16px] font-medium mt-0.5 ${
+              className={`font-mono-code text-[15px] font-semibold mt-0.5 ${
                 selectedTract.no_vehicle_rate >= 0.12
-                  ? 'text-[#8F5B1E]'
-                  : 'text-[#1D2530]'
+                  ? 'text-[var(--pm-warning)]'
+                  : 'text-[var(--pm-ink)]'
               }`}
             >
               {(selectedTract.no_vehicle_rate * 100).toFixed(1)}%
@@ -165,11 +173,11 @@ export const IntakeSidebar: React.FC<IntakeSidebarProps> = ({
         </dl>
       </div>
 
-      {/* 3. Child Age & 36-Month Statutory Cliff */}
-      <div className="space-y-2 pt-4 border-t border-[rgba(29,37,48,0.1)]">
+      {/* 3. Child Age & 36-Month Statutory Cliff (with WCAG 2.2 AA +/- buttons) */}
+      <div className="space-y-2.5 pt-4 border-t border-[var(--pm-border)]">
         <div className="flex items-center justify-between">
-          <span className="text-[14px] font-medium text-[#1D2530]">Child age</span>
-          <span className="font-mono-code text-[14px] font-medium text-[#2C5877] tabular-nums">
+          <span className="pm-label">Child age at referral</span>
+          <span className="font-mono-code text-[14px] font-semibold text-[var(--pm-accent)] tabular-nums">
             {intake.childAgeMonths} months
           </span>
         </div>
@@ -182,30 +190,37 @@ export const IntakeSidebar: React.FC<IntakeSidebarProps> = ({
         />
 
         <div
-          className={`flex items-center justify-between text-[13px] px-3 py-2 rounded-[8px] tabular-nums border ${
+          className={`flex items-center justify-between text-[12.5px] px-3 py-2 rounded-[8px] tabular-nums border ${
             isNearAgeOut
-              ? 'bg-[rgba(180,62,47,0.08)] border-[rgba(180,62,47,0.24)] text-[#B43E2F] font-medium'
-              : 'bg-[#F8F7F4] border-[rgba(29,37,48,0.09)] text-[#556070]'
+              ? 'bg-[var(--pm-danger-soft)] border-[var(--pm-danger-border)] text-[var(--pm-danger)] font-semibold'
+              : 'bg-[var(--pm-surface)] border-[var(--pm-border)] text-[var(--pm-muted)]'
           }`}
         >
           <span className="inline-flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5" />
-            <span>36-month Part C transition</span>
+            {isNearAgeOut ? (
+              <AlertCircle aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />
+            ) : (
+              <Clock aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />
+            )}
+            <span>36m Part C cliff</span>
           </span>
-          <span className="font-mono-code font-medium">
-            {monthsToAgeOut} mo remaining
+          <span className="font-mono-code font-semibold">
+            {monthsToAgeOut} mo buffer
           </span>
         </div>
       </div>
 
       {/* 4. Home Language */}
-      <div className="space-y-2 pt-4 border-t border-[rgba(29,37,48,0.1)]">
+      <div className="space-y-2 pt-4 border-t border-[var(--pm-border)]">
         <div className="flex items-center justify-between">
-          <span className="text-[14px] font-medium text-[#1D2530]">Home language</span>
-          <span className="text-[12.5px] text-[#556070]">
-            {intake.primaryLanguage !== 'English'
-              ? 'Bilingual eval required'
-              : 'Standard eval'}
+          <span className="pm-label">Primary home language</span>
+          <span className="inline-flex items-center gap-1 text-[12px] text-[var(--pm-muted)]">
+            <CheckCircle2 aria-hidden="true" className="w-3.5 h-3.5 text-[var(--pm-accent)]" />
+            <span>
+              {intake.primaryLanguage !== 'English'
+                ? 'Bilingual required'
+                : 'Standard'}
+            </span>
           </span>
         </div>
         <FluidSegmentedControl
@@ -219,12 +234,9 @@ export const IntakeSidebar: React.FC<IntakeSidebarProps> = ({
       </div>
 
       {/* 5. Developmental Domain */}
-      <div className="space-y-2 pt-4 border-t border-[rgba(29,37,48,0.1)]">
-        <label
-          htmlFor="concern-select"
-          className="block text-[14px] font-medium text-[#1D2530]"
-        >
-          Developmental concern
+      <div className="space-y-2 pt-4 border-t border-[var(--pm-border)]">
+        <label htmlFor="concern-select" className="block pm-label">
+          Developmental concern domain
         </label>
         <select
           id="concern-select"
@@ -234,22 +246,22 @@ export const IntakeSidebar: React.FC<IntakeSidebarProps> = ({
               concernDomain: e.target.value as ReferralIntakeInput['concernDomain'],
             })
           }
-          className="ts-input cursor-pointer"
+          className="pm-input cursor-pointer"
         >
           <option value="Speech & Language Delay">
-            Speech and language delay
+            Speech &amp; language delay
           </option>
           <option value="Autism / Social Communication">
-            Autism and social communication
+            Autism &amp; social communication
           </option>
           <option value="Motor / Adaptive Delay">
-            Motor, feeding, and adaptive delay
+            Motor, feeding &amp; adaptive delay
           </option>
         </select>
       </div>
 
-      {/* 6. Eligibility & Counterfactual Switches (ink switches, harbour accent on simulation) */}
-      <div className="pt-2 border-t border-[rgba(29,37,48,0.1)]">
+      {/* 6. Eligibility & Counterfactual Switches */}
+      <div className="pt-2 border-t border-[var(--pm-border)]">
         <FluidSwitch
           checked={intake.insuranceMedicaid}
           onChange={(insuranceMedicaid) => onChange({ insuranceMedicaid })}
@@ -272,7 +284,7 @@ export const IntakeSidebar: React.FC<IntakeSidebarProps> = ({
           checked={intake.simulateEhrUpgrade}
           onChange={(simulateEhrUpgrade) => onChange({ simulateEhrUpgrade })}
           accent="harbour"
-          label="Simulate e-portal upgrade"
+          label="Simulate e-Portal upgrade"
           description="Replace paper-fax coordinator links with electronic intake"
         />
       </div>

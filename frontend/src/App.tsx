@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  CalendarClock,
+  CheckCircle2,
+  Clock,
+  MapPin,
+  TrendingDown,
+} from 'lucide-react';
 import { AgentChatSidebar } from './components/AgentChatSidebar';
 import { AgentModal } from './components/AgentModal';
 import { BriefAndCaregiverTabs } from './components/BriefAndCaregiverTabs';
@@ -9,6 +17,7 @@ import { PathwayClockComparison } from './components/PathwayClockComparison';
 import { SyntheticBanner } from './components/SyntheticBanner';
 import {
   buildIsoGqlSnippet,
+  cleanOrgName,
   computeBounceHubDiagnostics,
   computePostOutputEquityAudit,
   findPathwaysForReferral,
@@ -36,7 +45,19 @@ function pickDefaultTract(stateCode: StateCode): string {
   return sorted[0]?.census_tract_geoid ?? tracts[0]?.census_tract_geoid ?? '';
 }
 
+function getInitialTheme(): 'light' | 'dark' {
+  if (typeof window === 'undefined') return 'light';
+  const saved = window.localStorage.getItem('pm-theme');
+  if (saved === 'dark' || saved === 'light') return saved;
+  return 'light';
+}
+
 export default function App() {
+  const [theme, setTheme] = useState<'light' | 'dark'>(getInitialTheme);
+  const [activePreset, setActivePreset] = useState<
+    'default20m' | 'zeroVehicle' | 'agingOut31m' | null
+  >('default20m');
+
   const [intake, setIntake] = useState<ReferralIntakeInput>(() => ({
     stateCode: 'MS',
     tractGeoid: pickDefaultTract('MS'),
@@ -63,6 +84,11 @@ export default function App() {
   const [agentResponse, setAgentResponse] = useState<LiveAgentResponse | null>(
     null
   );
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    window.localStorage.setItem('pm-theme', theme);
+  }, [theme]);
 
   const stateBundle = useMemo(
     () => getStateData(intake.stateCode),
@@ -145,6 +171,7 @@ export default function App() {
   }, [intake, activePathway]);
 
   const handleUpdateIntake = (patch: Partial<ReferralIntakeInput>) => {
+    setActivePreset(null);
     setSelectedPathwayId(null);
     setAgentResponse(null);
     setAgentError(null);
@@ -164,6 +191,7 @@ export default function App() {
   const handleSelectPreset = (
     preset: 'default20m' | 'zeroVehicle' | 'agingOut31m'
   ) => {
+    setActivePreset(preset);
     setSelectedPathwayId(null);
     setAgentResponse(null);
     setAgentError(null);
@@ -234,8 +262,32 @@ export default function App() {
     setMicTriggerCount((c) => c + 1);
   };
 
+  const monthsRemaining = 36 - intake.childAgeMonths;
+  const nearCliff = monthsRemaining <= 6;
+  const daysSavedVsFax =
+    activePathway && routingResult.historicalTrapChain
+      ? Math.max(
+          0,
+          routingResult.historicalTrapChain.totalWaitDays -
+            activePathway.totalExpectedDays
+        )
+      : null;
+
+  /* Polite Live Announcement for Screen Readers (contextual-live-badge-updates) */
+  const liveRouteSummary = activePathway
+    ? `${selectedTract.county_name}, ${intake.stateCode}: ${
+        activePathway.clears45DayClock ? 'Compliant route' : 'Over-45-day route'
+      } in ${activePathway.totalExpectedDays} days via ${cleanOrgName(
+        activePathway.steps[2].node.synthetic_organization_name
+      )}.`
+    : `${selectedTract.county_name}, ${intake.stateCode}: No standard route clears 45 days; mobile override needed.`;
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#F3F1EC] text-[#1D2530]">
+    <div className="min-h-dvh flex flex-col bg-[var(--pm-bg)] text-[var(--pm-ink)]">
+      <div role="status" aria-live="polite" className="sr-only">
+        {liveRouteSummary}
+      </div>
+
       <SyntheticBanner
         zeroLepRatio={stateBundle.integrity.zeroLepRatio}
         nschStrataCount={stateBundle.integrity.nschStatewideStrataCount}
@@ -243,25 +295,148 @@ export default function App() {
         agentEndpoint={agentEndpoint}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
+        theme={theme}
+        onToggleTheme={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))}
         onTriggerVoiceAsk={handleTriggerVoiceAsk}
         onOpenAgentModal={() => setAgentModalOpen(true)}
       />
 
-      <main id="main-workspace" className="flex-1 ts-wrap py-7 sm:py-8">
+      <main id="main-workspace" className="flex-1 pm-wrap py-6 sm:py-7 space-y-6">
+        {/* Executive 4-Card Clinical Bento KPI Strip (ui-ux-pro-max Data-Dense Bento Hierarchy) */}
+        <section
+          aria-label="Statutory referral triage summary metrics"
+          className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 tabular-nums"
+        >
+          {/* KPI 1: Statutory 45-Day IFSP Clock */}
+          <div className="pm-kpi flex flex-col justify-between gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="pm-kicker">45-Day IFSP Clock</span>
+              {activePathway?.clears45DayClock ? (
+                <span className="pm-badge pm-badge-compliant">
+                  <CheckCircle2 aria-hidden="true" className="w-3.5 h-3.5" />
+                  <span>Compliant</span>
+                </span>
+              ) : (
+                <span className="pm-badge pm-badge-danger">
+                  <AlertTriangle aria-hidden="true" className="w-3.5 h-3.5" />
+                  <span>Override req.</span>
+                </span>
+              )}
+            </div>
+            <div className="flex items-baseline justify-between gap-2 pt-0.5">
+              <div className="font-mono-code text-[26px] font-semibold text-[var(--pm-ink)] leading-none">
+                {activePathway ? `${activePathway.totalExpectedDays}d` : '—'}
+                <span className="text-[13.5px] font-normal text-[var(--pm-muted)]">
+                  {' '}
+                  / 45d
+                </span>
+              </div>
+              <span className="text-[12.5px] text-[var(--pm-muted)]">
+                {activePathway
+                  ? activePathway.clears45DayClock
+                    ? `${activePathway.daysMargin}d safety margin`
+                    : `+${activePathway.totalExpectedDays - 45}d over limit`
+                  : 'No 3-hop match'}
+              </span>
+            </div>
+          </div>
+
+          {/* KPI 2: Time Saved vs. Historical Paper-Fax Loop */}
+          <div className="pm-kpi flex flex-col justify-between gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="pm-kicker">Saved vs. Fax Loop</span>
+              <span className="pm-badge pm-badge-accent">
+                <TrendingDown aria-hidden="true" className="w-3.5 h-3.5" />
+                <span>e-Portal gain</span>
+              </span>
+            </div>
+            <div className="flex items-baseline justify-between gap-2 pt-0.5">
+              <div className="font-mono-code text-[26px] font-semibold text-[var(--pm-accent)] leading-none">
+                {daysSavedVsFax !== null ? `-${daysSavedVsFax}d` : '—'}
+              </div>
+              <span className="text-[12.5px] text-[var(--pm-muted)] truncate">
+                {routingResult.historicalTrapChain
+                  ? `vs. ${routingResult.historicalTrapChain.totalWaitDays}d paper-fax chain`
+                  : 'Baseline comparison'}
+              </span>
+            </div>
+          </div>
+
+          {/* KPI 3: 36-Month Part C Transition Cliff */}
+          <div className="pm-kpi flex flex-col justify-between gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="pm-kicker">Part C Eligibility Window</span>
+              {nearCliff ? (
+                <span className="pm-badge pm-badge-danger">
+                  <CalendarClock aria-hidden="true" className="w-3.5 h-3.5" />
+                  <span>Urgent &le;6m</span>
+                </span>
+              ) : (
+                <span className="pm-badge">
+                  <Clock aria-hidden="true" className="w-3.5 h-3.5 text-[var(--pm-muted)]" />
+                  <span>Age {intake.childAgeMonths}m</span>
+                </span>
+              )}
+            </div>
+            <div className="flex items-baseline justify-between gap-2 pt-0.5">
+              <div
+                className={`font-mono-code text-[26px] font-semibold leading-none ${
+                  nearCliff ? 'text-[var(--pm-danger)]' : 'text-[var(--pm-ink)]'
+                }`}
+              >
+                {monthsRemaining} mo
+              </div>
+              <span className="text-[12.5px] text-[var(--pm-muted)]">
+                until 36m Part B transition
+              </span>
+            </div>
+          </div>
+
+          {/* KPI 4: Eval Hub Distance & Transit Guardrail */}
+          <div className="pm-kpi flex flex-col justify-between gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="pm-kicker">Eval Hub Distance</span>
+              {!intake.hasHouseholdVehicle ? (
+                <span className="pm-badge pm-badge-warning">
+                  <MapPin aria-hidden="true" className="w-3.5 h-3.5" />
+                  <span>Zero-car guard</span>
+                </span>
+              ) : (
+                <span className="pm-badge">
+                  <MapPin aria-hidden="true" className="w-3.5 h-3.5 text-[var(--pm-muted)]" />
+                  <span>{selectedTract.county_name}</span>
+                </span>
+              )}
+            </div>
+            <div className="flex items-baseline justify-between gap-2 pt-0.5">
+              <div className="font-mono-code text-[26px] font-semibold text-[var(--pm-ink)] leading-none">
+                {activePathway ? `${activePathway.evalHubDistanceKm} km` : '—'}
+              </div>
+              <span className="text-[12.5px] text-[var(--pm-muted)] truncate">
+                {activePathway?.transportAdvisory
+                  ? 'NEMT / mobile eval flagged'
+                  : 'Direct regional access'}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* Main 12-Column Clinical Triage Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Intake Rail */}
-          <div className="lg:col-span-4 xl:col-span-3 lg:sticky lg:top-22 order-2 lg:order-1 ts-hero-enter-delay">
+          <div className="lg:col-span-4 xl:col-span-3 lg:sticky lg:top-22 order-2 lg:order-1">
             <IntakeSidebar
               intake={intake}
               tracts={stateBundle.tracts}
               selectedTract={selectedTract}
+              activePreset={activePreset}
               onChange={handleUpdateIntake}
               onSelectPreset={handleSelectPreset}
             />
           </div>
 
           {/* Center Primary Triage Frame & Optional Graph/Audit Sections */}
-          <div className="lg:col-span-8 xl:col-span-5 space-y-6 order-3 lg:order-2">
+          <div className="lg:col-span-8 xl:col-span-5 space-y-6 order-3 lg:order-2 min-w-0">
             <PathwayClockComparison
               intake={intake}
               tract={selectedTract}
@@ -302,23 +477,22 @@ export default function App() {
                 />
               </>
             ) : (
-              <div className="ts-card p-6 flex flex-wrap items-center justify-between gap-4">
+              <div className="pm-card p-5 sm:p-6 flex flex-wrap items-center justify-between gap-4">
                 <div className="space-y-1 max-w-lg">
-                  <h2 className="ts-h3 text-[16px]">
-                    Focused triage mode.{' '}
-                    <span className="ts-muted">Graph topology and SQL hidden.</span>
+                  <h2 className="pm-h3 text-[16px]">
+                    Focused clinical triage active
                   </h2>
-                  <p className="text-[14px] text-[#556070] leading-relaxed">
-                    Open the 30-node referral graph, bilingual caregiver letters, bounce-hub diagnosis, and BigQuery ISO GQL queries when needed.
+                  <p className="text-[14px] text-[var(--pm-muted)] leading-relaxed">
+                    Expand the 30-node CareNode referral graph (plus accessible edge table), bilingual caregiver notes, bounce-hub audit, and BigQuery ISO GQL queries.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setViewMode('full')}
-                  className="ts-btn ts-btn-secondary shrink-0"
+                  className="pm-btn pm-btn-secondary shrink-0"
                 >
                   <span>Open graph &amp; audit</span>
-                  <ArrowRight className="w-3.5 h-3.5 ts-arrow" />
+                  <ArrowRight aria-hidden="true" className="w-4 h-4" />
                 </button>
               </div>
             )}
@@ -327,7 +501,7 @@ export default function App() {
           {/* Right Voice & Chat Triage Agent */}
           <div
             ref={chatSectionRef}
-            className="lg:col-span-12 xl:col-span-4 xl:sticky xl:top-22 order-1 lg:order-3 no-print ts-hero-enter-delay"
+            className="lg:col-span-12 xl:col-span-4 xl:sticky xl:top-22 order-1 lg:order-3 no-print"
           >
             <AgentChatSidebar
               intake={intake}
@@ -342,19 +516,21 @@ export default function App() {
         </div>
       </main>
 
-      {/* Taste-Skill Closing Footer (system.md §Footer & copy.md §Credits — single expandable credits line) */}
-      <footer className="border-t border-[rgba(29,37,48,0.1)] bg-[#F3F1EC] mt-8 no-print">
-        <div className="ts-wrap py-6 flex flex-wrap items-center justify-between gap-4 text-[13px] text-[#556070]">
+      {/* Clinical Compliance & Provenance Footer */}
+      <footer className="border-t border-[var(--pm-border)] bg-[var(--pm-card)] mt-8 no-print">
+        <div className="pm-wrap py-5 flex flex-wrap items-center justify-between gap-4 text-[13px] text-[var(--pm-muted)]">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <span className="font-medium text-[#1D2530]">First Milestones · 2026</span>
-            <span>34 CFR § 303.310 statutory 45-day IFSP triage</span>
+            <span className="font-semibold text-[var(--pm-ink)]" style={{ fontFamily: 'var(--font-display)' }}>
+              First Milestones · 2026
+            </span>
+            <span>34 CFR § 303.310 statutory 45-day IFSP clinical routing</span>
           </div>
 
           <details className="credits">
-            <summary className="cursor-pointer hover:text-[#1D2530] transition-colors">
+            <summary className="cursor-pointer hover:text-[var(--pm-ink)] font-medium transition-colors">
               Data sources: Synthetic CareNodes, US Census ACS, HRSA NSCH, OSEP Part C
             </summary>
-            <p className="mt-2 max-w-xl text-[12.5px] text-[#556070] leading-relaxed">
+            <p className="mt-2 max-w-xl text-[12.5px] text-[var(--pm-muted)] leading-relaxed">
               Provider directories (<code className="font-mono-code text-[11.5px]">SYN-PROV-*</code>), Part C agencies (<code className="font-mono-code text-[11.5px]">SYN-PARTC-*</code>), and multi-hop referral logs are 100% synthetic. Tract under-5 counts and vehicle access come from US Census ACS 5-Year estimates; statewide developmental screening strata come from HRSA NSCH.
             </p>
           </details>

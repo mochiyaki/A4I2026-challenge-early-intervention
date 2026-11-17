@@ -23,6 +23,7 @@ import type {
   TractDemographic,
 } from '../types';
 import {
+  EXIT_FAST_TRANSITION,
   REDUCED_MOTION_TRANSITION,
   SPRING_DEFAULT,
   triggerCausalHaptic,
@@ -220,26 +221,26 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
   return (
     <aside
       aria-label="Voice and chat triage agent"
-      className="ts-card flex flex-col overflow-hidden h-[640px] lg:h-[calc(100vh-6.25rem)] min-h-[540px]"
+      className="pm-card flex flex-col overflow-hidden h-[620px] lg:h-[calc(100dvh-6.5rem)] min-h-[520px]"
     >
-      {/* Header — Flat opaque card top, solid Harbour Ink mark, 1px hairline */}
-      <div className="px-5 pt-4 pb-3.5 border-b border-[rgba(29,37,48,0.1)] bg-white space-y-3 shrink-0">
+      {/* Header */}
+      <div className="px-5 pt-4 pb-3.5 border-b border-[var(--pm-border)] bg-[var(--pm-card)] space-y-3 shrink-0">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="relative w-8 h-8 rounded-[8px] bg-[#1D2530] text-[#F3F1EC] flex items-center justify-center shrink-0">
-              <AudioLines className="w-4 h-4" />
+            <div className="relative w-9 h-9 rounded-[9px] bg-[var(--pm-cta-bg)] text-white flex items-center justify-center shrink-0">
+              <AudioLines aria-hidden="true" className="w-4 h-4" />
               {voice.isSpeaking && (
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#2C5877] ring-2 ring-white" />
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[var(--pm-compliant)] ring-2 ring-[var(--pm-card)]" />
               )}
             </div>
             <div className="min-w-0">
-              <h2 className="ts-h3 text-[16px] truncate">
-                Voice and chat agent
+              <h2 className="pm-h3 text-[16px] truncate">
+                Bilingual voice &amp; chat agent
               </h2>
               <button
                 type="button"
                 onClick={onOpenAgentModal}
-                className="text-[12.5px] text-[#556070] hover:text-[#2C5877] truncate block cursor-pointer transition-colors"
+                className="text-[12px] text-[var(--pm-muted)] hover:text-[var(--pm-accent)] truncate block cursor-pointer transition-colors"
               >
                 {agentEndpoint
                   ? 'Connected to live ADK endpoint'
@@ -248,11 +249,14 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             {voice.ttsSupported && (
               <button
                 type="button"
-                aria-label={autoSpeak ? 'Mute spoken replies' : 'Enable spoken replies'}
+                aria-label={
+                  autoSpeak ? 'Mute spoken replies' : 'Enable spoken replies'
+                }
+                aria-pressed={autoSpeak}
                 title={
                   autoSpeak
                     ? 'Spoken replies on (click to mute)'
@@ -263,20 +267,21 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
                   if (autoSpeak) voice.stopSpeaking();
                   setAutoSpeak((v) => !v);
                 }}
-                className={`inline-flex items-center gap-1.5 min-h-[34px] px-2.5 py-1 rounded-[7px] text-[12.5px] font-medium border cursor-pointer transition-colors ${
+                className={`inline-flex items-center gap-1.5 min-h-[38px] sm:min-h-[34px] px-2.5 py-1 rounded-[8px] text-[12px] font-semibold border cursor-pointer touch-manipulation transition-colors ${
                   autoSpeak
-                    ? 'bg-[rgba(44,88,119,0.09)] border-[rgba(44,88,119,0.24)] text-[#2C5877]'
-                    : 'bg-[#F8F7F4] border-[rgba(29,37,48,0.12)] text-[#556070]'
+                    ? 'bg-[var(--pm-accent-soft)] border-[var(--pm-accent-border)] text-[var(--pm-accent)]'
+                    : 'bg-[var(--pm-surface)] border-[var(--pm-border)] text-[var(--pm-muted)]'
                 }`}
+                style={{ fontFamily: 'var(--font-display)' }}
               >
                 {autoSpeak ? (
                   <>
-                    <Volume2 className="w-3.5 h-3.5" />
+                    <Volume2 aria-hidden="true" className="w-3.5 h-3.5" />
                     <span>Audio on</span>
                   </>
                 ) : (
                   <>
-                    <VolumeX className="w-3.5 h-3.5" />
+                    <VolumeX aria-hidden="true" className="w-3.5 h-3.5" />
                     <span>Muted</span>
                   </>
                 )}
@@ -292,15 +297,17 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
                 setSuggestions(INITIAL_SUGGESTIONS);
                 setMessages((prev) => prev.slice(0, 1));
               }}
-              className="w-[34px] h-[34px] rounded-[7px] bg-[#F8F7F4] hover:bg-[#E6E2D9] border border-[rgba(29,37,48,0.12)] text-[#556070] hover:text-[#1D2530] flex items-center justify-center cursor-pointer transition-colors"
+              className="w-[38px] h-[38px] sm:w-[34px] sm:h-[34px] rounded-[8px] bg-[var(--pm-surface)] hover:bg-[var(--pm-surface-hover)] border border-[var(--pm-border)] text-[var(--pm-muted)] hover:text-[var(--pm-ink)] flex items-center justify-center cursor-pointer touch-manipulation transition-colors"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCcw aria-hidden="true" className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
         <div className="flex items-center justify-between gap-2">
-          <span className="ts-label">Microphone language</span>
+          <span className="text-[12.5px] font-medium text-[var(--pm-muted)]">
+            Recognition language
+          </span>
           <FluidSegmentedControl<'en-US' | 'es-US'>
             layoutId="voice-lang-pill"
             ariaLabel="Microphone recognition language"
@@ -326,7 +333,7 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
         </div>
       </div>
 
-      {/* Live Audio-Reactive Listening Bar — Harbour Slate inverse ground (zero gradient slop) */}
+      {/* Live Audio-Reactive Listening Bar */}
       <AnimatePresence>
         {voice.isListening && (
           <motion.div
@@ -334,9 +341,13 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
             animate={
               reducedMotion ? { opacity: 1 } : { opacity: 1, height: 'auto' }
             }
-            exit={reducedMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}
+            exit={
+              reducedMotion
+                ? { opacity: 0, transition: REDUCED_MOTION_TRANSITION }
+                : { opacity: 0, height: 0, transition: EXIT_FAST_TRANSITION }
+            }
             transition={bubbleTransition}
-            className="bg-[#18202A] text-[#F3F1EC] px-5 py-3 flex items-center justify-between gap-3 shrink-0 overflow-hidden border-b border-[rgba(243,241,236,0.12)]"
+            className="bg-[#0F172A] text-[#F8FAFC] px-5 py-3 flex items-center justify-between gap-3 shrink-0 overflow-hidden border-b border-[rgba(248,250,252,0.14)]"
           >
             <div className="flex items-center gap-3 min-w-0">
               <div className="relative w-8 h-8 flex items-center justify-center shrink-0">
@@ -347,19 +358,19 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
                       : `scale(${1 + voice.micLevel * 0.85})`,
                     opacity: 0.3 + voice.micLevel * 0.45,
                   }}
-                  className="absolute inset-0 rounded-full bg-[#7FB3D5] transition-transform duration-75"
+                  className="absolute inset-0 rounded-full bg-[#38BDF8] transition-transform duration-75"
                 />
-                <span className="relative w-6 h-6 rounded-full bg-[#F3F1EC] text-[#18202A] flex items-center justify-center">
-                  <Mic className="w-3.5 h-3.5" />
+                <span className="relative w-6 h-6 rounded-full bg-[#F8FAFC] text-[#0F172A] flex items-center justify-center">
+                  <Mic aria-hidden="true" className="w-3.5 h-3.5" />
                 </span>
               </div>
               <div className="min-w-0">
-                <div className="text-[13px] font-medium">
+                <div className="text-[13px] font-semibold">
                   {voiceLang === 'es-US'
                     ? 'Escuchando en español...'
                     : 'Listening for referral details...'}
                 </div>
-                <div className="text-[12px] text-[#9AA5B4] truncate">
+                <div className="text-[12px] text-[#94A3B8] truncate">
                   {inputText ||
                     (voiceLang === 'es-US'
                       ? 'Ej.: "Niño de 20 meses con Medicaid sin auto"'
@@ -371,7 +382,7 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
             <button
               type="button"
               onClick={voice.stopListening}
-              className="px-3 py-1 rounded-[6px] bg-[#222C39] hover:bg-[#2E3B4C] border border-[rgba(243,241,236,0.2)] text-[12px] font-medium shrink-0 cursor-pointer transition-colors"
+              className="min-h-[34px] px-3 py-1 rounded-[7px] bg-[#1E293B] hover:bg-[#334155] border border-[rgba(248,250,252,0.22)] text-[12px] font-semibold shrink-0 cursor-pointer transition-colors"
             >
               Stop
             </button>
@@ -382,7 +393,7 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
       {/* Conversation Stream */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-[#F8F7F4]"
+        className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-[var(--pm-surface)]"
       >
         {messages.map((turn) => {
           const isUser = turn.role === 'user';
@@ -402,7 +413,7 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
               {!isUser && turn.badges && turn.badges.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-1.5">
                   {turn.badges.map((b) => (
-                    <span key={b.label} className="ts-chip ts-chip-accent">
+                    <span key={b.label} className="pm-badge pm-badge-accent">
                       {b.label}
                     </span>
                   ))}
@@ -410,10 +421,10 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
               )}
 
               <div
-                className={`max-w-[92%] rounded-[14px] px-4 py-3 text-[14px] leading-relaxed ${
+                className={`max-w-[92%] rounded-[14px] px-4 py-3 text-[14.5px] leading-relaxed ${
                   isUser
-                    ? 'bg-[#2C5877] text-white rounded-br-[4px]'
-                    : 'bg-white text-[#1D2530] rounded-bl-[4px] border border-[rgba(29,37,48,0.11)]'
+                    ? 'bg-[var(--pm-cta-bg)] text-white rounded-br-[4px]'
+                    : 'bg-[var(--pm-card)] text-[var(--pm-ink)] rounded-bl-[4px] border border-[var(--pm-border)]'
                 }`}
               >
                 <div className="whitespace-pre-wrap">
@@ -421,8 +432,8 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
                 </div>
 
                 {!isUser && voice.ttsSupported && (
-                  <div className="mt-2.5 pt-2 border-t border-[rgba(29,37,48,0.08)] flex items-center justify-between gap-2">
-                    <span className="text-[11.5px] text-[#556070]">
+                  <div className="mt-2.5 pt-2 border-t border-[var(--pm-border)] flex items-center justify-between gap-2">
+                    <span className="text-[11.5px] text-[var(--pm-muted)]">
                       {turn.sourceMode === 'live-adk'
                         ? 'Live ADK agent'
                         : 'ReferralGraph triage'}
@@ -441,16 +452,19 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
                           );
                         }
                       }}
-                      className="inline-flex items-center gap-1 text-[12px] font-medium text-[#2C5877] hover:underline cursor-pointer"
+                      className="inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--pm-accent)] hover:underline cursor-pointer"
                     >
                       {isCurrentlySpeaking ? (
                         <>
-                          <Square className="w-3 h-3 fill-current" />
+                          <Square
+                            aria-hidden="true"
+                            className="w-3 h-3 fill-current"
+                          />
                           <span>Stop audio</span>
                         </>
                       ) : (
                         <>
-                          <Volume2 className="w-3.5 h-3.5" />
+                          <Volume2 aria-hidden="true" className="w-3.5 h-3.5" />
                           <span>
                             {turn.spokenLang === 'es-US'
                               ? 'Escuchar respuesta'
@@ -467,30 +481,36 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
         })}
 
         {isSending && (
-          <div className="flex items-start">
-            <div className="rounded-[12px] bg-white border border-[rgba(29,37,48,0.1)] px-4 py-2.5 text-[13px] text-[#556070]">
+          <div className="flex items-start" role="status" aria-live="polite">
+            <div className="rounded-[12px] bg-[var(--pm-card)] border border-[var(--pm-border)] px-4 py-2.5 text-[13px] text-[var(--pm-muted)]">
               Querying ReferralGraph...
             </div>
           </div>
         )}
 
         {voice.voiceError && (
-          <div className="rounded-[10px] bg-[rgba(143,91,30,0.09)] border border-[rgba(143,91,30,0.25)] px-3.5 py-2.5 text-[13px] text-[#1D2530]">
+          <div
+            role="alert"
+            className="rounded-[10px] bg-[var(--pm-warning-soft)] border border-[var(--pm-warning-border)] px-3.5 py-2.5 text-[13px] text-[var(--pm-ink)]"
+          >
             {voice.voiceError}
           </div>
         )}
       </div>
 
-      {/* Prompt Chips + 44px Accessible Composer */}
-      <div className="p-4 bg-white border-t border-[rgba(29,37,48,0.1)] space-y-3 shrink-0 no-print">
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+      {/* Prompt Chips + 44px Accessible Composer (IME-Safe) */}
+      <div className="p-4 bg-[var(--pm-card)] border-t border-[var(--pm-border)] space-y-3 shrink-0 no-print">
+        <div className="flex gap-2 overflow-x-auto pb-0.5 no-scrollbar">
           {suggestions.map((chip) => (
             <button
               key={chip}
               type="button"
-              onPointerDown={() => triggerCausalHaptic(3)}
-              onClick={() => handleSend(chip, false)}
-              className="shrink-0 px-3 py-1.5 rounded-[7px] bg-[#F8F7F4] hover:bg-[#E6E2D9] border border-[rgba(29,37,48,0.12)] text-[12.5px] font-medium text-[#1D2530] cursor-pointer transition-colors"
+              onClick={() => {
+                triggerCausalHaptic(3);
+                handleSend(chip, false);
+              }}
+              className="shrink-0 min-h-[36px] px-3 py-1.5 rounded-[8px] bg-[var(--pm-surface)] hover:bg-[var(--pm-surface-hover)] border border-[var(--pm-border)] text-[12.5px] font-semibold text-[var(--pm-ink)] cursor-pointer touch-manipulation transition-colors"
+              style={{ fontFamily: 'var(--font-display)' }}
             >
               {chip}
             </button>
@@ -502,7 +522,7 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
             e.preventDefault();
             handleSend(inputText, false);
           }}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2.5"
         >
           <button
             type="button"
@@ -511,6 +531,7 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
             aria-label={
               voice.isListening ? 'Stop voice input' : 'Start voice input'
             }
+            aria-pressed={voice.isListening}
             title={
               voice.isSupported
                 ? voice.isListening
@@ -518,16 +539,16 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
                   : 'Start voice input'
                 : 'Voice input requires Chrome, Edge, or Safari'
             }
-            className={`w-[44px] h-[44px] rounded-[9px] flex items-center justify-center shrink-0 cursor-pointer border transition-colors ${
+            className={`w-[44px] h-[44px] rounded-[10px] flex items-center justify-center shrink-0 cursor-pointer touch-manipulation border transition-colors ${
               voice.isListening
-                ? 'bg-[#B43E2F] border-[#B43E2F] text-white'
-                : 'bg-[#F8F7F4] hover:bg-[#E6E2D9] border-[rgba(29,37,48,0.18)] text-[#1D2530]'
+                ? 'bg-[var(--pm-danger)] border-[var(--pm-danger)] text-white'
+                : 'bg-[var(--pm-surface)] hover:bg-[var(--pm-surface-hover)] border-[var(--pm-border-strong)] text-[var(--pm-ink)]'
             } disabled:opacity-40`}
           >
             {voice.isListening ? (
-              <MicOff className="w-4 h-4" />
+              <MicOff aria-hidden="true" className="w-4 h-4" />
             ) : (
-              <Mic className="w-4 h-4 text-[#2C5877]" />
+              <Mic aria-hidden="true" className="w-4 h-4 text-[var(--pm-accent)]" />
             )}
           </button>
 
@@ -540,20 +561,25 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                }
+              }}
               placeholder={
                 voiceLang === 'es-US'
                   ? 'Escriba su consulta o pulse el micrófono...'
                   : 'Ask about routes, wait times, or parent notes...'
               }
-              className="ts-input pr-11"
+              className="pm-input pr-12"
             />
             <button
               type="submit"
               disabled={!inputText.trim() || isSending}
               aria-label="Send message"
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-[7px] bg-[#2C5877] hover:bg-[#244963] text-white flex items-center justify-center disabled:opacity-30 cursor-pointer transition-colors"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-[8px] bg-[var(--pm-cta-bg)] hover:bg-[var(--pm-cta-hover)] text-white flex items-center justify-center disabled:opacity-30 cursor-pointer touch-manipulation transition-colors"
             >
-              <ArrowUp className="w-4 h-4" />
+              <ArrowUp aria-hidden="true" className="w-4 h-4" />
             </button>
           </div>
         </form>
@@ -567,7 +593,7 @@ function renderSimpleMarkdown(text: string, isUser: boolean): React.ReactNode {
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
       return (
-        <strong key={i} className="font-semibold">
+        <strong key={i} className="font-bold">
           {part.slice(2, -2)}
         </strong>
       );
@@ -576,10 +602,10 @@ function renderSimpleMarkdown(text: string, isUser: boolean): React.ReactNode {
       return (
         <code
           key={i}
-          className={`font-mono-code text-[12.5px] px-1.5 py-0.5 rounded-[4px] ${
+          className={`font-mono-code text-[12.5px] px-1.5 py-0.5 rounded-[5px] ${
             isUser
               ? 'bg-white/20 text-white'
-              : 'bg-[#F3F1EC] text-[#2C5877]'
+              : 'bg-[var(--pm-surface)] text-[var(--pm-accent)]'
           }`}
         >
           {part.slice(1, -1)}

@@ -1,58 +1,116 @@
 @import "tailwindcss";
 
 @layer base {
-  :root {
-    /* Dealt by taste-skill 2.5.1 (start.mjs deal --page software --trade clinic):
-       Palette: linen-harbour | Type: geist (Geist + Geist Mono) | Radius: soft */
-    --p-bg: #f3f1ec;
-    --p-card: #ffffff;
-    --p-surface: #e6e2d9;
-    --p-surface-subtle: #f8f7f4;
-    --p-ink: #1d2530;
-    --p-text: #27303d;
-    --p-muted: #556070;
-    --p-line: rgba(29, 37, 48, 0.11);
-    --p-line-strong: rgba(29, 37, 48, 0.22);
+  :root,
+  [data-theme="light"] {
+    /* ui-ux-pro-max Clinical Swiss Minimalism + Data-Dense Bento Palette (Light) */
+    --pm-bg: #f8fafc;
+    --pm-surface: #f1f5f9;
+    --pm-surface-hover: #e2e8f0;
+    --pm-card: #ffffff;
+    --pm-card-elevated: #ffffff;
+    --pm-ink: #0f172a;
+    --pm-text: #1e293b;
+    --pm-muted: #475569;
+    --pm-border: #e2e8f0;
+    --pm-border-strong: #94a3b8;
 
-    /* Single locked accent — Harbour Blue (zero violet/lavender, <3% screen fill) */
-    --p-accent: #2c5877;
-    --p-accent-hover: #244963;
-    --p-accent-tint: rgba(44, 88, 119, 0.09);
-    --p-accent-ink: #ffffff;
-    --p-action: #2c5877;
+    /* Clinical Sky Accent & Primary Action (5.9:1 on #FFFFFF) */
+    --pm-accent: #0369a1;
+    --pm-accent-hover: #075985;
+    --pm-accent-soft: rgba(3, 105, 161, 0.1);
+    --pm-accent-border: rgba(3, 105, 161, 0.28);
+    --pm-cta-bg: #0369a1;
+    --pm-cta-hover: #075985;
+    --pm-cta-fg: #ffffff;
 
-    /* Desaturated semantic status tokens (strictly for >45d statutory breach data visuals) */
-    --p-breach: #b43e2f;
-    --p-breach-tint: rgba(180, 62, 47, 0.09);
-    --p-caution: #8f5b1e;
-    --p-caution-tint: rgba(143, 91, 30, 0.1);
+    /* Semantic Status Tokens — Always paired with icons/labels/patterns */
+    --pm-compliant: #047857;
+    --pm-compliant-soft: rgba(4, 120, 87, 0.1);
+    --pm-compliant-border: rgba(4, 120, 87, 0.28);
 
-    /* Inverse Harbour Slate stage (code & ReferralGraph topology — never #000000) */
-    --p-inv-bg: #18202a;
-    --p-inv-surface: #222c39;
-    --p-inv-ink: #f3f1ec;
-    --p-inv-muted: #9aa5b4;
-    --p-inv-line: rgba(243, 241, 236, 0.11);
+    --pm-warning: #b45309;
+    --pm-warning-soft: rgba(180, 83, 9, 0.1);
+    --pm-warning-border: rgba(180, 83, 9, 0.3);
 
-    /* Typography */
-    --font-display: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --font-text: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    --pm-danger: #b91c1c;
+    --pm-danger-soft: rgba(185, 28, 28, 0.09);
+    --pm-danger-border: rgba(185, 28, 28, 0.28);
 
-    /* Soft radius family (8 / 12 / 20) */
+    /* Dedicated Topology & Code Stage (High-contrast slate navy, never pure #000000) */
+    --pm-stage-bg: #0f172a;
+    --pm-stage-surface: #1e293b;
+    --pm-stage-ink: #f8fafc;
+    --pm-stage-muted: #94a3b8;
+    --pm-stage-border: rgba(248, 250, 252, 0.14);
+
+    /* Elevation & Focus */
+    --pm-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.03);
+    --pm-shadow-pop: 0 18px 40px -12px rgba(15, 23, 42, 0.18);
+    --pm-ring: #0284c7;
+
+    /* Typography Stack (Plus Jakarta Sans + Atkinson Hyperlegible + Fira Code) */
+    --font-display: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-body: "Atkinson Hyperlegible", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: "Fira Code", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+    /* Radius Scale */
+    --r-xs: 6px;
     --r-sm: 8px;
-    --r-btn: 9px;
     --r-md: 12px;
-    --r-lg: 20px;
+    --r-lg: 16px;
 
-    /* Motion tokens (taste-skill motion.md — zero overshoot) */
-    --m-in: 150ms;
-    --m-out: 120ms;
+    /* Motion Tokens — Exit faster than enter (~65% duration, pro-rules.md §7) */
+    --m-enter: 200ms;
+    --m-exit: 130ms;
     --m-press: 90ms;
-    --m-slide: 240ms;
     --m-cycle: 3.2s;
-    --m-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-    --m-ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
+    --m-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --m-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  }
+
+  [data-theme="dark"] {
+    /* ui-ux-pro-max Clinical Dark Mode Parity (WCAG AA+ Verified) */
+    --pm-bg: #0b1120;
+    --pm-surface: #111827;
+    --pm-surface-hover: #1e293b;
+    --pm-card: #152033;
+    --pm-card-elevated: #1e293b;
+    --pm-ink: #f8fafc;
+    --pm-text: #e2e8f0;
+    --pm-muted: #94a3b8;
+    --pm-border: #25344d;
+    --pm-border-strong: #64748b;
+
+    --pm-accent: #38bdf8;
+    --pm-accent-hover: #7dd3fc;
+    --pm-accent-soft: rgba(56, 189, 248, 0.13);
+    --pm-accent-border: rgba(56, 189, 248, 0.34);
+    --pm-cta-bg: #0284c7;
+    --pm-cta-hover: #0369a1;
+    --pm-cta-fg: #ffffff;
+
+    --pm-compliant: #34d399;
+    --pm-compliant-soft: rgba(52, 211, 153, 0.12);
+    --pm-compliant-border: rgba(52, 211, 153, 0.32);
+
+    --pm-warning: #fbbf24;
+    --pm-warning-soft: rgba(251, 191, 36, 0.12);
+    --pm-warning-border: rgba(251, 191, 36, 0.34);
+
+    --pm-danger: #f87171;
+    --pm-danger-soft: rgba(248, 113, 113, 0.13);
+    --pm-danger-border: rgba(248, 113, 113, 0.34);
+
+    --pm-stage-bg: #090e1a;
+    --pm-stage-surface: #152033;
+    --pm-stage-ink: #f8fafc;
+    --pm-stage-muted: #94a3b8;
+    --pm-stage-border: rgba(248, 250, 252, 0.16);
+
+    --pm-shadow-sm: 0 2px 6px rgba(2, 6, 23, 0.35);
+    --pm-shadow-pop: 0 22px 48px -12px rgba(2, 6, 23, 0.65);
+    --pm-ring: #38bdf8;
   }
 
   *,
@@ -62,358 +120,400 @@
   }
 
   html {
-    font-family: var(--font-text);
+    font-family: var(--font-body);
     font-size: 16px;
-    line-height: 1.5;
-    font-optical-sizing: auto;
+    line-height: 1.55;
+    scroll-padding-top: 88px; /* WCAG 2.2 AA 2.4.11 Focus Not Obscured */
     -webkit-tap-highlight-color: transparent;
-    background-color: var(--p-bg);
-    color: var(--p-ink);
+    background-color: var(--pm-bg);
+    color: var(--pm-ink);
   }
 
   body {
     margin: 0;
-    font-family: var(--font-text);
-    background-color: var(--p-bg);
-    color: var(--p-ink);
-    letter-spacing: -0.006em;
-    line-height: 1.5;
+    min-height: 100dvh;
+    font-family: var(--font-body);
+    background-color: var(--pm-bg);
+    color: var(--pm-ink);
+    line-height: 1.55;
+    overflow-x: hidden;
+    transition: background-color var(--m-enter) var(--m-ease-out), color var(--m-enter) var(--m-ease-out);
   }
 
   ::selection {
-    background-color: rgba(44, 88, 119, 0.18);
-    color: var(--p-ink);
+    background-color: var(--pm-accent-soft);
+    color: var(--pm-ink);
   }
 
   :focus-visible {
-    outline: 2px solid var(--p-action);
+    outline: 2px solid var(--pm-ring);
     outline-offset: 2px;
     transition: none !important;
   }
 }
 
-/* Equal left and right content edges (House Rule 4) */
-.ts-wrap {
+/* Container Layout */
+.pm-wrap {
   width: 100%;
-  max-width: 1480px;
+  max-width: 1520px;
   margin-inline: auto;
-  padding-inline: 20px;
+  padding-inline: 16px;
 }
 
 @media (min-width: 640px) {
-  .ts-wrap {
-    padding-inline: 32px;
+  .pm-wrap {
+    padding-inline: 28px;
   }
 }
 
 @media (min-width: 1024px) {
-  .ts-wrap {
-    padding-inline: 40px;
+  .pm-wrap {
+    padding-inline: 36px;
   }
 }
 
-/* Skip link: hidden until first Tab, never shifts logo off left edge (system.md §Base) */
-.ts-skip-link {
+/* Skip to Content Link */
+.pm-skip-link {
   position: fixed;
   top: 12px;
-  left: 20px;
+  left: 16px;
   z-index: 100;
   padding: 10px 16px;
-  border-radius: var(--r-btn);
-  background: var(--p-ink);
-  color: var(--p-bg);
+  border-radius: var(--r-sm);
+  background: var(--pm-cta-bg);
+  color: var(--pm-cta-fg);
+  font-family: var(--font-display);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
-  transform: translateY(-160%);
+  transform: translateY(-180%);
+  box-shadow: var(--pm-shadow-pop);
 }
 
-.ts-skip-link:focus {
+.pm-skip-link:focus {
   transform: translateY(0);
 }
 
-/* Fixed Opaque Architectural Navigation Bar (system.md §Nav — no blur, no shadow, 1px hairline) */
-.ts-nav {
+/* Sticky Command Bar */
+.pm-nav {
   position: sticky;
   top: 0;
   z-index: 30;
-  background-color: var(--p-bg);
-  border-bottom: 1px solid var(--p-line);
+  background-color: var(--pm-card);
+  border-bottom: 1px solid var(--pm-border);
+  box-shadow: var(--pm-shadow-sm);
 }
 
-/* Typography Hierarchy — sentence case, tight display tracking, contrast run-ons */
-.ts-h1 {
+/* Typography Utilities */
+.pm-h1 {
   font-family: var(--font-display);
-  font-weight: 500;
-  letter-spacing: -0.038em;
-  line-height: 1.1;
-  color: var(--p-ink);
+  font-weight: 700;
+  letter-spacing: -0.028em;
+  line-height: 1.15;
+  color: var(--pm-ink);
+  text-wrap: balance;
 }
 
-.ts-h2 {
+.pm-h2 {
   font-family: var(--font-display);
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  line-height: 1.18;
-  color: var(--p-ink);
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  line-height: 1.22;
+  color: var(--pm-ink);
+  text-wrap: balance;
 }
 
-.ts-h3 {
+.pm-h3 {
   font-family: var(--font-display);
-  font-weight: 500;
-  letter-spacing: -0.018em;
-  line-height: 1.28;
-  color: var(--p-ink);
+  font-weight: 600;
+  letter-spacing: -0.014em;
+  line-height: 1.3;
+  color: var(--pm-ink);
 }
 
-.ts-muted {
-  color: var(--p-muted);
-  font-weight: 400;
+.pm-muted {
+  color: var(--pm-muted);
 }
 
-/* Sentence-case 13px/500 labels — replaces tracked all-caps eyebrows (system.md §Type) */
-.ts-label {
+.pm-kicker {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--pm-muted);
+}
+
+.pm-label {
+  font-family: var(--font-display);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.35;
-  letter-spacing: -0.005em;
-  color: var(--p-muted);
+  color: var(--pm-ink);
 }
 
-.ts-measure {
-  max-width: 62ch;
+.pm-measure {
+  max-width: 66ch;
 }
 
 .font-mono-code {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* Cards & Surfaces — Two levels max, 1px hairline, zero blurred resting shadow (cards.md) */
-.ts-card {
-  background-color: var(--p-card);
-  border: 1px solid var(--p-line);
+/* Surfaces & Bento Cards */
+.pm-card {
+  background-color: var(--pm-card);
+  border: 1px solid var(--pm-border);
   border-radius: var(--r-lg);
+  box-shadow: var(--pm-shadow-sm);
 }
 
-.ts-panel {
-  background-color: var(--p-surface-subtle);
-  border: 1px solid var(--p-line);
+.pm-panel {
+  background-color: var(--pm-surface);
+  border: 1px solid var(--pm-border);
   border-radius: var(--r-md);
 }
 
-.ts-stage-dark {
-  background-color: var(--p-inv-bg);
-  color: var(--p-inv-ink);
-  border: 1px solid rgba(29, 37, 48, 0.24);
+.pm-kpi {
+  background-color: var(--pm-card);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--r-md);
+  box-shadow: var(--pm-shadow-sm);
+  padding: 16px 18px;
+}
+
+.pm-stage-dark {
+  background-color: var(--pm-stage-bg);
+  color: var(--pm-stage-ink);
+  border: 1px solid var(--pm-stage-border);
   border-radius: var(--r-md);
 }
 
-/* Linked / selectable card hover lift — 2px up on fine pointer (House Rule 5 & motion.md) */
-.ts-card-lift {
+/* Selectable Card Interaction */
+.pm-card-interactive {
+  cursor: pointer;
+  touch-action: manipulation;
   transition:
-    transform 180ms var(--m-ease),
-    border-color 180ms var(--m-ease),
-    box-shadow 180ms var(--m-ease),
-    background-color 150ms var(--m-ease);
+    border-color var(--m-enter) var(--m-ease-out),
+    background-color var(--m-enter) var(--m-ease-out),
+    transform var(--m-enter) var(--m-ease-out);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .ts-card-lift:hover {
-    transform: translateY(-2px);
-    border-color: var(--p-line-strong);
-    box-shadow: 0 10px 24px -12px rgba(29, 37, 48, 0.1);
+  .pm-card-interactive:hover {
+    border-color: var(--pm-accent);
+    transform: translateY(-1px);
   }
 }
 
-.ts-card-lift:active {
-  transform: translateY(0) scale(0.99);
-  transition-duration: var(--m-press);
-}
-
-/* One-System Buttons (system.md §Radius and buttons & motion.md §Hover layer) */
-.ts-btn {
+/* Buttons — Minimum 44px on mobile, 38px on desktop toolbar, crisp focus & active states */
+.pm-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  min-height: 40px;
+  gap: 8px;
+  min-height: 44px;
   padding: 8px 16px;
-  border-radius: var(--r-btn);
-  font-family: var(--font-text);
+  border-radius: var(--r-sm);
+  font-family: var(--font-display);
   font-size: 13.5px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.2;
-  letter-spacing: -0.008em;
   cursor: pointer;
   user-select: none;
   touch-action: manipulation;
   white-space: nowrap;
   transition:
-    transform var(--m-in) var(--m-ease),
-    background-color var(--m-in) var(--m-ease),
-    border-color var(--m-in) var(--m-ease),
-    color var(--m-in) var(--m-ease);
+    background-color var(--m-enter) var(--m-ease-out),
+    border-color var(--m-enter) var(--m-ease-out),
+    color var(--m-enter) var(--m-ease-out),
+    transform var(--m-press) var(--m-ease-out);
 }
 
-.ts-btn:disabled {
-  opacity: 0.42;
+@media (min-width: 640px) {
+  .pm-btn-compact {
+    min-height: 38px;
+    padding: 7px 13px;
+    font-size: 13px;
+  }
+}
+
+.pm-btn:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
   transform: none !important;
 }
 
-.ts-btn-primary {
-  background-color: var(--p-action);
-  color: var(--p-accent-ink);
+.pm-btn-primary {
+  background-color: var(--pm-cta-bg);
+  color: var(--pm-cta-fg);
   border: 1px solid transparent;
 }
 
-.ts-btn-secondary {
-  background-color: var(--p-card);
-  color: var(--p-ink);
-  border: 1px solid var(--p-line-strong);
+.pm-btn-secondary {
+  background-color: var(--pm-card);
+  color: var(--pm-ink);
+  border: 1px solid var(--pm-border-strong);
 }
 
-.ts-btn-tonal {
-  background-color: var(--p-surface);
-  color: var(--p-ink);
-  border: 1px solid transparent;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .ts-btn-primary:not(:disabled):hover {
-    background-color: var(--p-accent-hover);
-    transform: translateY(-1px);
-  }
-
-  .ts-btn-secondary:not(:disabled):hover {
-    background-color: var(--p-surface-subtle);
-    border-color: rgba(29, 37, 48, 0.34);
-    transform: translateY(-1px);
-  }
-
-  .ts-btn-tonal:not(:disabled):hover {
-    background-color: #dcd7cc;
-    transform: translateY(-1px);
-  }
-
-  .ts-btn:not(:disabled):hover .ts-arrow {
-    transform: translateX(3px);
-  }
-}
-
-.ts-btn:not(:disabled):active {
-  transform: translateY(1px) scale(0.985);
-  transition-duration: var(--m-press);
-}
-
-.ts-arrow {
-  transition: transform var(--m-in) var(--m-ease);
-}
-
-/* Drawn left-to-right text link underline (motion.md) */
-.ts-link {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--p-ink);
-  font-weight: 500;
-  text-decoration: none;
-  background-image:
-    linear-gradient(var(--p-ink), var(--p-ink)),
-    linear-gradient(var(--p-line-strong), var(--p-line-strong));
-  background-size: 0% 1px, 100% 1px;
-  background-position: 0 100%, 0 100%;
-  background-repeat: no-repeat;
-  padding-bottom: 2px;
-  cursor: pointer;
-  transition: background-size var(--m-in) var(--m-ease), color var(--m-in) var(--m-ease);
+.pm-btn-subtle {
+  background-color: var(--pm-surface);
+  color: var(--pm-ink);
+  border: 1px solid var(--pm-border);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .ts-link:hover {
-    color: var(--p-action);
-    background-size: 100% 1px, 100% 1px;
+  .pm-btn-primary:not(:disabled):hover {
+    background-color: var(--pm-cta-hover);
+  }
+
+  .pm-btn-secondary:not(:disabled):hover {
+    background-color: var(--pm-surface);
+    border-color: var(--pm-ink);
+  }
+
+  .pm-btn-subtle:not(:disabled):hover {
+    background-color: var(--pm-surface-hover);
+    border-color: var(--pm-border-strong);
   }
 }
 
-/* Form controls — 44px accessible targets, 1px hairline, harbour focus ring */
-.ts-input {
+.pm-btn:not(:disabled):active {
+  transform: scale(0.985);
+}
+
+/* Inputs & Selects — >=3:1 boundary contrast + accessible 44px height */
+.pm-input {
   width: 100%;
   min-height: 44px;
   border-radius: var(--r-sm);
-  background-color: var(--p-card);
-  border: 1px solid var(--p-line-strong);
+  background-color: var(--pm-card);
+  border: 1px solid var(--pm-border-strong);
   padding: 9px 12px;
-  font-size: 14px;
-  color: var(--p-ink);
-  transition: border-color 140ms var(--m-ease), box-shadow 140ms var(--m-ease);
+  font-family: var(--font-body);
+  font-size: 14.5px;
+  color: var(--pm-ink);
+  transition: border-color var(--m-exit) var(--m-ease-out), box-shadow var(--m-exit) var(--m-ease-out);
 }
 
-.ts-input:hover {
-  border-color: rgba(29, 37, 48, 0.34);
+.pm-input:hover {
+  border-color: var(--pm-ink);
 }
 
-.ts-input:focus {
+.pm-input:focus {
   outline: none;
-  border-color: var(--p-action);
-  box-shadow: 0 0 0 3px rgba(44, 88, 119, 0.15);
+  border-color: var(--pm-ring);
+  box-shadow: 0 0 0 3px var(--pm-accent-soft);
 }
 
-/* Neutral ink chips (cards.md: chips are ink tints, never a rainbow of pills) */
-.ts-chip {
+.pm-input[aria-invalid="true"] {
+  border-color: var(--pm-danger);
+  box-shadow: 0 0 0 3px var(--pm-danger-soft);
+}
+
+/* Semantic Badges — Always pair icon + label */
+.pm-badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 3px 9px;
-  border-radius: 6px;
+  border-radius: var(--r-xs);
+  font-family: var(--font-display);
   font-size: 12px;
-  font-weight: 500;
-  line-height: 1.3;
-  background-color: var(--p-surface-subtle);
-  color: var(--p-text);
-  border: 1px solid var(--p-line);
+  font-weight: 600;
+  line-height: 1.35;
+  background-color: var(--pm-surface);
+  color: var(--pm-text);
+  border: 1px solid var(--pm-border);
 }
 
-.ts-chip-accent {
-  background-color: var(--p-accent-tint);
-  color: var(--p-accent);
-  border-color: rgba(44, 88, 119, 0.22);
+.pm-badge-accent {
+  background-color: var(--pm-accent-soft);
+  color: var(--pm-accent);
+  border-color: var(--pm-accent-border);
 }
 
-.ts-chip-breach {
-  background-color: var(--p-breach-tint);
-  color: var(--p-breach);
-  border-color: rgba(180, 62, 47, 0.24);
+.pm-badge-compliant {
+  background-color: var(--pm-compliant-soft);
+  color: var(--pm-compliant);
+  border-color: var(--pm-compliant-border);
 }
 
-/* Load-once hero entrance (motion.md §The hero's entrance — settles once, never on scroll) */
-@keyframes tsHeroRise {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.pm-badge-warning {
+  background-color: var(--pm-warning-soft);
+  color: var(--pm-warning);
+  border-color: var(--pm-warning-border);
 }
 
-.ts-hero-enter {
-  animation: tsHeroRise 620ms var(--m-ease-enter) both;
+.pm-badge-danger {
+  background-color: var(--pm-danger-soft);
+  color: var(--pm-danger);
+  border-color: var(--pm-danger-border);
 }
 
-.ts-hero-enter-delay {
-  animation: tsHeroRise 620ms var(--m-ease-enter) 90ms both;
+/* Non-Color-Only Diagonal Stripe Pattern for >45d Breach Bars (WCAG 1.4.1) */
+.pm-pattern-breach {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.16),
+    rgba(255, 255, 255, 0.16) 5px,
+    transparent 5px,
+    transparent 10px
+  );
 }
 
-/* 3.2s ReferralGraph diagram comet pulse (diagrams.md — repeating 2.5–4s cycle, pausable) */
-@keyframes tsDiagramPulse {
+/* Data-Dense Clinical Tables */
+.pm-table-wrap {
+  border-radius: var(--r-md);
+  border: 1px solid var(--pm-border);
+  background-color: var(--pm-card);
+  overflow-x: auto;
+}
+
+.pm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  text-align: left;
+}
+
+.pm-table thead {
+  background-color: var(--pm-surface);
+  color: var(--pm-muted);
+  border-bottom: 1px solid var(--pm-border);
+}
+
+.pm-table th {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 10px 14px;
+  white-space: nowrap;
+}
+
+.pm-table td {
+  padding: 10px 14px;
+  border-top: 1px solid var(--pm-border);
+  color: var(--pm-text);
+}
+
+.pm-table tbody tr {
+  transition: background-color 120ms ease;
+}
+
+.pm-table tbody tr:hover {
+  background-color: var(--pm-surface);
+}
+
+/* ReferralGraph 3.2s Comet Animation */
+@keyframes pmDiagramPulse {
   0% {
     stroke-dashoffset: 240;
     opacity: 0;
@@ -431,16 +531,16 @@
   }
 }
 
-.ts-diagram-comet {
+.pm-diagram-comet {
   stroke-dasharray: 28 240;
-  animation: tsDiagramPulse var(--m-cycle) linear infinite;
+  animation: pmDiagramPulse var(--m-cycle) linear infinite;
 }
 
-.ts-diagram-paused .ts-diagram-comet {
+.pm-diagram-paused .pm-diagram-comet {
   animation-play-state: paused;
 }
 
-/* Utility scrollbar suppression for horizontal prompt strips */
+/* Scrollbar utility for horizontal chip strips */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -449,7 +549,7 @@
   scrollbar-width: none;
 }
 
-/* Accessibility: Reduced motion & high contrast (motion.md & system.md) */
+/* Accessibility: Reduced Motion & High Contrast */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -460,23 +560,28 @@
     scroll-behavior: auto !important;
   }
 
-  .ts-card-lift:hover,
-  .ts-btn:hover,
-  .ts-btn:active {
+  .pm-card-interactive:hover,
+  .pm-btn:active {
     transform: none !important;
   }
 
-  .ts-diagram-comet {
+  .pm-diagram-comet {
     animation: none !important;
     opacity: 0 !important;
   }
 }
 
 @media (prefers-contrast: more) {
-  :root {
-    --p-line: rgba(29, 37, 48, 0.38);
-    --p-line-strong: rgba(29, 37, 48, 0.62);
-    --p-muted: #333c48;
+  :root,
+  [data-theme="light"] {
+    --pm-border: #64748b;
+    --pm-border-strong: #0f172a;
+    --pm-muted: #1e293b;
+  }
+  [data-theme="dark"] {
+    --pm-border: #94a3b8;
+    --pm-border-strong: #f8fafc;
+    --pm-muted: #e2e8f0;
   }
 }
 
@@ -486,10 +591,14 @@
   }
   body {
     background: #ffffff !important;
+    color: #0f172a !important;
   }
-  .ts-card,
-  .ts-panel {
+  .pm-card,
+  .pm-panel,
+  .pm-kpi {
     box-shadow: none !important;
     border: 1px solid #cbd5e1 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
   }
 }
