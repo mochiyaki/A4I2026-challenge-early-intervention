@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import hmac
 import importlib
 import inspect
 import json
@@ -28,7 +29,10 @@ import os
 import re
 import struct
 import subprocess
+import threading
+import time
 import uuid
+from collections import deque
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -37,13 +41,12 @@ from typing import Any
 import google.auth
 import google.auth.exceptions
 import google.oauth2.credentials
-from fastapi import Body, FastAPI, HTTPException, Query
+from fastapi import Body, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
 from google.genai import types
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -61,6 +64,16 @@ from first_milestones.brief_builder import (
     _compute_statutory_transition_tier,
     build_caregiver_notes,
     generate_complete_45d_brief,
+)
+from first_milestones.guardrails import (
+    ensure_diagnosis_refusal,
+    has_diagnosis_request,
+    is_under_27m_context,
+    sanitize_under_27m_aging_out_text,
+)
+from first_milestones.session_store import (
+    create_session_service,
+    describe_session_backend,
 )
 from first_milestones.tools import (
     detect_regional_bottleneck_hubs,
@@ -122,7 +135,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-session_service = InMemorySessionService()
+session_service = create_session_service()
 runner = Runner(
     app_name=APP_NAME,
     agent=root_agent,
@@ -132,6 +145,116 @@ _runners_by_model: dict[str, Runner] = {DEFAULT_MODEL: runner}
 _working_model_cache: str | None = None
 _GEO_CACHE: dict[tuple[str, str], dict[str, Any]] = {}
 _BRIEF_CACHE: dict[tuple[Any, ...], dict[str, Any]] = {}
+
+
+class _ObservabilityTracker:
+    """Thread/async-safe in-process telemetry tracker for `/api/health` and chat audit logs."""
+
+    def __init__(self, maxlen: int = 500) -> None:
+        self._lock = threading.Lock()
+        self.requests_total: int = 0
+        self.chat_requests_total: int = 0
+        self.fallback_count: int = 0
+        self.latency_samples_ms: deque[float] = deque(maxlen=maxlen)
+
+    def record_http_request(self) -> None:
+        with self._lock:
+            self.requests_total += 1
+
+    def record_chat(
+        self,
+        *,
+        session_id: str,
+        state_code: str,
+        model_used: str,
+        tools_invoked: list[str],
+        latency_ms: float,
+        fallback_used: bool,
+    ) -> None:
+        rounded_ms = round(float(latency_ms), 2)
+        with self._lock:
+            self.chat_requests_total += 1
+            if fallback_used:
+                self.fallback_count += 1
+            self.latency_samples_ms.append(rounded_ms)
+
+        audit_record = {
+            "event": "chat_audit",
+            "session_id": session_id,
+            "state_code": state_code,
+            "model_used": model_used,
+            "tools_invoked": list(tools_invoked),
+            "latency_ms": rounded_ms,
+            "fallback_used": bool(fallback_used),
+        }
+        logger.info(json.dumps(audit_record, ensure_ascii=False))
+
+    def snapshot(self, session_backend: str) -> dict[str, Any]:
+        with self._lock:
+            samples = sorted(self.latency_samples_ms)
+            reqs = self.requests_total
+            chats = self.chat_requests_total
+            fallbacks = self.fallback_count
+
+        if not samples:
+            p50_ms = 0.0
+            p95_ms = 0.0
+            max_ms = 0.0
+        else:
+            p50_ms = round(samples[int(0.50 * (len(samples) - 1))], 2)
+            p95_ms = round(samples[int(0.95 * (len(samples) - 1))], 2)
+            max_ms = round(samples[-1], 2)
+
+        return {
+            "requests_total": reqs,
+            "chat_requests_total": chats,
+            "fallback_count": fallbacks,
+            "latency_samples_count": len(samples),
+            "p50_ms": p50_ms,
+            "p95_ms": p95_ms,
+            "max_ms": max_ms,
+            "session_backend": session_backend,
+        }
+
+
+_OBSERVABILITY = _ObservabilityTracker()
+
+
+@app.middleware("http")
+async def _track_http_requests(request: Request, call_next: Any) -> Any:
+    _OBSERVABILITY.record_http_request()
+    return await call_next(request)
+
+
+def _verify_optional_auth(request: Request) -> None:
+    """Enforces optional Bearer token auth when `A4I_REQUIRE_AUTH=1`."""
+    if os.environ.get("A4I_REQUIRE_AUTH", "0").strip().lower() not in ("1", "true", "yes"):
+        return
+    expected_token = os.environ.get("A4I_AUTH_BEARER_TOKEN", "").strip()
+    auth_header = request.headers.get("Authorization", "").strip()
+    if not expected_token or not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized: missing or invalid Bearer token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    provided_token = auth_header[len("Bearer ") :].strip()
+    if not hmac.compare_digest(provided_token, expected_token):
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized: invalid Bearer token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+def _apply_final_reply_guardrails(user_msg: str, reply_text: str) -> str:
+    """Preserves diagnosis refusal & strips spurious <27m 36-month alarms at the API/SSE layer."""
+    if not reply_text:
+        return reply_text
+    cleaned = reply_text
+    if is_under_27m_context(user_msg, cleaned):
+        cleaned = sanitize_under_27m_aging_out_text(cleaned)
+    return ensure_diagnosis_refusal(user_msg, cleaned)
 
 
 def _get_cached_brief(
@@ -610,6 +733,7 @@ def _parse_intent_and_fallback_reply(msg: str, state_code: str) -> tuple[str, li
     else:
         reply, tools_used = _build_track1_reply()
 
+    reply = _apply_final_reply_guardrails(msg, reply)
     return reply, tools_used, brief
 
 
@@ -785,10 +909,11 @@ async def health() -> dict[str, Any]:
         "dataset": cfg["dataset"],
         "project": cfg["project"] or "(local GeoParquet preview)",
         "bq_telemetry": _safe_get_bq_telemetry(),
+        "observability": _OBSERVABILITY.snapshot(describe_session_backend(session_service)),
     }
 
 
-@app.get("/api/brief")
+@app.get("/api/brief", dependencies=[Depends(_verify_optional_auth)])
 async def get_brief(
     state: str = Query(default="", description="Two-letter starter state (MS, AL, GA, TX, CA, NY)"),
     tract_geoid: str = Query(default="", description="Optional 11-char census_tract_geoid"),
@@ -825,7 +950,7 @@ async def get_brief(
         return brief
 
 
-@app.post("/api/simulate")
+@app.post("/api/simulate", dependencies=[Depends(_verify_optional_auth)])
 async def run_simulation(req: SimulateRequest) -> dict[str, Any]:
     with request_state_context(req.state_code):
         return simulate_hub_intervention(
@@ -985,10 +1110,11 @@ def _merge_captured_brief(
         return brief
 
 
-@app.post("/api/chat")
+@app.post("/api/chat", dependencies=[Depends(_verify_optional_auth)])
 async def chat_endpoint(req: ChatRequest) -> dict[str, Any]:
     global _working_model_cache  # noqa: PLW0603
     _reject_audit_keys_http(req.model_dump(exclude_none=True), "chat request")
+    t0 = time.perf_counter()
     session_id = req.session_id or f"coord-{uuid.uuid4().hex[:10]}"
     user_id = "part_c_coordinator"
     user_message = req.resolved_message
@@ -1037,18 +1163,30 @@ async def chat_endpoint(req: ChatRequest) -> dict[str, Any]:
                                 if getattr(part, "text", None):
                                     final_chunks.append(part.text)
 
-                    reply_text = "\n".join(final_chunks).strip()
+                    reply_text = _apply_final_reply_guardrails(
+                        user_message, "\n".join(final_chunks).strip()
+                    )
                     if reply_text:
                         _working_model_cache = model_name
                         brief = _merge_captured_brief(
                             user_message, active_state, captured_outputs, reply_text=reply_text
+                        )
+                        latency_ms = (time.perf_counter() - t0) * 1000.0
+                        fallback_used = model_name != DEFAULT_MODEL
+                        _OBSERVABILITY.record_chat(
+                            session_id=session_id,
+                            state_code=active_state,
+                            model_used=model_name,
+                            tools_invoked=tool_calls_seen,
+                            latency_ms=latency_ms,
+                            fallback_used=fallback_used,
                         )
                         return {
                             "session_id": session_id,
                             "state_code": active_state,
                             "mode": f"adk_gemini_live ({model_name})",
                             "model_used": model_name,
-                            "fallback_used": model_name != DEFAULT_MODEL,
+                            "fallback_used": fallback_used,
                             "recommended_tab": _compute_recommended_tab(user_message, tool_calls_seen),
                             "tools_invoked": tool_calls_seen,
                             "bq_telemetry": (
@@ -1079,6 +1217,15 @@ async def chat_endpoint(req: ChatRequest) -> dict[str, Any]:
         reply_text, tools_used, brief = _parse_intent_and_fallback_reply(user_message, active_state)
         telemetry = _safe_get_bq_telemetry()
         brief["bq_telemetry"] = telemetry
+        latency_ms = (time.perf_counter() - t0) * 1000.0
+        _OBSERVABILITY.record_chat(
+            session_id=session_id,
+            state_code=active_state,
+            model_used="local_deterministic_fallback",
+            tools_invoked=tools_used,
+            latency_ms=latency_ms,
+            fallback_used=True,
+        )
         return {
             "session_id": session_id,
             "state_code": active_state,
@@ -1172,6 +1319,8 @@ async def _stream_adk_run_events(
 ) -> AsyncIterator[str]:
     """Streams real-time SSE frames for live ADK multi-agent runs or deterministic local graph runs."""
     global _working_model_cache  # noqa: PLW0603
+    t0 = time.perf_counter()
+    defer_live_tokens = has_diagnosis_request(msg_text) or is_under_27m_context(msg_text)
     with request_state_context(requested_state) as active_state:
         yield _sse_frame(
             "agent_start",
@@ -1273,18 +1422,20 @@ async def _stream_adk_run_events(
                                 p_txt = getattr(part, "text", None)
                                 if p_txt:
                                     streamed_chunks.append(p_txt)
-                                    yield _sse_frame("token", {"delta": p_txt})
+                                    if not defer_live_tokens:
+                                        yield _sse_frame("token", {"delta": p_txt})
                         elif is_final and parts:
                             for part in parts:
                                 p_txt = getattr(part, "text", None)
                                 if p_txt:
                                     final_chunks.append(p_txt)
 
-                    reply_text = (
+                    raw_reply_text = (
                         "\n".join(final_chunks).strip()
                         if final_chunks
                         else "".join(streamed_chunks).strip()
                     )
+                    reply_text = _apply_final_reply_guardrails(msg_text, raw_reply_text)
                     if reply_text:
                         _working_model_cache = model_name
                         if not sub_agents_invoked:
@@ -1300,7 +1451,7 @@ async def _stream_adk_run_events(
                                     "coordinator": root_agent.name,
                                 },
                             )
-                        if not streamed_chunks:
+                        if defer_live_tokens or not streamed_chunks:
                             for delta in _chunk_markdown_for_sse(reply_text):
                                 yield _sse_frame("token", {"delta": delta})
 
@@ -1312,6 +1463,16 @@ async def _stream_adk_run_events(
                             if brief.get("bq_telemetry") is not None
                             else _safe_get_bq_telemetry()
                         )
+                        latency_ms = (time.perf_counter() - t0) * 1000.0
+                        fallback_used = model_name != DEFAULT_MODEL
+                        _OBSERVABILITY.record_chat(
+                            session_id=session_id,
+                            state_code=active_state,
+                            model_used=model_name,
+                            tools_invoked=tool_calls_seen,
+                            latency_ms=latency_ms,
+                            fallback_used=fallback_used,
+                        )
                         yield _sse_frame("brief", {"brief": brief})
                         yield _sse_frame(
                             "done",
@@ -1320,7 +1481,7 @@ async def _stream_adk_run_events(
                                 "state_code": active_state,
                                 "mode": f"adk_gemini_live ({model_name})",
                                 "model_used": model_name,
-                                "fallback_used": model_name != DEFAULT_MODEL,
+                                "fallback_used": fallback_used,
                                 "recommended_tab": _compute_recommended_tab(msg_text, tool_calls_seen),
                                 "sub_agents_invoked": sub_agents_invoked,
                                 "tools_invoked": tool_calls_seen,
@@ -1368,6 +1529,15 @@ async def _stream_adk_run_events(
         for delta in _chunk_markdown_for_sse(reply_text):
             yield _sse_frame("token", {"delta": delta})
 
+        latency_ms = (time.perf_counter() - t0) * 1000.0
+        _OBSERVABILITY.record_chat(
+            session_id=session_id,
+            state_code=active_state,
+            model_used="local_deterministic_fallback",
+            tools_invoked=tools_used,
+            latency_ms=latency_ms,
+            fallback_used=True,
+        )
         yield _sse_frame("brief", {"brief": brief})
         yield _sse_frame(
             "done",
@@ -1386,9 +1556,9 @@ async def _stream_adk_run_events(
         )
 
 
-@app.post("/run")
-@app.post("/run_sse")
-@app.post("/api/chat/stream")
+@app.post("/run", dependencies=[Depends(_verify_optional_auth)])
+@app.post("/run_sse", dependencies=[Depends(_verify_optional_auth)])
+@app.post("/api/chat/stream", dependencies=[Depends(_verify_optional_auth)])
 async def adk_run_sse_endpoint(payload: dict[str, Any] = Body(...)) -> StreamingResponse:
     """Streams real-time ADK multi-agent & ISO GQL tool execution events over SSE."""
     msg_text, session_id, user_id, state_code = _extract_run_request_fields(payload)

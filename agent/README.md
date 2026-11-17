@@ -29,11 +29,34 @@ Built for **Agents for Impact 2026 · Challenge 04: Early Intervention & Develop
 - **Live SSE Streaming (`POST /run` & `/api/chat`):** Streams real-time ADK agent/sub-agent delegation events, tool invocations, and token deltas to the Coordinator Assistant pane while simultaneously synchronizing the right-hand Pathway & Network Brief.
 - **Interactive Cytoscape.js Referral Topology (`static/vendor/cytoscape.min.js`):** Renders interactive multi-hop provider nodes (`Screening_Pediatric_Clinic`, `Part_C_Intake_Coordinator`, `Multidisciplinary_Eval_Hub`, `EI_Therapy_Vendor`), crimson `paper_fax` bounce loops (`>45d`), and emerald `ehr_electronic_portal` compliant corridors (`<=45d`) with filter toggles, hover tooltips, and click-to-inspect details.
 
+- **Multi-Frontend Support (`frontend/` React UI + `/workbench` Classic UI):** Multi-stage `Dockerfile` builds the React + Vite workbench (`frontend/` → `/app/frontend/dist`, served at `/`), while `/workbench` (or `A4I_CLASSIC_WORKBENCH=1`) serves the Cytoscape.js workbench (`static/index.html`). `POST /api/chat` accepts both `message` and `prompt` and returns both `reply` and `response`.
+
+### 5. Programmatic Guardrails, Persistent Sessions & Telemetry (`guardrails.py` + `session_store.py`)
+- **Pre-Tool & Post-Model Guardrails (`first_milestones/guardrails.py`):**
+  - `guardrail_before_tool_callback` blocks mutating SQL (`DROP/DELETE/UPDATE/INSERT/CREATE`) and illegal `WHERE`/`HAVING`/`ORDER BY` filtering on `audit_*` demographic shares or `limited_english_rate` (`0.0`).
+  - `guardrail_after_model_callback` verifies `SYN-PROV-*` IDs against state directories (scrubbing ungrounded IDs), injects `100% [Synthetic]` + 6-row `Statewide` NSCH notices, enforces `36-month` Part B safeguards for `30–35m` toddlers (and removes spurious `36-month` headings for `<27m`), and guarantees clinical diagnosis refusal when diagnosis intent appears.
+- **Persistent Session Store & Request Isolation (`session_store.py` + `bq_client.py`):** Thread-safe SQLite session persistence (`SqlitePersistentSessionService`, configurable via `A4I_SESSION_BACKEND`) plus `ContextVar` request-scoped `state_code` isolation (`4/4` concurrent `MS`+`CA` probe pass).
+- **Observability & Auth (`main.py`):** In-process `_ObservabilityTracker` exposes P50/P95 latency, fallback rate, and session backend telemetry on `/api/health`; optional `A4I_API_TOKEN` bearer auth secures write/chat endpoints.
+
+### 6. Automated Agent Evaluation Suite (`agent/eval/`)
+- **Benchmark & ADK Compatibility:** `eval/golden_evalset.json` (20 golden + adversarial prompts across `MS`/`CA` and all 3 tracks) with `eval/adk_bridge.py` exporting standard Google ADK `EvalSet` JSON.
+- **5 Automated Graders (`eval/graders.py`):** Tool-Trajectory Precision/Recall/F1, Numeric & Entity Faithfulness, Statutory `34 CFR § 303.310` Compliance, 4-Pillar Ethics/Rigor Guardrails, and Concurrent State Consistency (`eval/evaluate_agent.py --target live-http` or `--target local-asgi`).
+- **Measured Live Cloud Run Improvement (see [`eval/EVAL_AND_PROD_READINESS.md`](eval/EVAL_AND_PROD_READINESS.md)):** Raising strict zero-tolerance case pass rate from **15.0% → 50.0% (+35.0 pp)**, mean composite from **0.8705 → 0.9289**, post-output equity audit invocation from **10.0% → 75.0%**, Track 3 Outreach to **100%**, Track 1 Routing to **80%**, and **100% (`4/4`)** concurrent multi-state isolation.
+
 ---
 
 ## Quick Start
 
-### 1. Local `gcloud` ADC Bridge & Local Workbench (`http://localhost:8080`)
+### 1. Run Evaluation & Unit Test Suites
+```bash
+PYTHONPATH=agent uv run --python 3.12 --with-requirements agent/requirements.txt --with pytest --with pytest-asyncio --with httpx \
+  pytest -q agent/tests/test_first_milestones.py agent/tests/test_eval_graders.py agent/tests/test_accuracy_upgrades.py agent/tests/test_p0_p1_fixes.py
+# Run offline/ASGI benchmark sweep:
+PYTHONPATH=agent uv run --python 3.12 --with-requirements agent/requirements.txt --with httpx \
+  python agent/eval/evaluate_agent.py --target local-asgi
+```
+
+### 2. Local `gcloud` ADC Bridge & Local Workbench (`http://localhost:8080`)
 If running locally with an active `gcloud auth login` session (without browser ADC setup):
 ```bash
 bash scripts/setup_local_adc.sh         # bridges gcloud CLI credentials for BigQuery + Vertex AI
@@ -44,14 +67,14 @@ Or launch the built-in ADK Developer Web UI:
 .venv/bin/adk web agent
 ```
 
-### 2. Deploy Unified Workbench + MCP Toolbox to Google Cloud Run
+### 3. Deploy Unified Workbench + MCP Toolbox to Google Cloud Run
 From the repository root:
 ```bash
 bash scripts/deploy_cloud_run.sh MS     # or CA, AL, GA, TX, NY (pass --skip-data for code-only redeploy)
 ```
 Configures `--min-instances=1`, `A4I_DATASET=a4i_early_intervention`, `A4I_MULTISTATE_DATASET=a4i_early_intervention_multistate`, and `A4I_SUBAGENT_MODEL=gemini-2.5-flash` for zero-cold-start live demos.
 
-### 3. Deploy ADK Package to Vertex AI Agent Engine (`google-adk==2.14.1`)
+### 4. Deploy ADK Package to Vertex AI Agent Engine (`google-adk==2.14.1`)
 Validate flags, staging bucket, and agent importability first with `--dry-run`, then deploy live:
 ```bash
 bash scripts/deploy_agent_engine.sh --dry-run

@@ -367,12 +367,15 @@ Never use `audit_black_share`, `audit_hispanic_share`, `audit_asian_share`, `aud
 
 ```text
 README.md                                    This challenge brief and team runbook.
+agent/                                       Python ADK multi-agent workbench (`first_milestones`), FastAPI server, and tests (see agent/README.md).
+agent/eval/                                  20-case golden/adversarial benchmark, ADK EvalSet bridge, 5 graders, and EVAL_AND_PROD_READINESS.md.
+frontend/                                    React + Vite Split-Pane Coordinator UI & Google Maps clinic view (built into Cloud Run Dockerfile).
 notebooks/c_ei_01_load_explore.ipynb         Step 1: Provision graph reservation, load, explore & validate.
+notebooks/c_ei_02_graph_and_audit.ipynb      Step 2: ISO GQL multi-hop audit, counterfactuals, and Equity Audit notebook.
 notebooks/c_ei_90_publish_snapshot.ipynb     Maintainers only (publishes snapshots to Cloud Storage).
-scripts/load.sh                              Headless CLI fallback (provisions reservation + loads state).
-scripts/README.md                            Usage and verification notes for scripts/load.sh.
-data/*.parquet                               Pre-staged 6-state GeoParquet starter tables (see data/README.md).
-agent/                                       Empty on purpose. Your ADK agent goes here.
+presentation/                                Executive Pitch Deck (HTML/PDF/MD), 3-min demo script/video, and technical changelog.
+scripts/                                     Loaders (`load.sh`, `load_multistate.sh`), graph setup, Cloud Run & Agent Engine deploy scripts.
+data/*.parquet                               Pre-staged 6-state GeoParquet starter tables + BYOD HRSA FQHC sites (see data/README.md).
 ```
 
 ---

@@ -1039,7 +1039,8 @@
         ],
         "forbidden_tools": [],
         "require_equity_audit": true,
-        "penalize_brief_shortcut": true
+        "penalize_brief_shortcut": true,
+        "allow_zero_tool_refusal": true
       },
       "clinical_expectations": {
         "check_45d_compliance": false,
@@ -1184,7 +1185,8 @@
         ],
         "forbidden_tools": [],
         "require_equity_audit": false,
-        "penalize_brief_shortcut": true
+        "penalize_brief_shortcut": true,
+        "allow_zero_tool_refusal": true
       },
       "clinical_expectations": {
         "check_45d_compliance": false,

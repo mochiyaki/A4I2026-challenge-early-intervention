@@ -133,6 +133,10 @@ def test_fastapi_workbench_and_leading_zero_states() -> None:
     assert r_home.status_code == 200
     assert "First Milestones" in r_home.text
 
+    r_wb = client.get("/workbench")
+    assert r_wb.status_code == 200
+    assert "Español" in r_wb.text
+
     r_ca = client.get("/api/brief?state=CA")
     assert r_ca.status_code == 200
     ca_data = r_ca.json()
@@ -140,7 +144,6 @@ def test_fastapi_workbench_and_leading_zero_states() -> None:
     # Verify leading-zero 11-character California FIPS ('06...')
     ca_tract = ca_data["routing"]["child_profile"]["home_tract_geoid"]
     assert len(ca_tract) == 11 and ca_tract.startswith("06")
-    assert "Español" in r_home.text
     assert len(ca_data["caregiver_notes"]["spanish"]) > 80
 
     # Test all 3 track intents over /api/chat
