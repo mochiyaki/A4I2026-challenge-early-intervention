@@ -1,0 +1,9 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+*.heic
+notebooks
+.env
+.DS_Store

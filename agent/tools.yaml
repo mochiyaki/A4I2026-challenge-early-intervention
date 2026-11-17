@@ -1,0 +1,144 @@
+# =============================================================================
+# A4I 2026 · Challenge 04 ("First Milestones")
+# Google MCP Toolbox for Databases Configuration (`googleapis/mcp-toolbox`)
+#
+# Consumed by Python ADK via `ToolboxToolset` (or alongside BigQuery's remote
+# managed MCP server `https://bigquery.googleapis.com/mcp`).
+# Note: `entrypoint.sh` resolves `${GOOGLE_CLOUD_PROJECT}`, `${A4I_LOCATION}`,
+# and `${A4I_DATASET}` into `/tmp/tools.rendered.yaml` at container startup.
+# All statements enforce governed column projections (excluding `audit_*` and
+# per-row `data_provenance` bloat) and bounded row limits (`LIMIT 10` / `LIMIT 25`).
+# =============================================================================
+
+sources:
+  ei_bigquery:
+    kind: bigquery
+    project: ${GOOGLE_CLOUD_PROJECT}
+    location: ${A4I_LOCATION}
+
+tools:
+  mcp_get_regional_agency_performance:
+    kind: bigquery-sql
+    source: ei_bigquery
+    description: >-
+      Fetches IDEA Part C regional lead agency 45-day timely IFSP compliance rates,
+      referral intake counts, and system capacity vs. family delay counts from
+      ${A4I_DATASET}.idea_part_c_agency_performance (100% [Synthetic]
+      agencies calibrated to federal OSEP Indicator C7 reports).
+    statement: |
+      SELECT
+        agency_id,
+        state_code,
+        served_counties,
+        synthetic_agency_name,
+        reporting_fiscal_year,
+        annual_referrals_received,
+        evaluations_completed_count,
+        initial_ifsp_within_45_days_count,
+        ROUND(SAFE_DIVIDE(initial_ifsp_within_45_days_count, evaluations_completed_count) * 100, 1) AS timely_45d_ifsp_pct,
+        ifsp_delayed_capacity_count,
+        ifsp_delayed_family_count
+      FROM `${A4I_DATASET}.idea_part_c_agency_performance`
+      ORDER BY timely_45d_ifsp_pct ASC
+      LIMIT 25;
+
+  mcp_get_statewide_nsch_screening_strata:
+    kind: bigquery-sql
+    source: ei_bigquery
+    description: >-
+      Retrieves statewide-only HRSA National Survey of Children's Health (NSCH)
+      developmental screening (9-35 months) and follow-up strata by household FPL
+      income band and primary home language. Strictly Statewide grain (6 rows/state);
+      use this instead of ACS limited_english_rate (which is 0.0 in this extract)
+      and never raw-join to census tracts on state_code alone.
+    statement: |
+      SELECT
+        survey_stratum_id,
+        state_code,
+        state_name,
+        geographic_level,
+        survey_cycle,
+        household_income_fpl_band,
+        primary_home_language,
+        sampled_children_9_35m,
+        ROUND(standardized_screening_rate_pct * 100, 1) AS standardized_screening_rate_pct,
+        ROUND(followup_requested_pct * 100, 1) AS followup_requested_pct,
+        ROUND(margin_of_error_pct * 100, 1) AS margin_of_error_pct
+      FROM `${A4I_DATASET}.nsch_developmental_screening_survey`
+      WHERE geographic_level = 'Statewide'
+      ORDER BY standardized_screening_rate_pct ASC
+      LIMIT 25;
+
+  mcp_lookup_tract_routing_context:
+    kind: bigquery-sql
+    source: ei_bigquery
+    description: >-
+      Looks up non-racial US Census ACS under-5 neighborhood routing context
+      (children_under_5_count, poverty_rate, no_vehicle_rate, assistance_rate,
+      county_name) for a specific 11-character census_tract_geoid or top high-need
+      tracts. Deliberately excludes audit_* demographic shares (reserved strictly
+      for post-output Equity Audit) and flags the all-zero limited_english_rate column.
+    parameters:
+      - name: tract_geoid
+        type: string
+        description: >-
+          11-character census_tract_geoid (with leading zero preserved, e.g. '28049003500'
+          or '06047000801'), or 'ALL' to list the top 10 highest under-5 poverty tracts.
+    statement: |
+      SELECT
+        LPAD(census_tract_geoid, 11, '0') AS census_tract_geoid,
+        state_code,
+        county_name,
+        children_under_5_count,
+        ROUND(poverty_rate * 100, 1) AS poverty_pct,
+        ROUND(no_vehicle_rate * 100, 1) AS zero_vehicle_pct,
+        ROUND(assistance_rate * 100, 1) AS public_assistance_pct,
+        ROUND(median_household_income, 0) AS median_household_income,
+        limited_english_rate AS acs_limited_english_rate_trap_all_zero,
+        latitude,
+        longitude
+      FROM `${A4I_DATASET}.acs_under5_tract_demographics`
+      WHERE UPPER(@tract_geoid) = 'ALL'
+         OR LPAD(census_tract_geoid, 11, '0') = LPAD(TRIM(@tract_geoid), 11, '0')
+      ORDER BY poverty_rate DESC, children_under_5_count DESC
+      LIMIT 10;
+
+  mcp_list_carenode_directory:
+    kind: bigquery-sql
+    source: ei_bigquery
+    description: >-
+      Lists 100% [Synthetic] CareNode providers from pediatric_and_ei_provider_directory
+      filtered optionally by node_role ('Screening_Pediatric_Clinic',
+      'Part_C_Intake_Coordinator', 'Multidisciplinary_Eval_Hub', 'EI_Therapy_Vendor'
+      or 'ALL'). Useful for comparing flat active_waitlist_count and
+      median_internal_wait_days against multi-hop ISO GQL graph traversals.
+    parameters:
+      - name: role_filter
+        type: string
+        description: "Node role to filter on, or 'ALL' for top 25 CareNodes by active waitlist."
+    statement: |
+      SELECT
+        provider_id,
+        node_role,
+        city,
+        county_name,
+        synthetic_organization_name,
+        part_c_vendor_enrolled,
+        accepts_medicaid,
+        bilingual_services_listed,
+        monthly_slot_capacity,
+        active_waitlist_count,
+        median_internal_wait_days,
+        LPAD(census_tract_geoid, 11, '0') AS census_tract_geoid
+      FROM `${A4I_DATASET}.pediatric_and_ei_provider_directory`
+      WHERE UPPER(@role_filter) = 'ALL'
+         OR LOWER(node_role) = LOWER(TRIM(@role_filter))
+      ORDER BY active_waitlist_count DESC
+      LIMIT 25;
+
+toolsets:
+  first_milestones_bq:
+    - mcp_get_regional_agency_performance
+    - mcp_get_statewide_nsch_screening_strata
+    - mcp_lookup_tract_routing_context
+    - mcp_list_carenode_directory

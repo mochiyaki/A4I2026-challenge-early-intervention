@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>First Milestones · Executive Pitch Deck (Agents for Impact 2026)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Figtree:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    :root {
+      --canvas: #F8FAFC;
+      --surface: #FFFFFF;
+      --surface-subtle: #F1F5F9;
+      --border: #E2E8F0;
+      --border-strong: #CBD5E1;
+      --ink: #0F172A;
+      --ink-body: #334155;
+      --ink-muted: #64748B;
+      --teal: #0F766E;
+      --teal-dark: #115E59;
+      --teal-soft: #F0FDFA;
+      --teal-border: #99F6E4;
+      --emerald: #15803D;
+      --emerald-soft: #F0FDF4;
+      --emerald-border: #BBF7D0;
+      --crimson: #B91C1C;
+      --crimson-soft: #FEF2F2;
+      --crimson-border: #FECACA;
+      --amber: #B45309;
+      --amber-soft: #FFFBEB;
+      --amber-border: #FDE68A;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .deck-viewport {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px 24px 58px;
+      overflow: hidden;
+    }
+
+    .slide {
+      display: none;
+      width: min(1360px, 100%);
+      height: min(765px, calc(100vh - 78px));
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+      padding: 32px 42px 26px;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .slide.active {
+      display: flex;
+    }
+
+    .slide::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 5px;
+      background: linear-gradient(90deg, var(--teal) 0%, var(--emerald) 65%, var(--amber) 100%);
+    }
+
+    /* Slide Header */
+    .slide-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--teal);
+      background: var(--teal-soft);
+      border: 1px solid var(--teal-border);
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+
+    .provenance-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--ink-body);
+      background: var(--surface-subtle);
+      border: 1px solid var(--border-strong);
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: 'Figtree', sans-serif;
+      color: var(--ink);
+      letter-spacing: -0.015em;
+    }
+
+    .slide-headline {
+      margin-top: 12px;
+      margin-bottom: 14px;
+    }
+
+    .slide-headline h2 {
+      font-size: 28px;
+      line-height: 1.18;
+      font-weight: 800;
+    }
+
+    .slide-headline p {
+      margin-top: 5px;
+      font-size: 14.5px;
+      color: var(--ink-body);
+      line-height: 1.45;
+    }
+
+    .slide-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 14px;
+      min-height: 0;
+    }
+
+    /* Grid Helpers */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .grid-2-asym {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 18px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    /* Cards & Callouts */
+    .panel {
+      background: var(--canvas);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+
+    .panel-white {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+
+    .panel-teal {
+      background: var(--teal-soft);
+      border: 1px solid var(--teal-border);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+
+    .panel-emerald {
+      background: var(--emerald-soft);
+      border: 1px solid var(--emerald-border);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+
+    .panel-crimson {
+      background: var(--crimson-soft);
+      border: 1px solid var(--crimson-border);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+
+    .panel-amber {
+      background: var(--amber-soft);
+      border: 1px solid var(--amber-border);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .kpi-value {
+      font-family: 'Figtree', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      line-height: 1.05;
+    }
+
+    .kpi-label {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--ink-body);
+      margin-top: 4px;
+    }
+
+    .kpi-sub {
+      font-size: 11.5px;
+      color: var(--ink-muted);
+      margin-top: 3px;
+      line-height: 1.35;
+    }
+
+    .text-teal { color: var(--teal); }
+    .text-emerald { color: var(--emerald); }
+    .text-crimson { color: var(--crimson); }
+    .text-amber { color: var(--amber); }
+
+    code, .mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9em;
+    }
+
+    code {
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 1px 5px;
+      color: var(--ink);
+    }
+
+    pre.code-box {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      line-height: 1.45;
+      background: #0F172A;
+      color: #F8FAFC;
+      padding: 12px 14px;
+      border-radius: 10px;
+      overflow-x: hidden;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    ul.clean-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    ul.clean-list li {
+      position: relative;
+      padding-left: 18px;
+      font-size: 13px;
+      line-height: 1.42;
+      color: var(--ink-body);
+    }
+
+    ul.clean-list li::before {
+      content: "";
+      position: absolute;
+      left: 2px;
+      top: 7px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--teal);
+    }
+
+    /* Compact Data Tables */
+    table.deck-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    table.deck-table th {
+      text-align: left;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--ink-muted);
+      padding: 7px 8px;
+      border-bottom: 1.5px solid var(--border-strong);
+      background: var(--surface-subtle);
+    }
+
+    table.deck-table td {
+      padding: 7px 8px;
+      border-bottom: 1px solid var(--border);
+      color: var(--ink-body);
+      vertical-align: middle;
+    }
+
+    table.deck-table tr.highlight-crimson td {
+      background: var(--crimson-soft);
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    table.deck-table tr.highlight-emerald td {
+      background: var(--emerald-soft);
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 999px;
+    }
+
+    .tag-crimson {
+      background: var(--crimson-soft);
+      color: var(--crimson);
+      border: 1px solid var(--crimson-border);
+    }
+
+    .tag-emerald {
+      background: var(--emerald-soft);
+      color: var(--emerald);
+      border: 1px solid var(--emerald-border);
+    }
+
+    .tag-teal {
+      background: var(--teal-soft);
+      color: var(--teal);
+      border: 1px solid var(--teal-border);
+    }
+
+    .tag-amber {
+      background: var(--amber-soft);
+      color: var(--amber);
+      border: 1px solid var(--amber-border);
+    }
+
+    /* Hop Pipeline Strip */
+    .hop-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .hop-strip-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .hop-node {
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 11.5px;
+    }
+
+    .hop-node strong {
+      display: block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--ink);
+    }
+
+    /* Slide Footer */
+    .slide-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      font-size: 11.5px;
+      color: var(--ink-muted);
+    }
+
+    .slide-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: var(--teal);
+    }
+
+    /* Floating Deck Navigation */
+    .deck-controls {
+      position: fixed;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 999px;
+      padding: 6px 14px;
+      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+      z-index: 50;
+    }
+
+    .ctrl-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      background: var(--canvas);
+      border: 1px solid var(--border-strong);
+      color: var(--ink);
+      font-family: 'Noto Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 999px;
+      padding: 4px 11px;
+      cursor: pointer;
+    }
+
+    .ctrl-btn:hover {
+      background: var(--teal-soft);
+      border-color: var(--teal);
+      color: var(--teal-dark);
+    }
+
+    .dot-strip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .slide-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      border: none;
+      background: var(--border-strong);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .slide-dot.active {
+      width: 22px;
+      background: var(--teal);
+    }
+
+    .counter-readout {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink);
+      min-width: 56px;
+      text-align: center;
+    }
+
+    /* Hero Title Slide Styling */
+    .hero-title {
+      font-size: 44px;
+      line-height: 1.08;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: var(--ink);
+    }
+
+    .hero-subtitle {
+      font-size: 17px;
+      line-height: 1.5;
+      color: var(--ink-body);
+      margin-top: 12px;
+      max-width: 760px;
+    }
+
+    /* Print / PDF Rules (16:9 Landscape, Zero Clipping) */
+    @page {
+      size: 1360px 765px;
+      margin: 0;
+    }
+
+    @media print {
+      html, body {
+        width: 1360px;
+        height: auto;
+        overflow: visible !important;
+        background: #FFFFFF !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      .deck-viewport {
+        display: block;
+        width: 1360px;
+        height: auto;
+        padding: 0;
+        overflow: visible !important;
+      }
+
+      .deck-controls {
+        display: none !important;
+      }
+
+      .slide {
+        display: flex !important;
+        width: 1360px !important;
+        height: 765px !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        break-after: page;
+        page-break-after: always;
+      }
+
+      .slide:last-of-type {
+        break-after: auto;
+        page-break-after: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="deck-viewport" id="deckViewport">
+    <!-- =================================================================== -->
+    <!-- SLIDE 01: TITLE & MISSION                                           -->
+    <!-- =================================================================== -->
+    <section class="slide active" data-slide="1" aria-label="Slide 1: First Milestones Overview">
+      <div class="slide-top">
+        <span class="eyebrow">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+          </svg>
+          Agents for Impact 2026 · Challenge 04 · Early Intervention Triage
+        </span>
+        <span class="provenance-chip">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0F766E" stroke-width="2.2" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+          100% [Synthetic] Providers (SYN-PROV-*, SYN-PARTC-*) · Public US Census ACS &amp; HRSA NSCH
+        </span>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-2-asym" style="align-items: center;">
+          <div>
+            <span class="tag tag-teal" style="margin-bottom: 12px;">34 CFR § 303.310 · IDEA Part C 45-Day Guarantee</span>
+            <h1 class="hero-title">First Milestones</h1>
+            <p class="hero-subtitle">
+              Multi-Agent ADK &amp; BigQuery ISO GQL Property Graph Workbench that eliminates multi-hop
+              <code>paper_fax</code> referral loops, routes toddlers onto verified <code>&lt;=45</code>-day bilingual
+              pathways before the 36-month cliff, and pinpoints Hidden Early Intervention Deserts.
+            </p>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px;">
+              <span class="tag tag-emerald">Python ADK v2.14.1 Multi-Agent</span>
+              <span class="tag tag-teal">BigQuery Property Graph (ISO/IEC 39075 GQL)</span>
+              <span class="tag tag-teal">Managed MCP Toolbox + BigQuery MCP</span>
+              <span class="tag tag-amber">English &amp; Español Caregiver Notes</span>
+            </div>
+          </div>
+
+          <div class="panel-teal">
+            <div class="panel-title text-teal">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                <circle cx="18" cy="5" r="3" />
+                <circle cx="6" cy="12" r="3" />
+                <circle cx="18" cy="19" r="3" />
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+              </svg>
+              Multi-Hop Graph Triage at a Glance
+            </div>
+            <svg viewBox="0 0 420 190" width="100%" height="180" role="img" aria-label="Comparison of 75-day paper fax bounce vs 34-day electronic corridor">
+              <rect x="6" y="10" width="408" height="76" rx="10" fill="#FEF2F2" stroke="#FECACA" />
+              <text x="18" y="30" font-family="Figtree, sans-serif" font-size="12" font-weight="700" fill="#B91C1C">Historical 4-Hop Paper-Fax Bounce (CHAIN-MS-023 · 75 Days)</text>
+              <text x="18" y="50" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#334155">MS-007 -&gt; MS-011 (14d) -&gt; MS-015 (22d) -&gt; MS-019 (25d) -&gt; MS-028 (14d)</text>
+              <text x="18" y="70" font-family="Noto Sans, sans-serif" font-size="11" fill="#B91C1C">32m toddler reaches IFSP at 34.5m — 6 weeks before 36m IDEA Part C cliff</text>
+
+              <rect x="6" y="102" width="408" height="76" rx="10" fill="#F0FDF4" stroke="#BBF7D0" />
+              <text x="18" y="122" font-family="Figtree, sans-serif" font-size="12" font-weight="700" fill="#15803D">Verified 3-Hop Electronic Corridor (34 Days · +11d Statutory Buffer)</text>
+              <text x="18" y="142" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#334155">MS-007 -&gt; MS-011 (6d EHR) -&gt; MS-019 (14d Eval) -&gt; MS-028 (14d Therapy)</text>
+              <text x="18" y="162" font-family="Noto Sans, sans-serif" font-size="11" fill="#15803D">100% Medicaid + Bilingual + Free NEMT Ride Flag · Therapy begins at 33.1m</text>
+            </svg>
+          </div>
+        </div>
+
+        <div class="grid-4">
+          <div class="panel">
+            <div class="kpi-value text-crimson">26 / 44</div>
+            <div class="kpi-label">MS Episodes Breach &gt;45 Days</div>
+            <div class="kpi-sub">Only <code>40.9%</code> timely IFSP completion across prefix-deduplicated MS referral chains</div>
+          </div>
+          <div class="panel">
+            <div class="kpi-value text-emerald">75d -&gt; 34d</div>
+            <div class="kpi-label">32-Month Autism Triage Turnaround</div>
+            <div class="kpi-sub">Cuts wait by <code>41</code> days with Medicaid, Spanish &amp; zero-vehicle NEMT support</div>
+          </div>
+          <div class="panel">
+            <div class="kpi-value text-teal">229 Days</div>
+            <div class="kpi-label">Child-Days Saved at One Hub</div>
+            <div class="kpi-sub">Upgrading <code>SYN-PROV-MS-011</code> from <code>paper_fax</code> to EHR eliminates <code>5/7</code> breaches</div>
+          </div>
+          <div class="panel">
+            <div class="kpi-value">6 States</div>
+            <div class="kpi-label">426 ACS Tracts · 133,667 Under-5</div>
+            <div class="kpi-sub">Live BigQuery Property Graph across <code>MS</code>, <code>CA ('06')</code>, <code>AL ('01')</code>, <code>GA</code>, <code>TX</code>, <code>NY</code></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>First Milestones · IDEA Part C Early Intervention Triage &amp; Multi-Hop Network Audit</span>
+        <span class="slide-num">01 / 10</span>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SLIDE 02: THE STATUTORY CRISIS                                      -->
+    <!-- =================================================================== -->
+    <section class="slide" data-slide="2" aria-label="Slide 2: The Statutory 45-Day Crisis">
+      <div class="slide-top">
+        <span class="eyebrow">01 · Clinical &amp; Statutory Urgency</span>
+        <span class="provenance-chip">100% [Synthetic] Referral Chains Anchored to Real US Census Tracts</span>
+      </div>
+
+      <div class="slide-headline">
+        <h2>Two Unforgiving Clocks: The 45-Day Mandate &amp; The 36-Month Cliff</h2>
+        <p>Under federal IDEA Part C (<code>34 CFR § 303.310</code>), every referred infant/toddler must receive evaluation and an initial IFSP within <strong>45 calendar days</strong> — before Part C eligibility terminates at <strong>36 months</strong>.</p>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="panel-crimson">
+            <div class="panel-title text-crimson">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              Case Trace: CHAIN-MS-023 (32-Month-Old Toddler · Autism Screen)
+            </div>
+            <p style="font-size: 13px; color: var(--ink-body); line-height: 1.45;">
+              Referred from Greenwood clinic <code>SYN-PROV-MS-007</code>, three consecutive <code>paper_fax</code> handoffs and a mid-stream saturation/language bounce consume <strong>75 calendar days</strong>:
+            </p>
+            <div class="hop-strip">
+              <div class="hop-node">
+                <strong>Hop 1 · 14d</strong>
+                <code>paper_fax</code><br />
+                <span>MS-007 -&gt; MS-011</span>
+              </div>
+              <div class="hop-node">
+                <strong>Hop 2 · 22d</strong>
+                <code>paper_fax</code><br />
+                <span>MS-011 -&gt; MS-015</span>
+              </div>
+              <div class="hop-node" style="border-color: var(--crimson); background: #FFF5F5;">
+                <strong class="text-crimson">Hop 3 · 25d Bounce</strong>
+                <code>paper_fax</code><br />
+                <span>MS-015 -&gt; MS-019</span>
+              </div>
+              <div class="hop-node">
+                <strong>Hop 4 · 14d</strong>
+                <code>ehr_portal</code><br />
+                <span>MS-019 -&gt; MS-028</span>
+              </div>
+            </div>
+            <div class="panel-amber" style="margin-top: 10px;">
+              <strong class="text-amber" style="font-size: 12.5px;">Aging-Out Hazard:</strong>
+              <span style="font-size: 12.5px; color: var(--ink-body);">
+                At <strong>75 days</strong>, this 32-month toddler enters therapy at <strong>34.5 months</strong> — leaving just <strong>6 weeks</strong> of neuroplastic intervention before aging out of Part C at 36 months.
+              </span>
+            </div>
+          </div>
+
+          <div class="panel-white" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div class="panel-title">Mississippi Regional Agency &amp; Channel Disparities</div>
+              <table class="deck-table">
+                <thead>
+                  <tr>
+                    <th>Regional Lead Agency [Synthetic]</th>
+                    <th>Catchment</th>
+                    <th>Evaluated</th>
+                    <th>Timely &lt;=45d IFSP</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="highlight-crimson">
+                    <td><code>SYN-PARTC-MS-01</code> Upper Delta</td>
+                    <td>Leflore, Coahoma, Bolivar</td>
+                    <td>1,020</td>
+                    <td><span class="tag tag-crimson">52.5% (535)</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>SYN-PARTC-MS-02</code> Central Delta</td>
+                    <td>Washington &amp; Sunflower</td>
+                    <td>920</td>
+                    <td><span class="tag tag-amber">53.3% (490)</span></td>
+                  </tr>
+                  <tr class="highlight-emerald">
+                    <td><code>SYN-PARTC-MS-03</code> Capital Urban</td>
+                    <td>Hinds County Comparator</td>
+                    <td>1,840</td>
+                    <td><span class="tag tag-emerald">65.8% (1,210)</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="grid-2" style="margin-top: 12px;">
+              <div class="panel-crimson" style="padding: 12px 14px;">
+                <div class="kpi-value text-crimson" style="font-size: 24px;">19.7d · 24.4%</div>
+                <div class="kpi-label"><code>paper_fax</code> Handoffs (70 edges)</div>
+                <div class="kpi-sub">Mean per-hop wait &amp; family drop-off rate</div>
+              </div>
+              <div class="panel-emerald" style="padding: 12px 14px;">
+                <div class="kpi-value text-emerald" style="font-size: 24px;">13.3d · 9.9%</div>
+                <div class="kpi-label"><code>ehr_electronic_portal</code> (71 edges)</div>
+                <div class="kpi-sub">32% faster per hop &amp; 2.5x lower drop-off</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>Every 4-hop episode in MS (26 / 26) breaches the 45-day federal deadline (72.8d mean wait)</span>
+        <span class="slide-num">02 / 10</span>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SLIDE 03: WHY FLAT SQL FAILS                                        -->
+    <!-- =================================================================== -->
+    <section class="slide" data-slide="3" aria-label="Slide 3: Why Flat SQL Fails vs Property Graph">
+      <div class="slide-top">
+        <span class="eyebrow">02 · The Graph Differentiator</span>
+        <span class="provenance-chip">BigQuery Enterprise Property Graph · ISO/IEC 39075 GQL</span>
+      </div>
+
+      <div class="slide-headline">
+        <h2>Why Flat Waitlist Tables Miss the #1 Hidden Bounce Hub</h2>
+        <p>Sorting providers by <code>active_waitlist_count</code> blames busy downstream evaluators while completely missing the upstream <code>paper_fax</code> intake desk causing the cascade.</p>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.2" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <line x1="3" y1="9" x2="21" y2="9" />
+                <line x1="9" y1="21" x2="9" y2="9" />
+              </svg>
+              Naive Flat SQL View (<code>ORDER BY active_waitlist_count DESC</code>)
+            </div>
+            <table class="deck-table">
+              <thead>
+                <tr>
+                  <th>Provider ID</th>
+                  <th>Role</th>
+                  <th>Flat Waitlist</th>
+                  <th>Internal Wait</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>SYN-PROV-MS-016</code></td>
+                  <td>Eval Hub (Greenville)</td>
+                  <td>81 children</td>
+                  <td>39d</td>
+                </tr>
+                <tr>
+                  <td><code>SYN-PROV-MS-025</code></td>
+                  <td>Therapy Vendor (Greenwood)</td>
+                  <td>80 children</td>
+                  <td>38d</td>
+                </tr>
+                <tr>
+                  <td><code>SYN-PROV-MS-015</code></td>
+                  <td>Eval Hub (Cleveland)</td>
+                  <td>72 children</td>
+                  <td>34d</td>
+                </tr>
+                <tr class="highlight-emerald">
+                  <td><code>SYN-PROV-MS-011</code></td>
+                  <td>Intake Coordinator (Indianola)</td>
+                  <td><strong>Only 24</strong></td>
+                  <td><strong>5d (Looks Fast!)</strong></td>
+                </tr>
+              </tbody>
+            </table>
+            <p style="font-size: 12px; color: var(--ink-muted); margin-top: 10px;">
+              A spreadsheet analyst skips <code>SYN-PROV-MS-011</code> because its internal wait is just <strong>5 days</strong>.
+            </p>
+          </div>
+
+          <div class="panel-teal">
+            <div class="panel-title text-teal">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                <circle cx="18" cy="5" r="3" />
+                <circle cx="6" cy="12" r="3" />
+                <circle cx="18" cy="19" r="3" />
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+              </svg>
+              Multi-Hop ISO GQL Attribution (<code>-{2,4}-&gt;</code> Correlated on <code>case_chain_id</code>)
+            </div>
+            <table class="deck-table">
+              <thead>
+                <tr>
+                  <th>Intake Coordinator Hub</th>
+                  <th>Flat Wait</th>
+                  <th>&gt;45d Breaches</th>
+                  <th>Excess Days</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="highlight-crimson">
+                  <td><code>SYN-PROV-MS-011</code> (Indianola)</td>
+                  <td>5d</td>
+                  <td><span class="tag tag-crimson">7 / 11 (63.6%)</span></td>
+                  <td><strong>198 days</strong> (56.8d mean)</td>
+                </tr>
+                <tr>
+                  <td><code>SYN-PROV-MS-012</code> (Jackson)</td>
+                  <td>6d</td>
+                  <td>7 / 11 (63.6%)</td>
+                  <td>182 days (56.1d mean)</td>
+                </tr>
+                <tr>
+                  <td><code>SYN-PROV-MS-009</code> (Cleveland)</td>
+                  <td>8d</td>
+                  <td>6 / 11 (54.5%)</td>
+                  <td>180 days (54.0d mean)</td>
+                </tr>
+                <tr>
+                  <td><code>SYN-PROV-MS-010</code> (Greenville)</td>
+                  <td>9d</td>
+                  <td>6 / 11 (54.5%)</td>
+                  <td>164 days (53.5d mean)</td>
+                </tr>
+              </tbody>
+            </table>
+            <p style="font-size: 12px; color: var(--ink-body); margin-top: 10px;">
+              <strong>Root Cause Revealed:</strong> <code>SYN-PROV-MS-011</code> dispatches referrals via <code>paper_fax</code> without pre-checking bilingual/Medicaid slot availability — triggering 25-day downstream re-referral bounces!
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>Variable-length GQL traversal exposes systemic multi-hop bottlenecks invisible to single-table GROUP BY queries</span>
+        <span class="slide-num">03 / 10</span>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SLIDE 04: MULTI-AGENT ADK + MANAGED MCP + PROPERTY GRAPH ARCH       -->
+    <!-- =================================================================== -->
+    <section class="slide" data-slide="4" aria-label="Slide 4: System Architecture">
+      <div class="slide-top">
+        <span class="eyebrow">03 · Cloud-Native Agentic Architecture</span>
+        <span class="provenance-chip">Python ADK v2.14.1 · Cloud Run (--min-instances=1) &amp; Vertex AI Agent Engine</span>
+      </div>
+
+      <div class="slide-headline">
+        <h2>Hierarchical ADK Multi-Agent System + Managed MCP + Property Graph</h2>
+        <p>Root Gemini Pro / Argon orchestrator delegates to three domain-specialized <code>gemini-2.5-flash</code> sub-agents with Pydantic-validated structured outputs and live SSE streaming.</p>
+      </div>
+
+      <div class="slide-body">
+        <div class="panel-white" style="padding: 14px 18px;">
+          <svg viewBox="0 0 1180 270" width="100%" height="245" role="img" aria-label="First Milestones Multi-Agent ADK and BigQuery Property Graph Architecture Diagram">
+            <!-- Column 1: UI -->
+            <rect x="12" y="24" width="245" height="222" rx="12" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5" />
+            <text x="28" y="52" font-family="Figtree, sans-serif" font-size="14" font-weight="800" fill="#0F172A">Coordinator Workbench UI</text>
+            <text x="28" y="74" font-family="JetBrains Mono, monospace" font-size="11" fill="#0F766E">FastAPI + SSE /run Streaming</text>
+            <rect x="28" y="90" width="213" height="40" rx="8" fill="#FFFFFF" stroke="#E2E8F0" />
+            <text x="40" y="114" font-family="Noto Sans, sans-serif" font-size="11.5" font-weight="600" fill="#334155">Cytoscape.js Referral Graph</text>
+            <rect x="28" y="138" width="213" height="40" rx="8" fill="#FFFFFF" stroke="#E2E8F0" />
+            <text x="40" y="162" font-family="Noto Sans, sans-serif" font-size="11.5" font-weight="600" fill="#334155">45d Clock + Counterfactual Sim</text>
+            <rect x="28" y="186" width="213" height="42" rx="8" fill="#F0FDFA" stroke="#99F6E4" />
+            <text x="40" y="211" font-family="Noto Sans, sans-serif" font-size="11.5" font-weight="600" fill="#0F766E">EN / ES Caregiver Action Notes</text>
+
+            <!-- Arrow 1 -->
+            <line x1="257" y1="135" x2="298" y2="135" stroke="#0F766E" stroke-width="2.2" />
+            <polygon points="298,130 308,135 298,140" fill="#0F766E" />
+
+            <!-- Column 2: Root Agent + Sub-Agents -->
+            <rect x="310" y="14" width="520" height="242" rx="12" fill="#F0FDFA" stroke="#0F766E" stroke-width="1.8" />
+            <rect x="330" y="28" width="480" height="58" rx="10" fill="#0F766E" />
+            <text x="348" y="52" font-family="Figtree, sans-serif" font-size="14" font-weight="800" fill="#FFFFFF">Root Orchestrator: first_milestones_coordinator (Gemini Pro / Argon)</text>
+            <text x="348" y="72" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#CCFBF1">34 CFR § 303.310 · 36m Cliff · Zero-Race Routing · schemas.py Pydantic Validation</text>
+
+            <!-- 3 Subagents -->
+            <rect x="330" y="106" width="152" height="132" rx="9" fill="#FFFFFF" stroke="#99F6E4" />
+            <text x="340" y="128" font-family="Figtree, sans-serif" font-size="12" font-weight="700" fill="#0F766E">triage_pathway_router</text>
+            <text x="340" y="145" font-family="JetBrains Mono, monospace" font-size="10" fill="#64748B">gemini-2.5-flash</text>
+            <text x="340" y="168" font-family="Noto Sans, sans-serif" font-size="10.5" fill="#334155">&lt;=45d GQL Paths</text>
+            <text x="340" y="186" font-family="Noto Sans, sans-serif" font-size="10.5" fill="#334155">ST_DISTANCE + NEMT</text>
+            <text x="340" y="204" font-family="Noto Sans, sans-serif" font-size="10.5" fill="#334155">Medicaid + Bilingual</text>
+
+            <rect x="494" y="106" width="152" height="132" rx="9" fill="#FFFFFF" stroke="#99F6E4" />
+            <text x="504" y="128" font-family="Figtree, sans-serif" font-size="11.5" font-weight="700" fill="#0F766E">network_bottleneck_auditor</text>
+            <text x="504" y="145" font-family="JetBrains Mono, monospace" font-size="10" fill="#64748B">gemini-2.5-flash</text>
+            <text x="504" y="168" font-family="Noto Sans, sans-serif" font-size="10.5" fill="#334155">-{2,4}-&gt; Bounce Audit</text>
+            <text x="504" y="186" font-family="Noto Sans, sans-serif" font-size="10.5" fill="#334155">Prefix Deduplication</text>
+            <text x="504" y="204" font-family="Noto Sans, sans-serif" font-size="10.5" fill="#334155">Fax-&gt;EHR Simulator</text>
+
+            <rect x="658" y="106" width="152" height="132" rx="9" fill="#FFFFFF" stroke="#99F6E4" />
+            <text x="668" y="128" font-family="Figtree, sans-serif" font-size="11.2" font-weight="700" fill="#0F766E">equity_caregiver_specialist</text>
+            <text x="668" y="145" font-family="JetBrains Mono, monospace" font-size="10" fill="#64748B">gemini-2.5-flash</text>
+            <text x="668" y="168" font-family="Noto Sans, sans-serif" font-size="10.5" fill="#334155">Hidden EI Deserts</text>
+            <text x="668" y="186" font-family="Noto Sans, sans-serif" font-size="10.5" fill="#334155">Post-Output audit_*</text>
+            <text x="668" y="204" font-family="Noto Sans, sans-serif" font-size="10.5" fill="#334155">EN/ES Caregiver Notes</text>
+
+            <!-- Arrow 2 -->
+            <line x1="830" y1="135" x2="872" y2="135" stroke="#0F766E" stroke-width="2.2" />
+            <polygon points="872,130 882,135 872,140" fill="#0F766E" />
+
+            <!-- Column 3: Managed MCP + BigQuery Property Graph -->
+            <rect x="884" y="24" width="284" height="222" rx="12" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5" />
+            <text x="900" y="52" font-family="Figtree, sans-serif" font-size="14" font-weight="800" fill="#0F172A">Managed MCP &amp; Data Plane</text>
+            <rect x="900" y="68" width="252" height="48" rx="8" fill="#FFFFFF" stroke="#E2E8F0" />
+            <text x="912" y="88" font-family="JetBrains Mono, monospace" font-size="10.5" font-weight="600" fill="#0F766E">MCP Toolbox v0.27.0 + BQ Remote MCP</text>
+            <text x="912" y="105" font-family="Noto Sans, sans-serif" font-size="10.5" fill="#64748B">ToolboxToolset (tools.yaml) + McpToolset</text>
+            <rect x="900" y="126" width="252" height="52" rx="8" fill="#F0FDF4" stroke="#BBF7D0" />
+            <text x="912" y="146" font-family="JetBrains Mono, monospace" font-size="10.5" font-weight="600" fill="#15803D">BigQuery ReferralGraph (ISO GQL)</text>
+            <text x="912" y="164" font-family="Noto Sans, sans-serif" font-size="10.5" fill="#334155">CareNode, Neighborhood, ReferralHandoff</text>
+            <rect x="900" y="188" width="252" height="42" rx="8" fill="#FFFFFF" stroke="#E2E8F0" />
+            <text x="912" y="213" font-family="Noto Sans, sans-serif" font-size="11" font-weight="600" fill="#334155">6-State Multi-Dataset + GeoParquet</text>
+          </svg>
+        </div>
+
+        <div class="grid-3">
+          <div class="panel">
+            <strong style="font-size: 13px;">Dual Production Deployment</strong>
+            <p style="font-size: 12px; color: var(--ink-body); margin-top: 4px;">
+              Unified container on <strong>Cloud Run</strong> (<code>--min-instances=1</code>) + native <strong>Vertex AI Agent Engine</strong> (<code>deploy_agent_engine.sh</code>).
+            </p>
+          </div>
+          <div class="panel">
+            <strong style="font-size: 13px;">Google-Managed MCP Integration</strong>
+            <p style="font-size: 12px; color: var(--ink-body); margin-top: 4px;">
+              Auto-connects ADK <code>ToolboxToolset</code> to Google MCP Toolbox (<code>v0.27.0</code>) and BigQuery Remote MCP (<code>bigquery.googleapis.com/mcp</code>).
+            </p>
+          </div>
+          <div class="panel">
+            <strong style="font-size: 13px;">Real-Time Coordinator UX</strong>
+            <p style="font-size: 12px; color: var(--ink-body); margin-top: 4px;">
+              SSE <code>/run</code> streams sub-agent thoughts &amp; tool badges while updating the interactive Cytoscape.js referral topology.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>Zero cold starts · Deterministic Pydantic brief contracts · 6-state instant BigQuery Property Graph switching</span>
+        <span class="slide-num">04 / 10</span>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SLIDE 05: TRACK 1 — PROSPECTIVE <=45D TRIAGE & CAREGIVER NOTE       -->
+    <!-- =================================================================== -->
+    <section class="slide" data-slide="5" aria-label="Slide 5: Track 1 Compliant Triage Pathway">
+      <div class="slide-top">
+        <span class="eyebrow">04 · Track 1 · Individual Referral Triage</span>
+        <span class="provenance-chip">Tract 28027950700 (Coahoma County, MS) · 32m Toddler · Medicaid · Spanish · No Vehicle</span>
+      </div>
+
+      <div class="slide-headline">
+        <h2>Track 1: Turning a 75-Day Fax Loop into a 34-Day Electronic Corridor</h2>
+        <p><code>triage_pathway_router</code> combines ISO GQL <code>CAN_REFER_TO</code> traversal with <code>ST_DISTANCE</code>, Medicaid &amp; bilingual hard filters, 36m cliff protection, and zero-vehicle NEMT flags.</p>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="panel-emerald">
+            <div class="panel-title text-emerald">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+              Recommended &lt;=45-Day Electronic Route (34 Days · +11d Buffer)
+            </div>
+            <div class="hop-strip-3">
+              <div class="hop-node">
+                <strong>Hop 1 · Day 6</strong>
+                <code>SYN-PROV-MS-011</code><br />
+                <span>Indianola Intake Desk (<code>ehr_portal</code>)</span>
+              </div>
+              <div class="hop-node">
+                <strong>Hop 2 · Day 20</strong>
+                <code>SYN-PROV-MS-019</code><br />
+                <span>Greenwood Bilingual Eval Hub (+14d)</span>
+              </div>
+              <div class="hop-node">
+                <strong>Hop 3 · Day 34</strong>
+                <code>SYN-PROV-MS-028</code><br />
+                <span>Greenville Therapy Vendor (+14d)</span>
+              </div>
+            </div>
+
+            <ul class="clean-list" style="margin-top: 12px;">
+              <li><strong>Statutory Clock Cleared:</strong> Cumulative <strong>34 calendar days</strong> vs. <strong>75 days</strong> on historical <code>CHAIN-MS-023</code> — toddler begins IFSP therapy at <strong>33.1 months</strong> instead of 34.5 months.</li>
+              <li><strong>Zero-Vehicle Mobility Guardrail:</strong> Home tract <code>28027950700</code> has <code>20.3%</code> zero-vehicle households and no household car; auto-triggers <strong>Medicaid NEMT ride assistance</strong> + home/mobile evaluation option.</li>
+              <li><strong>Zero Race Inputs:</strong> Routed strictly on clinical domain, Medicaid enrollment, <code>bilingual_services_listed</code>, slot capacity, and wait days.</li>
+            </ul>
+          </div>
+
+          <div class="panel-white" style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="panel-title text-teal">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              Toggleable English &amp; Español Caregiver Action Note
+            </div>
+            <div class="panel" style="padding: 11px 13px;">
+              <span class="tag tag-teal" style="margin-bottom: 5px;">English Family Timeline</span>
+              <p style="font-size: 12px; color: var(--ink-body); line-height: 1.42;">
+                <strong>Target: ~34 Calendar Days (Under 45-Day Federal Guarantee)</strong><br />
+                1. <strong>By Day 6:</strong> <code>SYN-PROV-MS-011 [Synthetic]</code> confirms electronic intake &amp; Medicaid.<br />
+                2. <strong>By Day 20:</strong> Play-based bilingual evaluation at <code>SYN-PROV-MS-019 [Synthetic]</code> ($0 cost).<br />
+                3. <strong>By Day 34:</strong> IFSP &amp; therapy start with <code>SYN-PROV-MS-028 [Synthetic]</code> + free Medicaid NEMT ride &amp; age-3 preschool transition plan.
+              </p>
+            </div>
+            <div class="panel-teal" style="padding: 11px 13px;">
+              <span class="tag tag-emerald" style="margin-bottom: 5px;">Nota de Acción en Español</span>
+              <p style="font-size: 12px; color: var(--ink-body); line-height: 1.42;">
+                <strong>Meta: ~34 Días Calendario (Garantía Federal de 45 Días)</strong><br />
+                1. <strong>Para el Día 6:</strong> Registro electrónico sin demoras de fax en papel.<br />
+                2. <strong>Para el Día 20:</strong> Evaluación bilingüe gratuita a través de Medicaid.<br />
+                3. <strong>Para el Día 34:</strong> Inicio de terapia IFSP + <strong>transporte gratuito de Medicaid (NEMT)</strong> y apoyo de transición a los 3 años.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>Coordinator human-in-the-loop review with one-click Copy Note in English or Español</span>
+        <span class="slide-num">05 / 10</span>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SLIDE 06: TRACK 2 — ISO GQL AUDIT & COUNTERFACTUAL SIMULATOR        -->
+    <!-- =================================================================== -->
+    <section class="slide" data-slide="6" aria-label="Slide 6: Track 2 Bounce Hub Audit and Counterfactual Simulator">
+      <div class="slide-top">
+        <span class="eyebrow">05 · Track 2 · Network Bottleneck Audit &amp; Simulation</span>
+        <span class="provenance-chip">Prefix-Deduplicated Variable-Length ISO GQL · SYN-PROV-MS-011 Counterfactual</span>
+      </div>
+
+      <div class="slide-headline">
+        <h2>Track 2: Correlated ISO GQL Audit &amp; Single-Hub Counterfactual Fix</h2>
+        <p>Simulating an upgrade of <code>SYN-PROV-MS-011</code> from <code>paper_fax</code> to <code>ehr_electronic_portal</code> + bilingual/Medicaid slot pre-check saves <strong>229 delayed child-days</strong> across 11 episodes.</p>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-2-asym">
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <pre class="code-box">SELECT * FROM GRAPH_TABLE(
+  a4i_early_intervention.ReferralGraph
+  MATCH (c:CareNode {node_role:'Screening_Pediatric_Clinic'})
+        -[r:ReferralHandoff]-&gt;{2,4}
+        (v:CareNode {node_role:'EI_Therapy_Vendor'})
+  WHERE c.state_code = 'MS' AND r[OFFSET(0)].hop_sequence = 1
+    AND (SELECT COUNT(DISTINCT h.case_chain_id) FROM UNNEST(r) AS h) = 1
+  LET chain_id = r[OFFSET(0)].case_chain_id, total_hops = ARRAY_LENGTH(r),
+      chain_wait_days = (SELECT SUM(h.handoff_wait_days) FROM UNNEST(r) AS h)
+  RETURN chain_id, r[OFFSET(0)].target_provider_id AS intake_coord_id, total_hops, chain_wait_days
+) QUALIFY ROW_NUMBER() OVER (PARTITION BY chain_id ORDER BY total_hops DESC) = 1;</pre>
+
+            <table class="deck-table">
+              <thead>
+                <tr>
+                  <th>Episode Depth (MS)</th>
+                  <th>Complete Chains</th>
+                  <th>Mean Cumulative Wait</th>
+                  <th>&gt;45d Statutory Breaches</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="highlight-emerald">
+                  <td><strong>2 Hops</strong> (Direct Clean)</td>
+                  <td>9 episodes</td>
+                  <td>20.4 days</td>
+                  <td><span class="tag tag-emerald">0 / 9 (0%)</span></td>
+                </tr>
+                <tr class="highlight-emerald">
+                  <td><strong>3 Hops</strong> (Standard Eval)</td>
+                  <td>9 episodes</td>
+                  <td>38.4 days</td>
+                  <td><span class="tag tag-emerald">0 / 9 (0%)</span></td>
+                </tr>
+                <tr class="highlight-crimson">
+                  <td><strong>4 Hops</strong> (Re-Referral Bounce)</td>
+                  <td>26 episodes</td>
+                  <td>72.8 days</td>
+                  <td><span class="tag tag-crimson">26 / 26 (100%)</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="panel-teal" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div class="panel-title text-teal">Counterfactual Intervention: <code>SYN-PROV-MS-011</code></div>
+              <p style="font-size: 12.5px; color: var(--ink-body); margin-bottom: 10px;">
+                Levers: (1) Replace <code>paper_fax</code> with <code>ehr_electronic_portal</code>; (2) Pre-check downstream bilingual &amp; Medicaid slot availability before dispatch.
+              </p>
+              <div class="grid-2" style="gap: 10px; margin-bottom: 10px;">
+                <div class="panel-white" style="padding: 10px 12px;">
+                  <div class="kpi-value text-emerald" style="font-size: 26px;">7 -&gt; 2</div>
+                  <div class="kpi-label">&gt;45d Breaches Cut (-71%)</div>
+                  <div class="kpi-sub">5 breached chains flipped to compliant</div>
+                </div>
+                <div class="panel-white" style="padding: 10px 12px;">
+                  <div class="kpi-value text-teal" style="font-size: 26px;">229 Days</div>
+                  <div class="kpi-label">Delayed Child-Days Saved</div>
+                  <div class="kpi-sub">Mean wait drops <code>56.8d -&gt; 36.0d</code></div>
+                </div>
+              </div>
+            </div>
+
+            <table class="deck-table">
+              <thead>
+                <tr>
+                  <th>Episode</th>
+                  <th>Age</th>
+                  <th>Baseline -&gt; Sim</th>
+                  <th>Saved</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="highlight-emerald">
+                  <td><code>CHAIN-MS-023</code></td>
+                  <td>32m</td>
+                  <td>75d (4h) -&gt; <strong>38d (3h)</strong></td>
+                  <td><strong>37d</strong></td>
+                </tr>
+                <tr>
+                  <td><code>CHAIN-MS-043</code></td>
+                  <td>28m</td>
+                  <td>76d (4h) -&gt; <strong>39d (3h)</strong></td>
+                  <td><strong>37d</strong></td>
+                </tr>
+                <tr>
+                  <td><code>CHAIN-MS-003</code></td>
+                  <td>12m</td>
+                  <td>73d (4h) -&gt; <strong>38d (3h)</strong></td>
+                  <td><strong>35d</strong></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>Quantifies ROI before capital outlay: fixing 1 intake coordinator hub recovers 229 toddler-days of early therapy</span>
+        <span class="slide-num">06 / 10</span>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SLIDE 07: TRACK 3 — HIDDEN EI DESERTS & POST-OUTPUT EQUITY AUDIT    -->
+    <!-- =================================================================== -->
+    <section class="slide" data-slide="7" aria-label="Slide 7: Track 3 Hidden EI Deserts and Post-Output Equity Audit">
+      <div class="slide-top">
+        <span class="eyebrow">06 · Track 3 · Mobile Outreach &amp; Post-Output Equity Audit</span>
+        <span class="provenance-chip">Zero Race Inputs in Routing · audit_* Shares Joined Strictly Post-Output</span>
+      </div>
+
+      <div class="slide-headline">
+        <h2>Track 3: Uncovering 21 "Hidden EI Deserts" &amp; Auditing Equity</h2>
+        <p>A neighborhood is a <strong>Hidden EI Desert</strong> when a clinic sits nearby on a map, yet <strong>zero</strong> Medicaid + bilingual <code>&lt;=45</code>-day therapy pathways are reachable within 25 km.</p>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="panel-white">
+            <div class="panel-title text-teal">Top Priority Tracts for Mobile Bilingual Screening (MS)</div>
+            <table class="deck-table">
+              <thead>
+                <tr>
+                  <th>Tract GEOID</th>
+                  <th>County (&lt;5 Pop)</th>
+                  <th>Pov / 0-Veh</th>
+                  <th>Nearest Clinic</th>
+                  <th>&lt;=45d Paths</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="highlight-crimson">
+                  <td><code>28011950100</code></td>
+                  <td>Bolivar (254)</td>
+                  <td>46.8% / 17.2%</td>
+                  <td><strong>2.1 km</strong></td>
+                  <td><span class="tag tag-crimson">0 (Desert)</span></td>
+                </tr>
+                <tr class="highlight-crimson">
+                  <td><code>28011950200</code></td>
+                  <td>Bolivar (204)</td>
+                  <td>45.8% / 22.7%</td>
+                  <td><strong>1.3 km</strong></td>
+                  <td><span class="tag tag-crimson">0 (Desert)</span></td>
+                </tr>
+                <tr class="highlight-crimson">
+                  <td><code>28083950300</code></td>
+                  <td>Leflore (316)</td>
+                  <td>41.2% / 10.5%</td>
+                  <td>14.4 km</td>
+                  <td><span class="tag tag-crimson">0 (Desert)</span></td>
+                </tr>
+                <tr class="highlight-crimson">
+                  <td><code>28133950100</code></td>
+                  <td>Sunflower (296)</td>
+                  <td>39.7% / 14.6%</td>
+                  <td><strong>1.4 km</strong></td>
+                  <td><span class="tag tag-crimson">0 (Desert)</span></td>
+                </tr>
+                <tr>
+                  <td><code>28027950700</code></td>
+                  <td>Coahoma (711)</td>
+                  <td>57.8% / 20.3%</td>
+                  <td>30.1 km</td>
+                  <td><span class="tag tag-amber">0 (Rural Gap)</span></td>
+                </tr>
+              </tbody>
+            </table>
+            <p style="font-size: 11.5px; color: var(--ink-muted); margin-top: 8px;">
+              Bolivar <code>28011950200</code> sits just <strong>1.3 km</strong> from a clinic — flat proximity maps miss its 0 downstream compliant paths.
+            </p>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div class="panel">
+              <div class="panel-title">Post-Output Neighborhood Equity Audit (MS · 44 Chains)</div>
+              <table class="deck-table">
+                <thead>
+                  <tr>
+                    <th>IFSP Outcome</th>
+                    <th>Cases (Wait)</th>
+                    <th>Poverty</th>
+                    <th>Zero-Veh</th>
+                    <th>Audit Black / Hisp / White</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="highlight-crimson">
+                    <td><strong>Breached (&gt;45d)</strong></td>
+                    <td>26 (72.8d)</td>
+                    <td>31.1%</td>
+                    <td><strong>11.9%</strong></td>
+                    <td>75.5% / 1.6% / 21.8%</td>
+                  </tr>
+                  <tr class="highlight-emerald">
+                    <td><strong>Timely (&lt;=45d)</strong></td>
+                    <td>18 (29.4d)</td>
+                    <td>31.5%</td>
+                    <td>10.5%</td>
+                    <td>79.2% / 1.9% / 18.1%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="panel-amber">
+              <div class="panel-title text-amber" style="margin-bottom: 4px;">Mobility &amp; Statewide NSCH Screening Gap Context</div>
+              <ul class="clean-list">
+                <li><strong>222.6 km Bilingual Eval Gap:</strong> Coahoma tract <code>28027950100</code> (<code>247</code> children &lt;5, <code>47.6%</code> poverty, <code>19.2%</code> zero-vehicle) sits <strong>222.6 km</strong> from the nearest bilingual Medicaid evaluation hub.</li>
+                <li><strong>Statewide HRSA NSCH (6 Strata, Zero Fan-Out):</strong> Only <strong>12.3%</strong> of MS children in <code>&lt;100% FPL</code> non-English homes receive standardized screening vs. <strong>33.0%</strong> in <code>&gt;=400% FPL</code> English homes (2.7x gap).</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>Pairs mobile developmental screening vans with pre-verified downstream evaluation &amp; therapy slots</span>
+        <span class="slide-num">07 / 10</span>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SLIDE 08: DATA & GRAPH RIGOR — 4 TRAPS CAUGHT                       -->
+    <!-- =================================================================== -->
+    <section class="slide" data-slide="8" aria-label="Slide 8: Data and Graph Rigor Guardrails">
+      <div class="slide-top">
+        <span class="eyebrow">07 · Data Hygiene &amp; Graph Correctness</span>
+        <span class="provenance-chip">Automated Regression Suite Enforcing All 4 Challenge Data Traps</span>
+      </div>
+
+      <div class="slide-headline">
+        <h2>Verified Data &amp; Graph Rigor: 4 Subtle Evaluation Traps Defeated</h2>
+        <p>Public health analytics fail silently when FIPS leading zeros drop, zero-filled columns distort formulas, or variable-length graph paths double-count sub-prefixes.</p>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="panel-teal">
+            <div class="panel-title text-teal">Trap 1 · Leading-Zero FIPS Preservation (<code>'06...'</code> &amp; <code>'01...'</code>)</div>
+            <p style="font-size: 12.5px; color: var(--ink-body); line-height: 1.45;">
+              Casting GEOIDs to <code>INT64</code> silently corrupts California (<code>06</code>) and Alabama (<code>01</code>) joins. Every SQL &amp; Python pipeline enforces 11-char <code>LPAD(..., 11, '0')</code> strings — verified across all <strong>101 CA tracts (<code>'06...'</code>, 41,144 under-5 children)</strong> and <strong>43 AL tracts (<code>'01...'</code>, 9,396 under-5 children)</strong>.
+            </p>
+          </div>
+
+          <div class="panel-teal">
+            <div class="panel-title text-teal">Trap 2 · All-Zero ACS <code>limited_english_rate</code> Column</div>
+            <p style="font-size: 12.5px; color: var(--ink-body); line-height: 1.45;">
+              In the starter ACS extract, <strong>426 / 426 tracts</strong> (including <code>64/64</code> in MS and <code>101/101</code> in CA) carry <code>0.0</code> in <code>limited_english_rate</code>. Our tools exclude this zeroed column from need scores and join provider <code>bilingual_services_listed</code> + statewide HRSA NSCH language strata instead.
+            </p>
+          </div>
+
+          <div class="panel-white">
+            <div class="panel-title text-emerald">Trap 3 · Statewide-Only NSCH Grain (Zero 6x Tract Fan-Out)</div>
+            <p style="font-size: 12.5px; color: var(--ink-body); line-height: 1.45;">
+              <code>nsch_developmental_screening_survey</code> has <code>geographic_level = 'Statewide'</code> (6 income/language strata per state · 36 rows total). Joining NSCH directly onto tracts inflates child counts <strong>6x</strong>; we query NSCH strictly as a separate statewide context table.
+            </p>
+          </div>
+
+          <div class="panel-white">
+            <div class="panel-title text-emerald">Trap 4 · Correlated &amp; Prefix-Deduplicated ISO GQL</div>
+            <p style="font-size: 12.5px; color: var(--ink-body); line-height: 1.45;">
+              Unconstrained <code>-[r:ReferralHandoff]-&gt;{2,4}</code> stitches unrelated children's hops and double-counts 3-hop prefixes of 4-hop Type B (<code>Vendor -&gt; Vendor</code>) chains. Enforcing <code>COUNT(DISTINCT h.case_chain_id) = 1</code> + <code>QUALIFY ROW_NUMBER() ... ORDER BY total_hops DESC = 1</code> yields the exact <strong>44 MS chains &amp; 26 breaches</strong>.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>Every guardrail is continuously verified in pytest across BigQuery ReferralGraph and local GeoParquet mirrors</span>
+        <span class="slide-num">08 / 10</span>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SLIDE 09: MULTI-STATE SCALE & 100% SYNTHETIC ETHICS CHARTER         -->
+    <!-- =================================================================== -->
+    <section class="slide" data-slide="9" aria-label="Slide 9: Multi-State Scale and Responsible AI Governance">
+      <div class="slide-top">
+        <span class="eyebrow">08 · National Portability &amp; Responsible AI</span>
+        <span class="provenance-chip">a4i_early_intervention_multistate.ReferralGraph · 100% [Synthetic] Stage Safety</span>
+      </div>
+
+      <div class="slide-headline">
+        <h2>Instant 6-State Portability &amp; Stage-Safe Synthetic Governance</h2>
+        <p>Switch live in the Coordinator Workbench between rural Delta, Black Belt, and leading-zero FIPS states — backed by strict synthetic and equity guardrails.</p>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-2-asym">
+          <div class="panel-white">
+            <div class="panel-title">Live 6-State BigQuery Property Graph Coverage (426 Tracts · 133,667 Under-5)</div>
+            <table class="deck-table">
+              <thead>
+                <tr>
+                  <th>State</th>
+                  <th>FIPS Prefix</th>
+                  <th>ACS Tracts</th>
+                  <th>Children &lt;5</th>
+                  <th>CareNodes [Synthetic]</th>
+                  <th>Chains</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="highlight-emerald">
+                  <td><strong>MS</strong> · Mississippi</td>
+                  <td><code>'28...'</code></td>
+                  <td>64</td>
+                  <td>15,512</td>
+                  <td>30 (<code>SYN-PROV-MS-*</code>)</td>
+                  <td>44 (26 &gt;45d)</td>
+                </tr>
+                <tr class="highlight-emerald">
+                  <td><strong>CA</strong> · California</td>
+                  <td><code>'06...'</code> (Zero-Pad)</td>
+                  <td><strong>101</strong></td>
+                  <td><strong>41,144</strong></td>
+                  <td>30 (<code>SYN-PROV-CA-*</code>)</td>
+                  <td>44 (26 &gt;45d)</td>
+                </tr>
+                <tr>
+                  <td><strong>AL</strong> · Alabama</td>
+                  <td><code>'01...'</code> (Zero-Pad)</td>
+                  <td>43</td>
+                  <td>9,396</td>
+                  <td>30 (<code>SYN-PROV-AL-*</code>)</td>
+                  <td>44 (26 &gt;45d)</td>
+                </tr>
+                <tr>
+                  <td><strong>GA</strong> · Georgia</td>
+                  <td><code>'13...'</code></td>
+                  <td>57</td>
+                  <td>14,505</td>
+                  <td>30 (<code>SYN-PROV-GA-*</code>)</td>
+                  <td>44 (26 &gt;45d)</td>
+                </tr>
+                <tr>
+                  <td><strong>TX</strong> · Texas</td>
+                  <td><code>'48...'</code></td>
+                  <td>72</td>
+                  <td>29,599</td>
+                  <td>30 (<code>SYN-PROV-TX-*</code>)</td>
+                  <td>44 (26 &gt;45d)</td>
+                </tr>
+                <tr>
+                  <td><strong>NY</strong> · New York</td>
+                  <td><code>'36...'</code></td>
+                  <td>89</td>
+                  <td>23,511</td>
+                  <td>30 (<code>SYN-PROV-NY-*</code>)</td>
+                  <td>44 (26 &gt;45d)</td>
+                </tr>
+              </tbody>
+            </table>
+            <p style="font-size: 11.5px; color: var(--ink-body); margin-top: 8px;">
+              <strong>California (<code>'06...'</code>) Highlight:</strong> Upgrading <code>SYN-PROV-CA-011</code> (Fresno, <code>5d</code> flat wait, <code>7/11</code> breaches) eliminates <strong>7 / 7 breaches</strong> and saves <strong>223 child-days</strong>.
+            </p>
+          </div>
+
+          <div class="panel-teal" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div class="panel-title text-teal">Responsible AI &amp; Ethics Charter</div>
+              <ul class="clean-list">
+                <li><strong>100% <code>[Synthetic]</code> Stage Safety:</strong> Every clinic/vendor (<code>SYN-PROV-*</code>), Part C agency (<code>SYN-PARTC-*</code>), street address, and referral log (<code>CHAIN-*</code>) is 100% fictional — zero real clinicians or patient PHI are ever accused of bottlenecks.</li>
+                <li><strong>Audit-Only Demographics:</strong> Race/ethnicity columns (<code>audit_black_share</code>, <code>audit_hispanic_share</code>, etc.) are barred from routing/ranking inputs and used solely in post-output disparity checks.</li>
+                <li><strong>Non-Diagnostic Coordinator Copilot:</strong> Never diagnoses autism or developmental delay; supports human IDEA Part C intake coordinators with transparent ISO GQL evidence.</li>
+              </ul>
+            </div>
+            <div class="panel-white" style="padding: 10px 12px; margin-top: 10px;">
+              <span class="mono" style="font-size: 11px; color: var(--teal);">
+                guardrails.py: before_model + after_model + tool output attestation active on every turn
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>Public US Census ACS &amp; HRSA NSCH context + 100% [Synthetic] organizational topology</span>
+        <span class="slide-num">09 / 10</span>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SLIDE 10: PRODUCTION DEPLOYMENT & IMPACT SUMMARY                    -->
+    <!-- =================================================================== -->
+    <section class="slide" data-slide="10" aria-label="Slide 10: Deployment Readiness and Measurable Impact">
+      <div class="slide-top">
+        <span class="eyebrow">09 · Production Readiness &amp; Public Impact</span>
+        <span class="provenance-chip">Live on Google Cloud Run &amp; Vertex AI Agent Engine Ready</span>
+      </div>
+
+      <div class="slide-headline">
+        <h2>Every Milestone Within 45 Days — Ready for State Part C Agencies</h2>
+        <p>Reproducible one-command provisioning across BigQuery Property Graph, Managed MCP, Cloud Run, and Vertex AI Agent Engine.</p>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-4">
+          <div class="panel-emerald">
+            <div class="kpi-value text-emerald">-41 Days</div>
+            <div class="kpi-label">Faster Triage for 32m Toddlers</div>
+            <div class="kpi-sub"><code>75d</code> fax bounce -&gt; <code>34d</code> compliant corridor before 36m cliff</div>
+          </div>
+          <div class="panel-teal">
+            <div class="kpi-value text-teal">229 Days</div>
+            <div class="kpi-label">Saved per Upgraded Hub (MS)</div>
+            <div class="kpi-sub"><code>223</code> days saved &amp; <code>7/7</code> breaches eliminated in CA (<code>SYN-PROV-CA-011</code>)</div>
+          </div>
+          <div class="panel">
+            <div class="kpi-value text-crimson">21 Deserts</div>
+            <div class="kpi-label">Hidden EI Deserts Pinpointed</div>
+            <div class="kpi-sub">Targets mobile bilingual screening vans to tracts with <code>0</code> reachable paths</div>
+          </div>
+          <div class="panel">
+            <div class="kpi-value">EN + ES</div>
+            <div class="kpi-label">Family-First Action Notes</div>
+            <div class="kpi-sub">Plain-language timelines with free Medicaid NEMT &amp; interpreter rights</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="panel-white">
+            <div class="panel-title">One-Command Cloud Run + Vertex AI Agent Engine Deployment</div>
+            <pre class="code-box"># 1. Provision BigQuery Property Graph + Managed MCP + Cloud Run (--min-instances=1)
+bash scripts/deploy_cloud_run.sh MS
+
+# 2. Validate &amp; Deploy ADK Multi-Agent Package to Vertex AI Agent Engine
+bash scripts/deploy_agent_engine.sh --dry-run
+bash scripts/deploy_agent_engine.sh --project="$GOOGLE_CLOUD_PROJECT" --region=us-central1</pre>
+          </div>
+
+          <div class="panel-teal" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div class="panel-title text-teal">Why First Milestones Wins for Families &amp; Coordinators</div>
+              <ul class="clean-list">
+                <li><strong>Solves a Real Graph Problem:</strong> Exposes multi-hop referral loops and Hidden EI Deserts that flat SQL waitlists cannot see.</li>
+                <li><strong>Actionable at Both Scales:</strong> Helps an intake coordinator route one toddler today <em>and</em> helps a state director prioritize EHR upgrades &amp; mobile vans tomorrow.</li>
+                <li><strong>Built on Google Cloud's Latest Stack:</strong> Python ADK v2.14.1 Multi-Agent + Gemini + Managed MCP + BigQuery ISO/IEC 39075 Property Graph.</li>
+              </ul>
+            </div>
+            <div style="font-family: 'Figtree', sans-serif; font-weight: 800; font-size: 15px; color: var(--teal-dark); margin-top: 8px;">
+              First Milestones · Protecting the Brain's Fastest Window of Growth.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>Agents for Impact 2026 · Challenge 04 · 100% [Synthetic] Provider &amp; Referral Topology</span>
+        <span class="slide-num">10 / 10</span>
+      </div>
+    </section>
+  </main>
+
+  <!-- Interactive Navigation Bar (Hidden in Print/PDF) -->
+  <nav class="deck-controls" aria-label="Pitch Deck Slide Controls">
+    <button type="button" class="ctrl-btn" id="prevSlideBtn" aria-label="Previous Slide">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+        <polyline points="15 18 9 12 15 6" />
+      </svg>
+      Prev
+    </button>
+    <div class="dot-strip" id="dotStrip" role="tablist" aria-label="Select Slide"></div>
+    <span class="counter-readout" id="slideCounter">01 / 10</span>
+    <button type="button" class="ctrl-btn" id="nextSlideBtn" aria-label="Next Slide">
+      Next
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+        <polyline points="9 18 15 12 9 6" />
+      </svg>
+    </button>
+    <button type="button" class="ctrl-btn" id="printDeckBtn" aria-label="Print or Save PDF">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+        <polyline points="6 9 6 2 18 2 18 9" />
+        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+        <rect x="6" y="14" width="12" height="8" />
+      </svg>
+      PDF
+    </button>
+  </nav>
+
+  <script>
+    (function () {
+      const slides = Array.from(document.querySelectorAll('.slide'));
+      const total = slides.length;
+      const counterEl = document.getElementById('slideCounter');
+      const dotStrip = document.getElementById('dotStrip');
+      const prevBtn = document.getElementById('prevSlideBtn');
+      const nextBtn = document.getElementById('nextSlideBtn');
+      const printBtn = document.getElementById('printDeckBtn');
+      let current = 0;
+
+      function pad(n) {
+        return String(n).padStart(2, '0');
+      }
+
+      const dots = slides.map((_, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'slide-dot' + (idx === 0 ? ' active' : '');
+        btn.setAttribute('aria-label', 'Go to slide ' + (idx + 1));
+        btn.addEventListener('click', () => goTo(idx));
+        dotStrip.appendChild(btn);
+        return btn;
+      });
+
+      function goTo(index) {
+        current = (index + total) % total;
+        slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+        dots.forEach((d, idx) => d.classList.toggle('active', idx === current));
+        counterEl.textContent = pad(current + 1) + ' / ' + pad(total);
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState(null, '', '#slide-' + (current + 1));
+        }
+      }
+
+      prevBtn.addEventListener('click', () => goTo(current - 1));
+      nextBtn.addEventListener('click', () => goTo(current + 1));
+      printBtn.addEventListener('click', () => window.print());
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+          e.preventDefault();
+          goTo(current + 1);
+        } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+          e.preventDefault();
+          goTo(current - 1);
+        } else if (e.key === 'Home') {
+          e.preventDefault();
+          goTo(0);
+        } else if (e.key === 'End') {
+          e.preventDefault();
+          goTo(total - 1);
+        }
+      });
+
+      const hashMatch = window.location.hash.match(/^#slide-(\d+)$/);
+      if (hashMatch) {
+        const requested = parseInt(hashMatch[1], 10) - 1;
+        if (requested >= 0 && requested < total) {
+          goTo(requested);
+        }
+      }
+
+      window.firstMilestonesDeck = { goTo, totalSlides: () => total, currentSlide: () => current + 1 };
+    })();
+  </script>
+</body>
+</html>

@@ -12,6 +12,7 @@
 #     bash scripts/load.sh                 # defaults to MS (Mississippi)
 #     bash scripts/load.sh AL              # Alabama (leading-zero FIPS 01)
 #     bash scripts/load.sh CA              # California (leading-zero FIPS 06)
+#     bash scripts/load.sh ALL             # all 6 starter states (MS, AL, GA, TX, CA, NY)
 #     bash scripts/load.sh --list          # show available states
 #
 # You still want the notebook if you can run it. Section 2 proves why sorting
@@ -109,7 +110,7 @@ validate_config() {
 
   [[ "${CMD_TIMEOUT_SEC}" =~ ^[1-9][0-9]{0,3}$ ]] \
     || fail "Invalid A4I_CMD_TIMEOUT_SEC='${CMD_TIMEOUT_SEC}' (expected 1..9999)."
-  [[ "${DATASET}" =~ ^[a-zA-Z_][a-zA-Z0-9_]{0,1023}$ ]] \
+  [[ "${DATASET}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ && ${#DATASET} -le 1024 ]] \
     || fail "Invalid dataset identifier '${DATASET}'."
   [[ "${LOCATION}" =~ ^[A-Za-z0-9-]+$ ]] \
     || fail "Invalid BigQuery location '${LOCATION}'."
@@ -136,9 +137,10 @@ list_states() {
     for code in "${SCOPE_ORDER[@]}"; do
       printf '  %-6s %s\n' "${code}" "${STATE_NAMES[${code}]}"
     done
+    printf '  %-6s %s\n' "ALL" "All 6 starter states (MS, AL, GA, TX, CA, NY)"
   fi
   echo
-  echo "Usage: bash scripts/load.sh <STATE>"
+  echo "Usage: bash scripts/load.sh <STATE|ALL>"
 }
 
 resolve_state() {
@@ -148,14 +150,23 @@ resolve_state() {
     exit 0
   fi
   if [[ "${raw}" == "--help" || "${raw}" == "-h" ]]; then
-    sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'
     exit 0
   fi
   [[ "${raw}" != *".."* && "${raw}" != *"/"* ]] \
     || fail "Invalid state argument '${raw}'."
   STATE="$(printf '%s' "${raw}" | tr '[:lower:]' '[:upper:]' | tr -d '[:space:]')"
+  if [[ "${STATE}" == "ALL" ]]; then
+    STATE_LABEL="All 6 starter states (MS, AL, GA, TX, CA, NY)"
+    if [[ -n "${SNAPSHOT_BUCKET}" ]]; then
+      SRC="gs://${SNAPSHOT_BUCKET}/${SNAPSHOT_PREFIX}/{MS,AL,GA,TX,CA,NY}"
+    else
+      SRC="${REPO_ROOT}/data (all 6 starter states: MS, AL, GA, TX, CA, NY)"
+    fi
+    return 0
+  fi
   [[ "${STATE}" =~ ^[A-Z]{2}$ ]] \
-    || fail "'${raw}' is not a two-letter state abbreviation. Try: bash scripts/load.sh MS"
+    || fail "'${raw}' is not a two-letter state abbreviation or ALL. Try: bash scripts/load.sh MS"
   STATE_LABEL="${STATE_NAMES[${STATE}]:-${STATE}}"
   if [[ -n "${SNAPSHOT_BUCKET}" ]]; then
     SRC="gs://${SNAPSHOT_BUCKET}/${SNAPSHOT_PREFIX}/${STATE}"
@@ -190,7 +201,14 @@ preflight_checks() {
   echo
 
   if [[ -n "${SNAPSHOT_BUCKET}" ]]; then
-    if ! run_timed gcloud storage ls "${SRC}/" >/dev/null 2>&1; then
+    if [[ "${STATE}" == "ALL" ]]; then
+      local st_chk
+      for st_chk in "${SCOPE_ORDER[@]}"; do
+        if ! run_timed gcloud storage ls "gs://${SNAPSHOT_BUCKET}/${SNAPSHOT_PREFIX}/${st_chk}/" >/dev/null 2>&1; then
+          fail "No snapshot found for '${st_chk}' in gs://${SNAPSHOT_BUCKET}/${SNAPSHOT_PREFIX}/."
+        fi
+      done
+    elif ! run_timed gcloud storage ls "${SRC}/" >/dev/null 2>&1; then
       echo
       bold "No snapshot found for '${STATE}'."
       echo
@@ -212,14 +230,20 @@ ensure_graph_reservation() {
     --project="${PROJECT_ID}" --quiet >/dev/null 2>&1 \
     || info "could not enable bigqueryreservation.googleapis.com (may already be on)"
 
+  local res_out=""
   if run_timed bq --project_id="${PROJECT_ID}" --location="${LOCATION}" \
        show --reservation "${RESERVATION}" >/dev/null 2>&1; then
     info "reservation ${RESERVATION} already exists - reusing it"
-  elif run_timed bq --project_id="${PROJECT_ID}" --location="${LOCATION}" mk --reservation \
+  elif res_out="$(run_timed bq --project_id="${PROJECT_ID}" --location="${LOCATION}" mk --reservation \
          --edition=ENTERPRISE --slots=0 --autoscale_max_slots=50 \
-         --ignore_idle_slots=true "${RESERVATION}"; then
+         --ignore_idle_slots=true "${RESERVATION}" 2>&1)"; then
     info "created reservation ${RESERVATION} (Enterprise, 0 baseline, autoscale to 50)"
+  elif [[ "${A4I_ALLOW_RESERVATION_FALLBACK:-0}" == "1" ]] || grep -qi "TotalAdminProjectsPerOrganization" <<<"${res_out}"; then
+    info "WARNING: could not create project reservation ${RESERVATION} (org reservation quota full) - continuing with org/existing Graph support"
+    echo
+    return 0
   else
+    printf '%s\n' "${res_out}" >&2
     fail "could not create reservation ${RESERVATION}. Graph queries require Enterprise edition; tell a coach."
   fi
 
@@ -270,45 +294,77 @@ build_local_filter_sql() {
   local table="$1"
   local fq_dest="\`${PROJECT_ID}.${DATASET}.${table}\`"
   local fq_raw="\`${PROJECT_ID}.${DATASET}._raw_${table}\`"
+  local where_sql=""
+  if [[ "${STATE}" == "ALL" ]]; then
+    where_sql="WHERE state_code IN ('MS', 'AL', 'GA', 'TX', 'CA', 'NY')"
+  else
+    where_sql="WHERE state_code = '${STATE}'"
+  fi
   case "${table}" in
     acs_under5_tract_demographics|pediatric_and_ei_provider_directory)
-      printf 'CREATE OR REPLACE TABLE %s AS SELECT * REPLACE (LPAD(census_tract_geoid, 11, '\''0'\'') AS census_tract_geoid, LPAD(county_fips, 5, '\''0'\'') AS county_fips) FROM %s WHERE state_code = '\''%s'\''' \
-        "${fq_dest}" "${fq_raw}" "${STATE}"
+      printf 'CREATE OR REPLACE TABLE %s AS SELECT * REPLACE (LPAD(census_tract_geoid, 11, '\''0'\'') AS census_tract_geoid, LPAD(county_fips, 5, '\''0'\'') AS county_fips) FROM %s %s' \
+        "${fq_dest}" "${fq_raw}" "${where_sql}"
       ;;
     deidentified_part_c_referral_logs)
-      printf 'CREATE OR REPLACE TABLE %s AS SELECT * REPLACE (LPAD(child_home_tract_geoid, 11, '\''0'\'') AS child_home_tract_geoid) FROM %s WHERE state_code = '\''%s'\''' \
-        "${fq_dest}" "${fq_raw}" "${STATE}"
+      printf 'CREATE OR REPLACE TABLE %s AS SELECT * REPLACE (LPAD(child_home_tract_geoid, 11, '\''0'\'') AS child_home_tract_geoid) FROM %s %s' \
+        "${fq_dest}" "${fq_raw}" "${where_sql}"
       ;;
     *)
-      printf 'CREATE OR REPLACE TABLE %s AS SELECT * FROM %s WHERE state_code = '\''%s'\''' \
-        "${fq_dest}" "${fq_raw}" "${STATE}"
+      printf 'CREATE OR REPLACE TABLE %s AS SELECT * FROM %s %s' \
+        "${fq_dest}" "${fq_raw}" "${where_sql}"
       ;;
   esac
 }
 
 load_all_tables() {
   bold "2/3  Loading tables"
-  local table uri sql
+  local table uri sql st_code first_st
   for table in "${TABLES[@]}"; do
     info "loading ${table}..."
     if [[ -n "${SNAPSHOT_BUCKET}" ]]; then
-      uri="${SRC}/${table}/data.parquet"
-      if ! run_timed gcloud storage ls "${uri}" >/dev/null 2>&1; then
-        uri="${SRC}/${table}/*.parquet"
-        run_timed gcloud storage ls "${SRC}/${table}/" >/dev/null 2>&1 \
-          || fail "Missing ${SRC}/${table}/. The snapshot for '${STATE}' looks incomplete - tell a coach."
+      if [[ "${STATE}" == "ALL" ]]; then
+        first_st=1
+        for st_code in "${SCOPE_ORDER[@]}"; do
+          local st_src="gs://${SNAPSHOT_BUCKET}/${SNAPSHOT_PREFIX}/${st_code}"
+          uri="${st_src}/${table}/data.parquet"
+          if ! run_timed gcloud storage ls "${uri}" >/dev/null 2>&1; then
+            uri="${st_src}/${table}/*.parquet"
+            run_timed gcloud storage ls "${st_src}/${table}/" >/dev/null 2>&1 \
+              || fail "Missing ${st_src}/${table}/. The snapshot for '${st_code}' looks incomplete - tell a coach."
+          fi
+          if [[ "${first_st}" -eq 1 ]]; then
+            run_timed bq --project_id="${PROJECT_ID}" --location="${LOCATION}" load \
+              --source_format=PARQUET --replace "${DATASET}._raw_${table}" "${uri}" >/dev/null 2>&1
+            first_st=0
+          else
+            run_timed bq --project_id="${PROJECT_ID}" --location="${LOCATION}" load \
+              --source_format=PARQUET --noreplace "${DATASET}._raw_${table}" "${uri}" >/dev/null 2>&1
+          fi
+        done
+        sql="$(build_local_filter_sql "${table}")"
+        run_timed bq --project_id="${PROJECT_ID}" --location="${LOCATION}" query \
+          --use_legacy_sql=false --format=none "${sql}" >/dev/null 2>&1
+        run_timed bq --project_id="${PROJECT_ID}" rm -f -t \
+          "${PROJECT_ID}:${DATASET}._raw_${table}" >/dev/null 2>&1
+      else
+        uri="${SRC}/${table}/data.parquet"
+        if ! run_timed gcloud storage ls "${uri}" >/dev/null 2>&1; then
+          uri="${SRC}/${table}/*.parquet"
+          run_timed gcloud storage ls "${SRC}/${table}/" >/dev/null 2>&1 \
+            || fail "Missing ${SRC}/${table}/. The snapshot for '${STATE}' looks incomplete - tell a coach."
+        fi
+        run_timed bq --project_id="${PROJECT_ID}" --location="${LOCATION}" load \
+          --source_format=PARQUET --replace "${DATASET}.${table}" "${uri}" >/dev/null 2>&1
       fi
-      run_timed bq --project_id="${PROJECT_ID}" --location="${LOCATION}" load \
-        --source_format=PARQUET --replace "${DATASET}.${table}" "${uri}" >/dev/null
     else
       run_timed bq --project_id="${PROJECT_ID}" --location="${LOCATION}" load \
         --source_format=PARQUET --replace \
-        "${DATASET}._raw_${table}" "${REPO_ROOT}/data/${table}.parquet" >/dev/null
+        "${DATASET}._raw_${table}" "${REPO_ROOT}/data/${table}.parquet" >/dev/null 2>&1
       sql="$(build_local_filter_sql "${table}")"
       run_timed bq --project_id="${PROJECT_ID}" --location="${LOCATION}" query \
-        --use_legacy_sql=false --format=none "${sql}" >/dev/null
+        --use_legacy_sql=false --format=none "${sql}" >/dev/null 2>&1
       run_timed bq --project_id="${PROJECT_ID}" rm -f -t \
-        "${PROJECT_ID}:${DATASET}._raw_${table}" >/dev/null
+        "${PROJECT_ID}:${DATASET}._raw_${table}" >/dev/null 2>&1
     fi
     info "  done"
   done
@@ -322,7 +378,7 @@ verify_tables() {
   for table in "${TABLES[@]}"; do
     rows="$(run_timed bq --project_id="${PROJECT_ID}" --location="${LOCATION}" \
               query --use_legacy_sql=false --format=csv \
-              "SELECT COUNT(*) FROM \`${PROJECT_ID}.${DATASET}.${table}\`" \
+              "SELECT COUNT(*) FROM \`${PROJECT_ID}.${DATASET}.${table}\`" 2>/dev/null \
             | tail -n 1)"
     if [[ "${rows}" == "0" ]]; then
       printf '  %-38s %s\n' "${table}" "0 rows  <-- EMPTY"
@@ -335,9 +391,9 @@ verify_tables() {
 }
 
 verify_challenge_signals() {
-  bold "Does this state support the referral property graph?"
-  local tracts providers biling handoffs chains multihop breaches orphans
-  read -r tracts providers biling handoffs chains multihop breaches orphans <<<"$(
+  bold "Does this dataset support the referral property graph?"
+  local tracts providers biling handoffs chains multihop breaches orphans states_loaded bad_pad
+  read -r tracts providers biling handoffs chains multihop breaches orphans states_loaded bad_pad <<<"$(
     run_timed bq --project_id="${PROJECT_ID}" --location="${LOCATION}" \
       query --use_legacy_sql=false --format=csv \
       "SELECT
@@ -360,21 +416,31 @@ verify_challenge_signals() {
                    SELECT provider_id FROM \`${PROJECT_ID}.${DATASET}.pediatric_and_ei_provider_directory\`)
                  OR target_provider_id NOT IN (
                    SELECT provider_id FROM \`${PROJECT_ID}.${DATASET}.pediatric_and_ei_provider_directory\`)), 0)
-            FROM \`${PROJECT_ID}.${DATASET}.deidentified_part_c_referral_logs\`)" \
+            FROM \`${PROJECT_ID}.${DATASET}.deidentified_part_c_referral_logs\`),
+         (SELECT COUNT(DISTINCT state_code)
+            FROM \`${PROJECT_ID}.${DATASET}.pediatric_and_ei_provider_directory\`),
+         (SELECT IFNULL(COUNTIF(LENGTH(census_tract_geoid) != 11 OR LENGTH(county_fips) != 5), 0)
+            FROM \`${PROJECT_ID}.${DATASET}.acs_under5_tract_demographics\`)" 2>/dev/null \
     | tail -n 1 | tr ',' ' '
   )"
 
+  printf '  %-46s %s\n' "distinct states loaded"                        "${states_loaded}"
   printf '  %-46s %s\n' "census tracts (under-5 demographics)"          "${tracts}"
   printf '  %-46s %s (%s bilingual)\n' "CareNode providers"               "${providers}" "${biling}"
   printf '  %-46s %s across %s chains\n' "ReferralHandoff edges"          "${handoffs}" "${chains}"
   printf '  %-46s %s\n' "multi-hop chains (>= 2 hops)"                  "${multihop}"
   printf '  %-46s %s\n' "chains breaching 45-day IDEA Part C limit"     "${breaches}"
   printf '  %-46s %s\n' "orphan edge endpoints missing from CareNode"   "${orphans}"
+  printf '  %-46s %s\n' "unpadded tract/county FIPS keys"               "${bad_pad}"
   echo
 
-  if [[ "${multihop}" == "0" || "${breaches}" == "0" || "${orphans}" != "0" ]]; then
+  if [[ "${multihop}" == "0" || "${breaches}" == "0" || "${orphans}" != "0" || "${bad_pad}" != "0" ]]; then
     FAILED=1
-    info "  <-- Graph has zero multi-hop depth, zero >45d breaches, or broken FK endpoints."
+    info "  <-- Graph has zero multi-hop depth, zero >45d breaches, unpadded FIPS, or broken FK endpoints."
+  fi
+  if [[ "${STATE}" == "ALL" && "${states_loaded}" != "6" ]]; then
+    FAILED=1
+    info "  <-- Expected all 6 starter states, found ${states_loaded}."
   fi
 
   if [[ "${FAILED}" -eq 1 ]]; then

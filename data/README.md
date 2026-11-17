@@ -29,3 +29,11 @@ Pre-staged GeoParquet starter tables covering six states (`MS`, `AL`, `GA`, `TX`
 ### `deidentified_part_c_referral_logs.parquet` (894 rows: 149 directed `ReferralHandoff` edges across 44 chains per state)
 
 - **Provenance:** **100% `[Synthetic]` multi-hop referral and re-referral bounce logs.** Variable-length (`2` to `4` hop) referral chains (`case_chain_id`, `hop_sequence`, `transmission_channel`, `handoff_wait_days`) inside the same `a4i_early_intervention` dataset, designed so ISO GQL variable-length path queries (`-{2,4}->`) uncover multi-hop paper-fax bounce loops breaching the federal 45-day IDEA Part C clock.
+
+## BYOD Licensing & Provenance
+
+### `byod_hrsa_fqhc_screening_sites.parquet` (727 rows across 6 starter states)
+
+- **Provenance & License:** **100% US Government Public Domain (`17 U.S.C. § 105`)** — zero ODbL, commercial, or synthetic contamination. Extracted from the official HRSA Health Center Service Delivery and Look-Alike Sites dataset (`https://data.hrsa.gov/DataDownload/DD_Files/Health_Center_Service_Delivery_and_LookAlike_Sites.csv`).
+- **Filtering & Scope:** Filtered to `Site Status Description == 'Active'` community, pediatric, school-based, and general outpatient delivery sites (`All Other Clinic Types`, `School`, `Hospital`, `Unknown`, excluding carceral, nursing home, and domestic-violence shelter settings) with valid WGS84 coordinates inside `{MS, AL, GA, TX, CA, NY}` matching the 36 starter counties in `acs_under5_tract_demographics.parquet` (`county_fips` zero-padded 5-char string; 35/36 starter counties have active sites, with state-level nearest-site Haversine distance computed for all tracts).
+- **Usage:** Read by `reference_lookups.load_byod_hrsa_sites(state_code)` and joined purely for spatial proximity enrichment (`byod_nearest_fqhc_km`, `byod_fqhc_site_name`, `byod_fqhc_city`, `byod_provenance`) in Track 3 community screening outreach (`rank_outreach_zones` and `prioritize_community_screening_tracts`). Never attaches synthetic waitlists or Part C violations to real clinics.
