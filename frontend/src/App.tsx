@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowRight } from 'lucide-react';
 import { AgentChatSidebar } from './components/AgentChatSidebar';
 import { AgentModal } from './components/AgentModal';
 import { BriefAndCaregiverTabs } from './components/BriefAndCaregiverTabs';
@@ -234,7 +235,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F5F5F7] text-[#1D1D1F]">
+    <div className="min-h-screen flex flex-col bg-[#F3F1EC] text-[#1D2530]">
       <SyntheticBanner
         zeroLepRatio={stateBundle.integrity.zeroLepRatio}
         nschStrataCount={stateBundle.integrity.nschStatewideStrataCount}
@@ -246,10 +247,10 @@ export default function App() {
         onOpenAgentModal={() => setAgentModalOpen(true)}
       />
 
-      <main className="flex-1 max-w-[1640px] w-full mx-auto px-4 sm:px-6 py-6">
+      <main id="main-workspace" className="flex-1 ts-wrap py-7 sm:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Intake Control Rail */}
-          <div className="lg:col-span-4 xl:col-span-3 lg:sticky lg:top-20 order-2 lg:order-1">
+          {/* Left Intake Rail */}
+          <div className="lg:col-span-4 xl:col-span-3 lg:sticky lg:top-22 order-2 lg:order-1 ts-hero-enter-delay">
             <IntakeSidebar
               intake={intake}
               tracts={stateBundle.tracts}
@@ -259,7 +260,7 @@ export default function App() {
             />
           </div>
 
-          {/* Center Pathway Summary (+ Optional Deep-Dive Charts & Tables) */}
+          {/* Center Primary Triage Frame & Optional Graph/Audit Sections */}
           <div className="lg:col-span-8 xl:col-span-5 space-y-6 order-3 lg:order-2">
             <PathwayClockComparison
               intake={intake}
@@ -301,31 +302,32 @@ export default function App() {
                 />
               </>
             ) : (
-              <div className="apple-card p-5 flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-sm font-semibold text-[#1D1D1F]">
-                    Focused Coordinator View Active
-                  </div>
-                  <p className="text-xs text-[#515154]">
-                    Complex network topology, SQL tables, and equity audit matrices are hidden so
-                    you can triage straight with the Voice &amp; Chat Agent.
+              <div className="ts-card p-6 flex flex-wrap items-center justify-between gap-4">
+                <div className="space-y-1 max-w-lg">
+                  <h2 className="ts-h3 text-[16px]">
+                    Focused triage mode.{' '}
+                    <span className="ts-muted">Graph topology and SQL hidden.</span>
+                  </h2>
+                  <p className="text-[14px] text-[#556070] leading-relaxed">
+                    Open the 30-node referral graph, bilingual caregiver letters, bounce-hub diagnosis, and BigQuery ISO GQL queries when needed.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setViewMode('full')}
-                  className="apple-pressable shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold bg-[#F2F2F7] hover:bg-[#E5E5EA] text-[#1D1D1F] cursor-pointer"
+                  className="ts-btn ts-btn-secondary shrink-0"
                 >
-                  Show Full Charts
+                  <span>Open graph &amp; audit</span>
+                  <ArrowRight className="w-3.5 h-3.5 ts-arrow" />
                 </button>
               </div>
             )}
           </div>
 
-          {/* Right-Hand Persistent Voice & Chat Copilot (Top on Mobile, Sticky Right on Desktop) */}
+          {/* Right Voice & Chat Triage Agent */}
           <div
             ref={chatSectionRef}
-            className="lg:col-span-12 xl:col-span-4 xl:sticky xl:top-20 order-1 lg:order-3 no-print"
+            className="lg:col-span-12 xl:col-span-4 xl:sticky xl:top-22 order-1 lg:order-3 no-print ts-hero-enter-delay"
           >
             <AgentChatSidebar
               intake={intake}
@@ -339,6 +341,25 @@ export default function App() {
           </div>
         </div>
       </main>
+
+      {/* Taste-Skill Closing Footer (system.md §Footer & copy.md §Credits — single expandable credits line) */}
+      <footer className="border-t border-[rgba(29,37,48,0.1)] bg-[#F3F1EC] mt-8 no-print">
+        <div className="ts-wrap py-6 flex flex-wrap items-center justify-between gap-4 text-[13px] text-[#556070]">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span className="font-medium text-[#1D2530]">First Milestones · 2026</span>
+            <span>34 CFR § 303.310 statutory 45-day IFSP triage</span>
+          </div>
+
+          <details className="credits">
+            <summary className="cursor-pointer hover:text-[#1D2530] transition-colors">
+              Data sources: Synthetic CareNodes, US Census ACS, HRSA NSCH, OSEP Part C
+            </summary>
+            <p className="mt-2 max-w-xl text-[12.5px] text-[#556070] leading-relaxed">
+              Provider directories (<code className="font-mono-code text-[11.5px]">SYN-PROV-*</code>), Part C agencies (<code className="font-mono-code text-[11.5px]">SYN-PARTC-*</code>), and multi-hop referral logs are 100% synthetic. Tract under-5 counts and vehicle access come from US Census ACS 5-Year estimates; statewide developmental screening strata come from HRSA NSCH.
+            </p>
+          </details>
+        </div>
+      </footer>
 
       <AgentModal
         open={agentModalOpen}

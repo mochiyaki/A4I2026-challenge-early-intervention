@@ -1,44 +1,39 @@
 import type { Transition } from 'motion/react';
 
 /**
- * Critically damped default UI spring (Apple damping = 1.0, response = 0.35s).
- * Smooth, interruptible, zero overshoot — safe for tabs, layout pills, counters, and bars.
+ * Taste-Skill UI transition (motion.md: cubic-bezier(0.2, 0.8, 0.2, 1), 240ms, zero overshoot).
+ * "No curve passes its mark: no bounce, no overshoot."
  */
 export const SPRING_DEFAULT: Transition = {
-  type: 'spring',
-  bounce: 0,
-  duration: 0.35,
+  duration: 0.24,
+  ease: [0.2, 0.8, 0.2, 1],
 };
 
 /**
- * Snappy control spring for switches and micro-indicators (damping = 1.0, response = 0.28s).
+ * Snappy control transition for switches and micro-indicators (motion.md: 180ms, zero overshoot).
  */
 export const SPRING_SNAPPY: Transition = {
-  type: 'spring',
-  bounce: 0,
-  duration: 0.28,
+  duration: 0.18,
+  ease: [0.2, 0.8, 0.2, 1],
 };
 
 /**
- * Sheet / popover materialization spring (damping ~0.88, response = 0.32s).
+ * Panel / dialog entrance transition (motion.md: --m-panel 200ms, cubic-bezier(0.22, 1, 0.36, 1)).
  */
 export const SPRING_SHEET: Transition = {
-  type: 'spring',
-  bounce: 0.08,
-  duration: 0.32,
+  duration: 0.2,
+  ease: [0.22, 1, 0.36, 1],
 };
 
 /**
- * Reduced-motion non-vestibular cross-fade fallback (SKILL.md §14).
+ * Reduced-motion instant settle fallback.
  */
 export const REDUCED_MOTION_TRANSITION: Transition = {
-  duration: 0.18,
-  ease: 'easeOut',
+  duration: 0.01,
 };
 
 /**
- * Progressive boundary resistance (SKILL.md §9 — Rubber-banding).
- * Never hard-stop a drag at min/max; resist progressively as overshoot grows.
+ * Progressive boundary resistance for 1:1 pointer scrubbing.
  */
 export function rubberband(
   overshoot: number,
@@ -55,8 +50,7 @@ export function rubberband(
 }
 
 /**
- * Apple's exponential-decay momentum projection (SKILL.md §6 — Designing Fluid Interfaces).
- * Projects resting offset from release velocity (px/s).
+ * Exponential-decay momentum projection from release velocity (px/s).
  */
 export function projectMomentum(
   initialVelocityPxPerSec: number,
@@ -74,8 +68,7 @@ interface Sample {
 }
 
 /**
- * Short rolling pointer history (last ~90ms) to compute smooth release velocity (px/s)
- * for seamless drag -> spring velocity handoff (SKILL.md §2 & §5).
+ * Rolling pointer history (~90ms) to compute smooth release velocity (px/s).
  */
 export class PointerVelocityTracker {
   private samples: Sample[] = [];
@@ -103,10 +96,9 @@ export class PointerVelocityTracker {
 }
 
 /**
- * Causal, harmonious tactile pulse where supported (SKILL.md §13).
- * Used sparingly only on meaningful commits/snaps.
+ * Subtle tactile confirmation where supported.
  */
-export function triggerCausalHaptic(ms = 6): void {
+export function triggerCausalHaptic(ms = 5): void {
   if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
     try {
       navigator.vibrate(ms);

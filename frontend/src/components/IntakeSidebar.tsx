@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, MapPin, Sparkles } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { STATE_META } from '../engine/graphTriageEngine';
 import type { ReferralIntakeInput, StateCode, TractDemographic } from '../types';
 import {
@@ -45,142 +45,131 @@ export const IntakeSidebar: React.FC<IntakeSidebarProps> = ({
   const isNearAgeOut = monthsToAgeOut <= 6;
 
   return (
-    <aside className="apple-card p-5 space-y-5">
-      {/* Header & Quick Scenario Pills */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between">
-          <span className="apple-eyebrow text-[10.5px] font-bold text-[#0D9488]">
-            Today&apos;s Referral
-          </span>
-          <span className="font-mono-code text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#F2F2F7] text-[#515154]">
-            Day 0 Clock
-          </span>
-        </div>
-        <div>
-          <h2 className="apple-title text-[19px] font-semibold text-[#1D1D1F]">
-            Child &amp; Neighborhood
+    <aside aria-label="Referral intake controls" className="ts-card p-6 space-y-6">
+      {/* Section Header — Two-sentence contrast run-on (system.md & copy.md) */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="ts-h3 text-[19px]">
+            Referral intake.{' '}
+            <span className="ts-muted">Day 0 profile.</span>
           </h2>
-          <p className="text-xs text-[#515154] mt-0.5">
-            Match eligibility, home language, and travel distance under 45 days.
-          </p>
         </div>
 
-        <div className="flex flex-wrap gap-1.5 pt-1 no-print">
-          <button
-            type="button"
-            onClick={() => onSelectPreset('default20m')}
-            className="apple-pressable inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#0D9488]/12 text-[#0F766E] cursor-pointer"
-          >
-            <Sparkles className="w-3 h-3" />
-            20m Bilingual Medicaid
-          </button>
-          <button
-            type="button"
-            onClick={() => onSelectPreset('zeroVehicle')}
-            className="apple-pressable inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#F2F2F7] text-[#1D1D1F] cursor-pointer"
-          >
-            Zero-Vehicle Rural
-          </button>
-          <button
-            type="button"
-            onClick={() => onSelectPreset('agingOut31m')}
-            className="apple-pressable inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-500/14 text-amber-900 cursor-pointer"
-          >
-            31m Age-Out Cliff
-          </button>
+        <p className="text-[14px] text-[#556070] leading-relaxed">
+          Filter eligible clinics by home language, Medicaid coverage, and travel distance.
+        </p>
+
+        {/* Sample referral presets — uniform system styling, zero rainbow pills */}
+        <div className="space-y-1.5 pt-1 no-print">
+          <div className="ts-label">Load preset case</div>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => onSelectPreset('default20m')}
+              className="px-2.5 py-1.5 rounded-[7px] text-[12.5px] font-medium bg-[#F8F7F4] hover:bg-[#E6E2D9] text-[#1D2530] border border-[rgba(29,37,48,0.14)] cursor-pointer transition-colors"
+            >
+              20m Spanish Medicaid
+            </button>
+            <button
+              type="button"
+              onClick={() => onSelectPreset('zeroVehicle')}
+              className="px-2.5 py-1.5 rounded-[7px] text-[12.5px] font-medium bg-[#F8F7F4] hover:bg-[#E6E2D9] text-[#1D2530] border border-[rgba(29,37,48,0.14)] cursor-pointer transition-colors"
+            >
+              Zero-vehicle rural
+            </button>
+            <button
+              type="button"
+              onClick={() => onSelectPreset('agingOut31m')}
+              className="px-2.5 py-1.5 rounded-[7px] text-[12.5px] font-medium bg-[#F8F7F4] hover:bg-[#E6E2D9] text-[#1D2530] border border-[rgba(29,37,48,0.14)] cursor-pointer transition-colors"
+            >
+              31m age-out cliff
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* 1. Fluid State Segmented Control */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-semibold text-[#1D1D1F]">State Network</span>
-          <span className="text-[11px] text-[#86868B] tabular-nums">
+      {/* 1. State Network */}
+      <div className="space-y-2 pt-4 border-t border-[rgba(29,37,48,0.1)]">
+        <div className="flex items-center justify-between">
+          <span className="text-[14px] font-medium text-[#1D2530]">State network</span>
+          <span className="font-mono-code text-[12.5px] text-[#556070] tabular-nums">
             FIPS {STATE_META[intake.stateCode].fips}
           </span>
         </div>
         <FluidSegmentedControl
           layoutId="intake-state-segment"
+          ariaLabel="State Part C network"
           options={STATE_OPTIONS}
           value={intake.stateCode}
           onChange={(stateCode) => onChange({ stateCode })}
           fullWidth
         />
-        <p className="text-[11px] text-[#515154] tabular-nums">
-          {STATE_META[intake.stateCode].name} · Regional 45d IFSP:{' '}
-          <span className="font-semibold text-[#1D1D1F]">
+        <p className="text-[13px] text-[#556070] tabular-nums">
+          {STATE_META[intake.stateCode].name} · OSEP timely IFSP:{' '}
+          <span className="font-medium text-[#1D2530]">
             {STATE_META[intake.stateCode].osepRange}
           </span>
         </p>
       </div>
 
-      {/* 2. Census Tract Selector + Recessed Readout */}
-      <div className="space-y-2">
+      {/* 2. Home Census Tract — Visible label + open hairline readout (no 3-level nested box) */}
+      <div className="space-y-3 pt-4 border-t border-[rgba(29,37,48,0.1)]">
         <label
           htmlFor="tract-select"
-          className="flex items-center justify-between text-xs font-semibold text-[#1D1D1F]"
+          className="flex items-center justify-between text-[14px] font-medium text-[#1D2530]"
         >
-          <span className="inline-flex items-center gap-1">
-            <MapPin className="w-3.5 h-3.5 text-[#0D9488]" />
-            Home Census Tract
-          </span>
-          <span className="text-[11px] font-normal text-[#86868B] tabular-nums">
-            {tracts.length} neighborhoods
+          <span>Home census tract</span>
+          <span className="text-[12.5px] font-normal text-[#556070] tabular-nums">
+            {tracts.length} tracts
           </span>
         </label>
         <select
           id="tract-select"
           value={selectedTract.census_tract_geoid}
           onChange={(e) => onChange({ tractGeoid: e.target.value })}
-          className="w-full rounded-[12px] bg-[#F5F5F8] px-3 py-2 text-xs font-medium text-[#1D1D1F] shadow-[inset_0_0_0_0.5px_rgba(15,23,42,0.1)] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/40 cursor-pointer"
+          className="ts-input cursor-pointer"
         >
           {tracts.map((t) => (
             <option key={t.census_tract_geoid} value={t.census_tract_geoid}>
-              {t.county_name} · {t.census_tract_geoid} (U5: {t.children_under_5_count}, Pov:{' '}
+              {t.county_name} · {t.census_tract_geoid} (Under-5: {t.children_under_5_count}, Poverty:{' '}
               {Math.round(t.poverty_rate * 100)}%)
             </option>
           ))}
         </select>
 
-        <div className="apple-well p-3 grid grid-cols-3 gap-2 text-center tabular-nums">
+        <dl className="grid grid-cols-3 gap-3 pt-2 tabular-nums">
           <div>
-            <div className="apple-eyebrow text-[9.5px] font-semibold text-[#86868B]">
-              Under-5
-            </div>
-            <div className="text-[15px] font-semibold text-[#1D1D1F] mt-0.5">
+            <dt className="ts-label">Under 5</dt>
+            <dd className="font-mono-code text-[16px] font-medium text-[#1D2530] mt-0.5">
               {selectedTract.children_under_5_count.toLocaleString()}
-            </div>
+            </dd>
           </div>
-          <div className="border-x border-black/[0.06]">
-            <div className="apple-eyebrow text-[9.5px] font-semibold text-[#86868B]">
-              Poverty
-            </div>
-            <div className="text-[15px] font-semibold text-[#1D1D1F] mt-0.5">
+          <div className="border-x border-[rgba(29,37,48,0.1)] px-3">
+            <dt className="ts-label">Poverty</dt>
+            <dd className="font-mono-code text-[16px] font-medium text-[#1D2530] mt-0.5">
               {(selectedTract.poverty_rate * 100).toFixed(1)}%
-            </div>
+            </dd>
           </div>
           <div>
-            <div className="apple-eyebrow text-[9.5px] font-semibold text-[#86868B]">
-              No Vehicle
-            </div>
-            <div
-              className={`text-[15px] font-semibold mt-0.5 ${
+            <dt className="ts-label">No vehicle</dt>
+            <dd
+              className={`font-mono-code text-[16px] font-medium mt-0.5 ${
                 selectedTract.no_vehicle_rate >= 0.12
-                  ? 'text-amber-700'
-                  : 'text-[#1D1D1F]'
+                  ? 'text-[#8F5B1E]'
+                  : 'text-[#1D2530]'
               }`}
             >
               {(selectedTract.no_vehicle_rate * 100).toFixed(1)}%
-            </div>
+            </dd>
           </div>
-        </div>
+        </dl>
       </div>
 
-      {/* 3. Direct-Manipulation Rubber-Banded Age Scrubber */}
-      <div className="space-y-1">
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-semibold text-[#1D1D1F]">Child Age</span>
-          <span className="font-mono-code text-[13px] font-semibold text-[#0F766E] tabular-nums">
+      {/* 3. Child Age & 36-Month Statutory Cliff */}
+      <div className="space-y-2 pt-4 border-t border-[rgba(29,37,48,0.1)]">
+        <div className="flex items-center justify-between">
+          <span className="text-[14px] font-medium text-[#1D2530]">Child age</span>
+          <span className="font-mono-code text-[14px] font-medium text-[#2C5877] tabular-nums">
             {intake.childAgeMonths} months
           </span>
         </div>
@@ -193,34 +182,35 @@ export const IntakeSidebar: React.FC<IntakeSidebarProps> = ({
         />
 
         <div
-          className={`flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-[10px] tabular-nums transition-colors ${
+          className={`flex items-center justify-between text-[13px] px-3 py-2 rounded-[8px] tabular-nums border ${
             isNearAgeOut
-              ? 'bg-rose-500/12 text-rose-900 font-semibold'
-              : 'bg-[#F5F5F8] text-[#515154]'
+              ? 'bg-[rgba(180,62,47,0.08)] border-[rgba(180,62,47,0.24)] text-[#B43E2F] font-medium'
+              : 'bg-[#F8F7F4] border-[rgba(29,37,48,0.09)] text-[#556070]'
           }`}
         >
           <span className="inline-flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5" />
-            36m Part C Age-Out Cliff
+            <span>36-month Part C transition</span>
           </span>
-          <span className="font-mono-code font-semibold">
-            {monthsToAgeOut} mo left
+          <span className="font-mono-code font-medium">
+            {monthsToAgeOut} mo remaining
           </span>
         </div>
       </div>
 
-      {/* 4. Fluid Language Segmented Control */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-semibold text-[#1D1D1F]">Home Language</span>
-          <span className="text-[11px] text-[#86868B]">
+      {/* 4. Home Language */}
+      <div className="space-y-2 pt-4 border-t border-[rgba(29,37,48,0.1)]">
+        <div className="flex items-center justify-between">
+          <span className="text-[14px] font-medium text-[#1D2530]">Home language</span>
+          <span className="text-[12.5px] text-[#556070]">
             {intake.primaryLanguage !== 'English'
-              ? 'Bilingual Eval Required'
-              : 'English Standard'}
+              ? 'Bilingual eval required'
+              : 'Standard eval'}
           </span>
         </div>
         <FluidSegmentedControl
           layoutId="intake-lang-segment"
+          ariaLabel="Child home language"
           options={LANGUAGE_OPTIONS}
           value={intake.primaryLanguage}
           onChange={(primaryLanguage) => onChange({ primaryLanguage })}
@@ -229,12 +219,12 @@ export const IntakeSidebar: React.FC<IntakeSidebarProps> = ({
       </div>
 
       {/* 5. Developmental Domain */}
-      <div className="space-y-1.5">
+      <div className="space-y-2 pt-4 border-t border-[rgba(29,37,48,0.1)]">
         <label
           htmlFor="concern-select"
-          className="block text-xs font-semibold text-[#1D1D1F]"
+          className="block text-[14px] font-medium text-[#1D2530]"
         >
-          Screening Concern
+          Developmental concern
         </label>
         <select
           id="concern-select"
@@ -244,46 +234,46 @@ export const IntakeSidebar: React.FC<IntakeSidebarProps> = ({
               concernDomain: e.target.value as ReferralIntakeInput['concernDomain'],
             })
           }
-          className="w-full rounded-[12px] bg-[#F5F5F8] px-3 py-2 text-xs font-medium text-[#1D1D1F] shadow-[inset_0_0_0_0.5px_rgba(15,23,42,0.1)] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/40 cursor-pointer"
+          className="ts-input cursor-pointer"
         >
           <option value="Speech & Language Delay">
-            Speech &amp; Language Delay
+            Speech and language delay
           </option>
           <option value="Autism / Social Communication">
-            Autism / Social-Communication
+            Autism and social communication
           </option>
           <option value="Motor / Adaptive Delay">
-            Motor / Feeding &amp; Sensory
+            Motor, feeding, and adaptive delay
           </option>
         </select>
       </div>
 
-      {/* 6. Fluid Tactile iOS Switches */}
-      <div className="space-y-2 pt-1">
+      {/* 6. Eligibility & Counterfactual Switches (ink switches, harbour accent on simulation) */}
+      <div className="pt-2 border-t border-[rgba(29,37,48,0.1)]">
         <FluidSwitch
           checked={intake.insuranceMedicaid}
           onChange={(insuranceMedicaid) => onChange({ insuranceMedicaid })}
-          label="Medicaid Enrolled"
-          description="Verify $0-cost Medicaid acceptance at every hop"
+          label="Medicaid coverage"
+          description="Require $0-cost Medicaid acceptance across all hops"
         />
 
         <FluidSwitch
           checked={intake.hasHouseholdVehicle}
           onChange={(hasHouseholdVehicle) => onChange({ hasHouseholdVehicle })}
-          label="Household Vehicle Access"
+          label="Household vehicle available"
           description={
             intake.hasHouseholdVehicle
-              ? 'Family can drive to regional evaluation hub'
-              : 'Zero-vehicle guardrail active (>20 km flags NEMT/mobile)'
+              ? 'Standard regional travel distance allowed'
+              : 'Flags NEMT ride or mobile eval beyond 20 km'
           }
         />
 
         <FluidSwitch
           checked={intake.simulateEhrUpgrade}
           onChange={(simulateEhrUpgrade) => onChange({ simulateEhrUpgrade })}
-          accent="indigo"
-          label="Simulate e-Referral Fix"
-          description="Upgrade paper_fax intake links to electronic portal"
+          accent="harbour"
+          label="Simulate e-portal upgrade"
+          description="Replace paper-fax coordinator links with electronic intake"
         />
       </div>
     </aside>

@@ -1,16 +1,13 @@
 import React from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
-  AlertOctagon,
+  AlertTriangle,
   ArrowRight,
   Bus,
-  CheckCircle2,
-  Clock,
   FileWarning,
   Laptop,
   MapPin,
   Phone,
-  ShieldAlert,
 } from 'lucide-react';
 import { cleanOrgName } from '../engine/graphTriageEngine';
 import type {
@@ -39,28 +36,28 @@ interface PathwayClockComparisonProps {
 const MAX_TIMELINE_DAYS = 85;
 const FEDERAL_LIMIT_PCT = (45 / MAX_TIMELINE_DAYS) * 100;
 
-function channelBadge(channel?: TransmissionChannel) {
+function channelChip(channel?: TransmissionChannel) {
   if (!channel) return null;
   if (channel === 'ehr_electronic_portal') {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/12 text-emerald-900 text-[10.5px] font-semibold">
-        <Laptop className="w-2.5 h-2.5" />
-        e-Portal
+      <span className="ts-chip ts-chip-accent">
+        <Laptop className="w-3 h-3" />
+        <span>e-Portal</span>
       </span>
     );
   }
   if (channel === 'paper_fax') {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/12 text-rose-900 text-[10.5px] font-semibold">
-        <FileWarning className="w-2.5 h-2.5" />
-        Paper Fax
+      <span className="ts-chip ts-chip-breach">
+        <FileWarning className="w-3 h-3" />
+        <span>Paper fax</span>
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/14 text-amber-900 text-[10.5px] font-semibold">
-      <Phone className="w-2.5 h-2.5" />
-      Voicemail
+    <span className="ts-chip">
+      <Phone className="w-3 h-3" />
+      <span>Voicemail</span>
     </span>
   );
 }
@@ -75,7 +72,9 @@ export const PathwayClockComparison: React.FC<PathwayClockComparisonProps> = ({
   historicalTrapChain,
 }) => {
   const reducedMotion = useReducedMotion();
-  const barSpring = reducedMotion ? REDUCED_MOTION_TRANSITION : SPRING_DEFAULT;
+  const barTransition = reducedMotion
+    ? REDUCED_MOTION_TRANSITION
+    : SPRING_DEFAULT;
 
   const allOptions = activePathway
     ? [
@@ -86,19 +85,20 @@ export const PathwayClockComparison: React.FC<PathwayClockComparisonProps> = ({
 
   if (!activePathway) {
     return (
-      <section className="apple-card p-6">
-        <div className="flex items-start gap-3.5">
-          <div className="w-10 h-10 rounded-full bg-rose-500/12 flex items-center justify-center shrink-0">
-            <ShieldAlert className="w-5 h-5 text-rose-600" />
+      <section data-enter className="ts-card p-6 sm:p-8 ts-hero-enter">
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 rounded-[10px] bg-[rgba(180,62,47,0.1)] border border-[rgba(180,62,47,0.25)] flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-5 h-5 text-[#B43E2F]" />
           </div>
-          <div>
-            <h2 className="apple-title text-lg font-semibold text-[#1D1D1F]">
-              Escalation Required: No Standard Local Route Clears 45 Days
-            </h2>
-            <p className="text-sm text-[#515154] mt-1">
-              No in-state provider sequence cleared all selected filters under 45 days. Authorize
-              regional Part C mobile bilingual evaluation or toggle{' '}
-              <strong>Simulate e-Referral Fix</strong>.
+          <div className="space-y-1.5">
+            <h1 className="ts-h2 text-[22px]">
+              No standard route clears 45 days.{' '}
+              <span className="ts-muted">Regional mobile override needed.</span>
+            </h1>
+            <p className="text-[15px] text-[#27303D] ts-measure leading-relaxed">
+              No in-state clinic sequence met all active filters within 45 days. Authorize a Part C mobile bilingual evaluation or enable{' '}
+              <strong className="font-medium text-[#1D2530]">Simulate e-portal upgrade</strong>{' '}
+              on the intake panel.
             </p>
           </div>
         </div>
@@ -106,131 +106,132 @@ export const PathwayClockComparison: React.FC<PathwayClockComparisonProps> = ({
     );
   }
 
-  const hopColors = ['bg-[#14B8A6]', 'bg-[#0D9488]', 'bg-[#0F766E]'];
-  const trapColors = ['bg-[#F59E0B]', 'bg-[#F97316]', 'bg-[#F43F5E]', 'bg-[#E11D48]'];
+  /* Monochrome stepped Harbour Blue shades vs. desaturated Terracotta breach shades */
+  const hopColors = ['bg-[#3B6D90]', 'bg-[#2C5877]', 'bg-[#1F425B]'];
+  const trapColors = ['bg-[#C65B4B]', 'bg-[#B43E2F]', 'bg-[#983326]', 'bg-[#7D281D]'];
 
   return (
-    <section className="apple-card overflow-hidden">
-      {/* Apple High-Clarity Hero Summary */}
-      <div className="p-6 sm:p-7 border-b border-black/[0.06]">
-        <div className="flex flex-wrap items-start justify-between gap-5">
-          <div className="space-y-2 max-w-3xl">
-            <div className="inline-flex items-center gap-2 text-xs font-semibold text-[#0F766E]">
-              <CheckCircle2 className="w-4 h-4 text-[#0D9488]" />
+    <section data-enter className="ts-card overflow-hidden ts-hero-enter">
+      {/* 1. Primary Triage Hero Header — Plain copy, one hard fact, contrast two-sentence h1 */}
+      <div className="p-6 sm:p-8 border-b border-[rgba(29,37,48,0.1)]">
+        <div className="flex flex-wrap items-start justify-between gap-6">
+          <div className="space-y-3 max-w-2xl">
+            <div className="ts-label flex flex-wrap items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-[#2C5877]" />
               <span>
-                Recommended Provider Path · {tract.county_name} (Tract{' '}
-                <code className="font-mono-code text-[#1D1D1F]">
+                Recommended referral path · {tract.county_name} (tract{' '}
+                <code className="font-mono-code text-[#1D2530]">
                   {tract.census_tract_geoid}
                 </code>
                 )
               </span>
             </div>
 
-            <h2 className="apple-display text-[26px] sm:text-[31px] font-bold text-[#1D1D1F] tabular-nums">
+            <h1 className="ts-h1 text-[28px] sm:text-[34px] tabular-nums">
               {activePathway.clears45DayClock ? (
                 <>
-                  Clears the 45-day clock in{' '}
-                  <span className="text-[#0D9488]">
-                    {activePathway.totalExpectedDays} days
+                  {activePathway.totalExpectedDays} days to initial IFSP.{' '}
+                  <span className="ts-muted">
+                    {activePathway.daysMargin} days inside the 45-day federal limit.
                   </span>
                 </>
               ) : (
                 <>
-                  Fastest eligible route:{' '}
-                  <span className="text-amber-600">
-                    {activePathway.totalExpectedDays} days
+                  {activePathway.totalExpectedDays} days on fastest eligible route.{' '}
+                  <span className="ts-muted">
+                    Exceeds the 45-day statutory window.
                   </span>
                 </>
               )}
-            </h2>
+            </h1>
 
-            <p className="text-[14px] text-[#515154] leading-relaxed">
-              For today&apos;s <strong className="text-[#1D1D1F]">{intake.childAgeMonths}-month-old</strong>{' '}
+            <p className="text-[15.5px] text-[#27303D] ts-measure leading-relaxed">
+              Routes a{' '}
+              <strong className="font-medium text-[#1D2530]">
+                {intake.childAgeMonths}-month-old
+              </strong>{' '}
               needing{' '}
-              <strong className="text-[#1D1D1F]">
+              <strong className="font-medium text-[#1D2530]">
                 {intake.primaryLanguage !== 'English'
                   ? `${intake.primaryLanguage} bilingual`
                   : 'standard'}{' '}
-                developmental evaluation
+                evaluation
               </strong>{' '}
-              {intake.insuranceMedicaid ? 'under Medicaid' : ''}: routes electronically via{' '}
-              <strong className="text-[#1D1D1F]">
+              {intake.insuranceMedicaid ? 'on Medicaid ' : ''}
+              electronically through{' '}
+              <strong className="font-medium text-[#1D2530]">
                 {cleanOrgName(activePathway.steps[1].node.synthetic_organization_name)}
               </strong>{' '}
-              into{' '}
-              <strong className="text-[#1D1D1F]">
+              to{' '}
+              <strong className="font-medium text-[#1D2530]">
                 {cleanOrgName(activePathway.steps[2].node.synthetic_organization_name)}
               </strong>{' '}
-              (<span className="tabular-nums">{activePathway.evalHubDistanceKm} km</span> away).
+              (<span className="tabular-nums">{activePathway.evalHubDistanceKm} km</span> from home).
             </p>
           </div>
 
-          {/* Crisp Tabular KPI Readout */}
-          <div className="apple-well px-4 py-3 flex items-center gap-4 shrink-0 tabular-nums">
-            <div className="text-right">
-              <div className="apple-eyebrow text-[10px] font-semibold text-[#86868B]">
-                Expected Total
-              </div>
-              <div className="apple-display text-[26px] font-bold text-[#0F766E] mt-0.5">
+          {/* Calibrated Tabular Figures (system.md: figures never outgrow the h1) */}
+          <dl className="flex items-center gap-5 pt-1 shrink-0 tabular-nums border-t sm:border-t-0 border-[rgba(29,37,48,0.1)] w-full sm:w-auto">
+            <div>
+              <dt className="ts-label">Expected wait</dt>
+              <dd className="font-mono-code text-[24px] font-medium text-[#1D2530] mt-0.5">
                 {activePathway.totalExpectedDays}d{' '}
-                <span className="text-xs font-medium text-[#86868B]">/ 45d</span>
-              </div>
+                <span className="text-[13px] font-normal text-[#556070]">/ 45d</span>
+              </dd>
             </div>
             {historicalTrapChain && (
-              <div className="border-l border-black/[0.08] pl-4 text-right">
-                <div className="apple-eyebrow text-[10px] font-semibold text-[#86868B]">
-                  Days Saved
-                </div>
-                <div className="apple-display text-[26px] font-bold text-[#1D1D1F] mt-0.5">
+              <div className="border-l border-[rgba(29,37,48,0.12)] pl-5">
+                <dt className="ts-label">Saved vs. fax loop</dt>
+                <dd className="font-mono-code text-[24px] font-medium text-[#2C5877] mt-0.5">
                   -{Math.max(0, historicalTrapChain.totalWaitDays - activePathway.totalExpectedDays)}d
-                </div>
+                </dd>
               </div>
             )}
-          </div>
+          </dl>
         </div>
       </div>
 
-      {/* Spring-Animated 45-Day Statutory Clock Comparison */}
-      <div className="px-6 sm:px-7 py-5 bg-[#FAFAFC] border-b border-black/[0.06] space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="apple-eyebrow text-[11px] font-bold text-[#515154] flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-[#0D9488]" />
-            45-Day Federal Clock (Day 0 Referral &rarr; Initial IFSP)
-          </h3>
-          <div className="flex items-center gap-4 text-[11.5px] text-[#515154]">
+      {/* 2. 45-Day Statutory Clock Comparison — Warm linen panel, single accent vs. breach */}
+      <div className="px-6 sm:px-8 py-6 bg-[#F8F7F4] border-b border-[rgba(29,37,48,0.1)] space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="ts-h3 text-[16px]">
+            45-day statutory clock.{' '}
+            <span className="ts-muted">Day 0 referral to initial IFSP.</span>
+          </h2>
+          <div className="flex flex-wrap items-center gap-4 text-[13px] text-[#556070]">
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#0D9488] inline-block" />
-              Graph-Verified &le;45d Path
+              <span className="w-2.5 h-2.5 rounded-[3px] bg-[#2C5877] inline-block" />
+              <span>Electronic path (&le;45d)</span>
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#E11D48] inline-block" />
-              Paper-Fax Bounce (&gt;45d Breach)
+              <span className="w-2.5 h-2.5 rounded-[3px] bg-[#B43E2F] inline-block" />
+              <span>Paper-fax bounce (&gt;45d)</span>
             </span>
           </div>
         </div>
 
-        <div className="relative pt-3 pb-1 space-y-4">
+        <div className="relative pt-5 pb-1 space-y-5">
           {/* Vertical Day 45 Statutory Ceiling */}
           <div
             style={{ left: `${FEDERAL_LIMIT_PCT}%` }}
-            className="absolute top-0 bottom-0 border-l-[1.5px] border-dashed border-rose-500 z-10 pointer-events-none"
+            className="absolute top-0 bottom-0 border-l border-dashed border-[#B43E2F] z-10 pointer-events-none"
           >
-            <span className="absolute -top-1 -translate-x-1/2 whitespace-nowrap px-2.5 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-semibold shadow-xs tabular-nums">
-              Day 45 Limit
+            <span className="absolute -top-0.5 -translate-x-1/2 whitespace-nowrap px-2 py-0.5 rounded-[5px] bg-[#1D2530] text-[#F3F1EC] text-[11.5px] font-mono-code font-medium tabular-nums">
+              Day 45 limit
             </span>
           </div>
 
           {/* Row 1: Recommended Pathway */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-xs tabular-nums">
-              <span className="font-semibold text-[#1D1D1F]">
-                Recommended 3-Hop Electronic Bilingual Route
+            <div className="flex items-center justify-between text-[13.5px] tabular-nums">
+              <span className="font-medium text-[#1D2530]">
+                Recommended 3-hop electronic route
               </span>
-              <span className="font-mono-code font-semibold text-[#0F766E]">
+              <span className="font-mono-code font-medium text-[#2C5877]">
                 {activePathway.totalExpectedDays}d ({activePathway.daysMargin}d buffer)
               </span>
             </div>
-            <div className="w-full h-8 rounded-[10px] bg-[#E8E8ED] overflow-hidden flex relative p-[2px] gap-[2px]">
+            <div className="w-full h-8 rounded-[8px] bg-[#E6E2D9] overflow-hidden flex relative p-[2px] gap-[2px]">
               {activePathway.steps.slice(1).map((step, idx) => {
                 const widthPct = Math.min(
                   100,
@@ -240,9 +241,9 @@ export const PathwayClockComparison: React.FC<PathwayClockComparisonProps> = ({
                   <motion.div
                     key={`hop-slot-${step.stepNumber}`}
                     animate={{ width: `${widthPct}%` }}
-                    transition={barSpring}
+                    transition={barTransition}
                     title={`Hop ${step.stepNumber}: ${cleanOrgName(step.node.synthetic_organization_name)} (+${step.expectedStepWaitDays}d)`}
-                    className={`${hopColors[idx % hopColors.length]} h-full rounded-[7px] flex items-center justify-center text-[11px] font-mono-code font-semibold text-white px-1.5 truncate tabular-nums`}
+                    className={`${hopColors[idx % hopColors.length]} h-full rounded-[5px] flex items-center justify-center text-[11.5px] font-mono-code font-medium text-white px-1.5 truncate tabular-nums`}
                   >
                     H{step.stepNumber} · {step.expectedStepWaitDays}d
                   </motion.div>
@@ -254,17 +255,19 @@ export const PathwayClockComparison: React.FC<PathwayClockComparisonProps> = ({
           {/* Row 2: Historical Paper-Fax Bounce Chain */}
           {historicalTrapChain && (
             <div className="space-y-1.5">
-              <div className="flex flex-wrap items-center justify-between text-xs gap-1 tabular-nums">
-                <span className="font-semibold text-[#1D1D1F] flex items-center gap-1.5">
-                  <AlertOctagon className="w-3.5 h-3.5 text-rose-600" />
-                  Historical Bounce (<code className="font-mono-code">{historicalTrapChain.caseChainId}</code>
-                  ) · {historicalTrapChain.hops.length}-Hop Fax Re-Referral Loop
+              <div className="flex flex-wrap items-center justify-between text-[13.5px] gap-1 tabular-nums">
+                <span className="font-medium text-[#1D2530]">
+                  Historical fax loop (
+                  <code className="font-mono-code text-[12.5px]">
+                    {historicalTrapChain.caseChainId}
+                  </code>
+                  ) · {historicalTrapChain.hops.length} hops
                 </span>
-                <span className="font-mono-code font-semibold text-rose-600">
+                <span className="font-mono-code font-medium text-[#B43E2F]">
                   {historicalTrapChain.totalWaitDays}d (+{historicalTrapChain.totalWaitDays - 45}d over)
                 </span>
               </div>
-              <div className="w-full h-8 rounded-[10px] bg-[#E8E8ED] overflow-hidden flex relative p-[2px] gap-[2px]">
+              <div className="w-full h-8 rounded-[8px] bg-[#E6E2D9] overflow-hidden flex relative p-[2px] gap-[2px]">
                 {historicalTrapChain.hops.map((hop, idx) => {
                   const widthPct = Math.min(
                     100,
@@ -274,31 +277,28 @@ export const PathwayClockComparison: React.FC<PathwayClockComparisonProps> = ({
                     <motion.div
                       key={`trap-slot-${hop.hopSequence}`}
                       animate={{ width: `${widthPct}%` }}
-                      transition={barSpring}
+                      transition={barTransition}
                       title={`Hop ${hop.hopSequence} (${hop.channel}): ${cleanOrgName(hop.target.synthetic_organization_name)} (+${hop.waitDays}d) — ${hop.reason}`}
-                      className={`${trapColors[idx % trapColors.length]} h-full rounded-[7px] flex items-center justify-center text-[11px] font-mono-code font-semibold text-white px-1.5 truncate tabular-nums`}
+                      className={`${trapColors[idx % trapColors.length]} h-full rounded-[5px] flex items-center justify-center text-[11.5px] font-mono-code font-medium text-white px-1.5 truncate tabular-nums`}
                     >
                       H{hop.hopSequence} · {hop.waitDays}d
                     </motion.div>
                   );
                 })}
               </div>
-              <p className="text-[11.5px] text-[#515154]">
-                Why flat waitlist SQL missed it: coordinator{' '}
-                <code className="font-mono-code font-semibold text-[#1D1D1F]">
+              <p className="text-[13px] text-[#556070] leading-relaxed pt-0.5">
+                Coordinator{' '}
+                <code className="font-mono-code text-[12.5px] text-[#1D2530]">
                   {historicalTrapChain.hops[0]?.target.provider_id}
                 </code>{' '}
-                shows just{' '}
-                <strong className="text-[#1D1D1F]">
-                  {historicalTrapChain.hops[0]?.target.median_internal_wait_days}d internal wait
-                </strong>
-                , yet its <code className="font-mono-code">paper_fax</code> handoffs triggered{' '}
-                <em>
-                  &ldquo;
-                  {historicalTrapChain.hops.find((h) => h.reason.startsWith('Re-Referral'))
-                    ?.reason ?? 'multi-hop re-referral delay'}
-                  &rdquo;
-                </em>
+                reports a{' '}
+                <strong className="font-medium text-[#1D2530]">
+                  {historicalTrapChain.hops[0]?.target.median_internal_wait_days}-day internal wait
+                </strong>{' '}
+                in flat tables, while downstream <code className="font-mono-code text-[12.5px]">paper_fax</code>{' '}
+                handoffs added{' '}
+                {historicalTrapChain.hops.find((h) => h.reason.startsWith('Re-Referral'))
+                  ?.reason ?? 'multi-hop re-referral delays'}
                 .
               </p>
             </div>
@@ -308,97 +308,99 @@ export const PathwayClockComparison: React.FC<PathwayClockComparisonProps> = ({
 
       {/* Zero-Vehicle Travel Guardrail */}
       {activePathway.transportAdvisory && (
-        <div className="mx-6 sm:mx-7 mt-5 p-3.5 rounded-[14px] bg-amber-500/10 shadow-[inset_0_0_0_1px_rgba(245,158,11,0.28)] flex items-start gap-2.5 text-xs text-amber-950">
-          <Bus className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+        <div className="mx-6 sm:mx-8 mt-6 p-4 rounded-[12px] bg-[rgba(143,91,30,0.08)] border border-[rgba(143,91,30,0.24)] flex items-start gap-3 text-[13.5px] text-[#1D2530]">
+          <Bus className="w-4 h-4 text-[#8F5B1E] shrink-0 mt-1" />
           <div className="leading-relaxed">
-            <span className="font-semibold">Zero-Vehicle Travel Guardrail: </span>
+            <strong className="font-medium">Zero-vehicle transport guardrail: </strong>
             {activePathway.transportAdvisory}
           </div>
         </div>
       )}
 
-      {/* 4-Step Provider Sequence Cards */}
-      <div className="p-6 sm:p-7 space-y-5">
-        <div className="apple-eyebrow text-[10.5px] font-bold text-[#86868B]">
-          Verified Provider Sequence (100% [Synthetic] CareNodes)
+      {/* 3. Verified 4-Step CareNode Sequence — Equal height row, 2 levels max, ink chips */}
+      <div className="p-6 sm:p-8 space-y-5">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="ts-h3 text-[16px]">
+            Provider sequence.{' '}
+            <span className="ts-muted">Four CareNodes from screening to therapy.</span>
+          </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {activePathway.steps.map((step, index) => {
             const isOrigin = index === 0;
             const roleLabel =
               step.node.node_role === 'Screening_Pediatric_Clinic'
-                ? 'Origin Clinic'
+                ? 'Origin clinic'
                 : step.node.node_role === 'Part_C_Intake_Coordinator'
                   ? 'Hop 1 · Coordinator'
                   : step.node.node_role === 'Multidisciplinary_Eval_Hub'
-                    ? 'Hop 2 · Bilingual Eval'
-                    : 'Hop 3 · EI Therapy';
+                    ? 'Hop 2 · Eval hub'
+                    : 'Hop 3 · EI therapy';
 
             return (
               <div
                 key={`${step.stepNumber}-${step.node.provider_id}`}
-                className="relative rounded-[16px] bg-[#FAFAFC] p-4 flex flex-col justify-between shadow-[inset_0_0_0_0.5px_rgba(15,23,42,0.08)]"
+                className="relative rounded-[12px] bg-[#F8F7F4] border border-[rgba(29,37,48,0.1)] p-4 flex flex-col justify-between"
               >
                 <div>
-                  <div className="flex items-center justify-between gap-1 mb-2 tabular-nums">
-                    <span className="apple-eyebrow text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-[#0D9488]/12 text-[#0F766E]">
+                  <div className="flex items-center justify-between gap-2 mb-2.5 tabular-nums">
+                    <span className="text-[12.5px] font-medium text-[#2C5877]">
                       {roleLabel}
                     </span>
-                    <span className="font-mono-code text-xs font-semibold text-[#1D1D1F]">
+                    <span className="font-mono-code text-[12.5px] font-medium text-[#1D2530]">
                       Day {step.cumulativeDays}
                     </span>
                   </div>
 
-                  <div className="apple-subhead font-semibold text-[14px] text-[#1D1D1F]">
+                  <div className="font-medium text-[15px] leading-snug text-[#1D2530]">
                     {cleanOrgName(step.node.synthetic_organization_name)}
                   </div>
-                  <div className="font-mono-code text-[11px] text-[#86868B] mt-0.5">
+                  <div className="font-mono-code text-[12px] text-[#556070] mt-0.5">
                     {step.node.provider_id}
                   </div>
 
-                  <p className="text-[11.5px] text-[#515154] mt-2 leading-snug">
+                  <p className="text-[13px] text-[#556070] mt-2.5 leading-relaxed">
                     {step.handoffNote}
                   </p>
                 </div>
 
-                <div className="mt-3.5 pt-3 border-t border-black/[0.06] space-y-2">
-                  <div className="flex items-center justify-between text-[11.5px] text-[#515154] tabular-nums">
+                <div className="mt-4 pt-3 border-t border-[rgba(29,37,48,0.09)] space-y-2.5">
+                  <div className="flex items-center justify-between text-[12.5px] text-[#556070] tabular-nums">
                     <span className="inline-flex items-center gap-1 truncate">
-                      <MapPin className="w-3 h-3 text-[#86868B] shrink-0" />
-                      {step.node.city} ({step.distanceFromHomeKm} km)
+                      <MapPin className="w-3.5 h-3.5 text-[#556070] shrink-0" />
+                      <span>
+                        {step.node.city} ({step.distanceFromHomeKm} km)
+                      </span>
                     </span>
                     {isOrigin ? (
-                      <span className="text-[10.5px] text-[#86868B]">Start</span>
+                      <span className="font-mono-code text-[12px]">Day 0</span>
                     ) : (
-                      <span className="font-mono-code font-semibold text-[#0F766E]">
+                      <span className="font-mono-code font-medium text-[#2C5877]">
                         +{step.expectedStepWaitDays}d
                       </span>
                     )}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-1">
-                    {step.channelIn && channelBadge(step.channelIn)}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {step.channelIn && channelChip(step.channelIn)}
                     {step.node.accepts_medicaid && (
-                      <span className="px-2 py-0.5 rounded-full bg-sky-500/12 text-sky-900 text-[10px] font-semibold">
-                        Medicaid
-                      </span>
+                      <span className="ts-chip">Medicaid</span>
                     )}
                     {step.node.bilingual_services_listed && (
-                      <span className="px-2 py-0.5 rounded-full bg-indigo-500/12 text-indigo-900 text-[10px] font-semibold">
-                        Bilingual
-                      </span>
+                      <span className="ts-chip">Bilingual</span>
                     )}
                     {step.node.part_c_vendor_enrolled && (
-                      <span className="px-2 py-0.5 rounded-full bg-black/[0.05] text-[#515154] text-[10px] font-semibold">
-                        Part C
-                      </span>
+                      <span className="ts-chip">Part C</span>
                     )}
                   </div>
                 </div>
 
                 {index < activePathway.steps.length - 1 && (
-                  <div className="hidden xl:flex absolute -right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white text-[#0D9488] shadow-[0_1px_4px_rgba(0,0,0,0.14),0_0_0_0.5px_rgba(0,0,0,0.08)] items-center justify-center z-10">
+                  <div
+                    aria-hidden="true"
+                    className="hidden xl:flex absolute -right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white text-[#1D2530] border border-[rgba(29,37,48,0.18)] items-center justify-center z-10"
+                  >
                     <ArrowRight className="w-3 h-3" />
                   </div>
                 )}
@@ -407,13 +409,13 @@ export const PathwayClockComparison: React.FC<PathwayClockComparisonProps> = ({
           })}
         </div>
 
-        {/* Fluid Candidate Pathway Switcher */}
+        {/* Alternative Compliant Pathways — Linked card lift (-2px on hover, motion.md) */}
         {allOptions.length > 1 && (
-          <div className="pt-4 border-t border-black/[0.06] no-print space-y-2">
-            <div className="text-xs font-semibold text-[#515154]">
-              Alternative Compliant Pathways ({allOptions.length} routes)
+          <div className="pt-5 border-t border-[rgba(29,37,48,0.1)] no-print space-y-2.5">
+            <div className="ts-label">
+              Compare compliant routes ({allOptions.length})
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2.5">
               {allOptions.map((opt, idx) => {
                 const selected = selectedPathwayId
                   ? opt.id === selectedPathwayId
@@ -424,33 +426,28 @@ export const PathwayClockComparison: React.FC<PathwayClockComparisonProps> = ({
                     type="button"
                     onPointerDown={() => {
                       if (!selected) {
-                        triggerCausalHaptic(5);
+                        triggerCausalHaptic(4);
                         onSelectPathway(opt.id);
                       }
                     }}
                     onClick={() => onSelectPathway(opt.id)}
-                    className={`apple-pressable relative px-3.5 py-2 rounded-[12px] text-xs cursor-pointer tabular-nums ${
+                    className={`ts-card-lift px-3.5 py-2.5 rounded-[10px] text-[13px] cursor-pointer tabular-nums border text-left ${
                       selected
-                        ? 'text-[#0F766E] font-semibold'
-                        : 'bg-[#F5F5F8] text-[#515154] hover:text-[#1D1D1F]'
+                        ? 'bg-[rgba(44,88,119,0.08)] border-[#2C5877] text-[#1D2530] font-medium'
+                        : 'bg-white border-[rgba(29,37,48,0.14)] text-[#556070] hover:text-[#1D2530]'
                     }`}
                   >
-                    {selected && (
-                      <motion.span
-                        layoutId="candidate-route-pill"
-                        transition={barSpring}
-                        className="absolute inset-0 rounded-[12px] bg-[#0D9488]/12 shadow-[inset_0_0_0_1.5px_rgba(13,148,136,0.45)]"
-                      />
-                    )}
-                    <span className="relative flex items-center gap-2">
-                      <span className="font-mono-code font-bold">
+                    <span className="flex items-center gap-2">
+                      <span className="font-mono-code font-medium text-[#2C5877]">
                         {opt.totalExpectedDays}d
                       </span>
-                      <span className="text-[#86868B]">·</span>
-                      <span className="truncate max-w-[220px]">
+                      <span aria-hidden="true" className="text-[#556070]">
+                        ·
+                      </span>
+                      <span className="truncate max-w-[220px] text-[#1D2530]">
                         {cleanOrgName(opt.steps[2].node.synthetic_organization_name)}
                       </span>
-                      <span className="text-[11px] text-[#86868B]">
+                      <span className="font-mono-code text-[12px] text-[#556070]">
                         {opt.evalHubDistanceKm} km
                       </span>
                     </span>

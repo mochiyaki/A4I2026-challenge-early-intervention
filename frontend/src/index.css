@@ -2,59 +2,186 @@
 
 @layer base {
   :root {
-    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
-      system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    --font-mono: "SF Mono", ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo,
-      Monaco, Consolas, monospace;
+    /* Dealt by taste-skill 2.5.1 (start.mjs deal --page software --trade clinic):
+       Palette: linen-harbour | Type: geist (Geist + Geist Mono) | Radius: soft */
+    --p-bg: #f3f1ec;
+    --p-card: #ffffff;
+    --p-surface: #e6e2d9;
+    --p-surface-subtle: #f8f7f4;
+    --p-ink: #1d2530;
+    --p-text: #27303d;
+    --p-muted: #556070;
+    --p-line: rgba(29, 37, 48, 0.11);
+    --p-line-strong: rgba(29, 37, 48, 0.22);
 
-    /* Apple Layered Surface Palette */
-    --canvas-bg: #f5f5f7;
-    --card-bg: #ffffff;
-    --grouped-bg: #f2f2f7;
-    --ink-primary: #1d1d1f;
-    --ink-secondary: #515154;
-    --ink-tertiary: #86868b;
-    --hairline: rgba(15, 23, 42, 0.075);
+    /* Single locked accent — Harbour Blue (zero violet/lavender, <3% screen fill) */
+    --p-accent: #2c5877;
+    --p-accent-hover: #244963;
+    --p-accent-tint: rgba(44, 88, 119, 0.09);
+    --p-accent-ink: #ffffff;
+    --p-action: #2c5877;
+
+    /* Desaturated semantic status tokens (strictly for >45d statutory breach data visuals) */
+    --p-breach: #b43e2f;
+    --p-breach-tint: rgba(180, 62, 47, 0.09);
+    --p-caution: #8f5b1e;
+    --p-caution-tint: rgba(143, 91, 30, 0.1);
+
+    /* Inverse Harbour Slate stage (code & ReferralGraph topology — never #000000) */
+    --p-inv-bg: #18202a;
+    --p-inv-surface: #222c39;
+    --p-inv-ink: #f3f1ec;
+    --p-inv-muted: #9aa5b4;
+    --p-inv-line: rgba(243, 241, 236, 0.11);
+
+    /* Typography */
+    --font-display: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-text: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+    /* Soft radius family (8 / 12 / 20) */
+    --r-sm: 8px;
+    --r-btn: 9px;
+    --r-md: 12px;
+    --r-lg: 20px;
+
+    /* Motion tokens (taste-skill motion.md — zero overshoot) */
+    --m-in: 150ms;
+    --m-out: 120ms;
+    --m-press: 90ms;
+    --m-slide: 240ms;
+    --m-cycle: 3.2s;
+    --m-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --m-ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
   }
 
   html {
-    font: 100%/1.5 var(--font-sans);
+    font-family: var(--font-text);
+    font-size: 16px;
+    line-height: 1.5;
     font-optical-sizing: auto;
     -webkit-tap-highlight-color: transparent;
+    background-color: var(--p-bg);
+    color: var(--p-ink);
   }
 
   body {
-    font-family: var(--font-sans);
-    background-color: var(--canvas-bg);
-    color: var(--ink-primary);
-    letter-spacing: -0.004em;
-    line-height: 1.48;
+    margin: 0;
+    font-family: var(--font-text);
+    background-color: var(--p-bg);
+    color: var(--p-ink);
+    letter-spacing: -0.006em;
+    line-height: 1.5;
+  }
+
+  ::selection {
+    background-color: rgba(44, 88, 119, 0.18);
+    color: var(--p-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--p-action);
+    outline-offset: 2px;
+    transition: none !important;
   }
 }
 
-/* Typography Scale — Size-Specific Tracking & Inverse Leading (SKILL.md §15) */
-.apple-display {
-  font-optical-sizing: auto;
-  letter-spacing: -0.026em;
-  line-height: 1.08;
+/* Equal left and right content edges (House Rule 4) */
+.ts-wrap {
+  width: 100%;
+  max-width: 1480px;
+  margin-inline: auto;
+  padding-inline: 20px;
 }
 
-.apple-title {
-  font-optical-sizing: auto;
+@media (min-width: 640px) {
+  .ts-wrap {
+    padding-inline: 32px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ts-wrap {
+    padding-inline: 40px;
+  }
+}
+
+/* Skip link: hidden until first Tab, never shifts logo off left edge (system.md §Base) */
+.ts-skip-link {
+  position: fixed;
+  top: 12px;
+  left: 20px;
+  z-index: 100;
+  padding: 10px 16px;
+  border-radius: var(--r-btn);
+  background: var(--p-ink);
+  color: var(--p-bg);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transform: translateY(-160%);
+}
+
+.ts-skip-link:focus {
+  transform: translateY(0);
+}
+
+/* Fixed Opaque Architectural Navigation Bar (system.md §Nav — no blur, no shadow, 1px hairline) */
+.ts-nav {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background-color: var(--p-bg);
+  border-bottom: 1px solid var(--p-line);
+}
+
+/* Typography Hierarchy — sentence case, tight display tracking, contrast run-ons */
+.ts-h1 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.038em;
+  line-height: 1.1;
+  color: var(--p-ink);
+}
+
+.ts-h2 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.18;
+  color: var(--p-ink);
+}
+
+.ts-h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
   letter-spacing: -0.018em;
-  line-height: 1.22;
+  line-height: 1.28;
+  color: var(--p-ink);
 }
 
-.apple-subhead {
-  font-optical-sizing: auto;
-  letter-spacing: -0.01em;
+.ts-muted {
+  color: var(--p-muted);
+  font-weight: 400;
+}
+
+/* Sentence-case 13px/500 labels — replaces tracked all-caps eyebrows (system.md §Type) */
+.ts-label {
+  font-size: 13px;
+  font-weight: 500;
   line-height: 1.35;
+  letter-spacing: -0.005em;
+  color: var(--p-muted);
 }
 
-.apple-eyebrow {
-  letter-spacing: 0.048em;
-  line-height: 1.3;
-  text-transform: uppercase;
+.ts-measure {
+  max-width: 62ch;
 }
 
 .font-mono-code {
@@ -66,101 +193,290 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Materials & Depth Hierarchy (SKILL.md §12) */
-.apple-chrome-glass {
-  background: rgba(250, 250, 252, 0.76);
-  backdrop-filter: blur(22px) saturate(180%);
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
-  box-shadow:
-    inset 0 -0.5px 0 rgba(15, 23, 42, 0.09),
-    0 4px 20px -6px rgba(15, 23, 42, 0.05);
+/* Cards & Surfaces — Two levels max, 1px hairline, zero blurred resting shadow (cards.md) */
+.ts-card {
+  background-color: var(--p-card);
+  border: 1px solid var(--p-line);
+  border-radius: var(--r-lg);
 }
 
-/* Scroll edge subtle gradient mask rather than harsh divider */
-.apple-scroll-mask {
-  mask-image: linear-gradient(to bottom, black calc(100% - 12px), transparent 100%);
+.ts-panel {
+  background-color: var(--p-surface-subtle);
+  border: 1px solid var(--p-line);
+  border-radius: var(--r-md);
 }
 
-.apple-card {
-  background: var(--card-bg);
-  border-radius: 22px;
-  box-shadow:
-    0 0 0 0.5px rgba(15, 23, 42, 0.08),
-    0 2px 6px rgba(15, 23, 42, 0.03),
-    0 12px 28px -8px rgba(15, 23, 42, 0.055);
+.ts-stage-dark {
+  background-color: var(--p-inv-bg);
+  color: var(--p-inv-ink);
+  border: 1px solid rgba(29, 37, 48, 0.24);
+  border-radius: var(--r-md);
 }
 
-.apple-well {
-  background: #f5f5f8;
-  border-radius: 14px;
-  box-shadow: inset 0 0 0 0.5px rgba(15, 23, 42, 0.065);
+/* Linked / selectable card hover lift — 2px up on fine pointer (House Rule 5 & motion.md) */
+.ts-card-lift {
+  transition:
+    transform 180ms var(--m-ease),
+    border-color 180ms var(--m-ease),
+    box-shadow 180ms var(--m-ease),
+    background-color 150ms var(--m-ease);
 }
 
-.apple-dark-surface {
-  background: linear-gradient(180deg, #0d121c 0%, #090d14 100%);
-  border-radius: 18px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 12px 30px -10px rgba(9, 13, 20, 0.45);
+@media (hover: hover) and (pointer: fine) {
+  .ts-card-lift:hover {
+    transform: translateY(-2px);
+    border-color: var(--p-line-strong);
+    box-shadow: 0 10px 24px -12px rgba(29, 37, 48, 0.1);
+  }
 }
 
-/* Instant Response on Pointer-Down (SKILL.md §1) */
-.apple-pressable {
-  touch-action: manipulation;
+.ts-card-lift:active {
+  transform: translateY(0) scale(0.99);
+  transition-duration: var(--m-press);
+}
+
+/* One-System Buttons (system.md §Radius and buttons & motion.md §Hover layer) */
+.ts-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 8px 16px;
+  border-radius: var(--r-btn);
+  font-family: var(--font-text);
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.008em;
+  cursor: pointer;
   user-select: none;
-  transition:
-    transform 100ms cubic-bezier(0.2, 0, 0, 1),
-    background-color 140ms ease,
-    box-shadow 140ms ease;
-}
-
-.apple-pressable:active {
-  transform: scale(0.97);
-}
-
-.apple-card-pressable {
   touch-action: manipulation;
+  white-space: nowrap;
   transition:
-    transform 120ms cubic-bezier(0.2, 0, 0, 1),
-    box-shadow 180ms ease;
+    transform var(--m-in) var(--m-ease),
+    background-color var(--m-in) var(--m-ease),
+    border-color var(--m-in) var(--m-ease),
+    color var(--m-in) var(--m-ease);
 }
 
-.apple-card-pressable:active {
-  transform: scale(0.985);
+.ts-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  transform: none !important;
 }
 
-/* Accessibility: Reduced Motion, Reduced Transparency, High Contrast (SKILL.md §14) */
+.ts-btn-primary {
+  background-color: var(--p-action);
+  color: var(--p-accent-ink);
+  border: 1px solid transparent;
+}
+
+.ts-btn-secondary {
+  background-color: var(--p-card);
+  color: var(--p-ink);
+  border: 1px solid var(--p-line-strong);
+}
+
+.ts-btn-tonal {
+  background-color: var(--p-surface);
+  color: var(--p-ink);
+  border: 1px solid transparent;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ts-btn-primary:not(:disabled):hover {
+    background-color: var(--p-accent-hover);
+    transform: translateY(-1px);
+  }
+
+  .ts-btn-secondary:not(:disabled):hover {
+    background-color: var(--p-surface-subtle);
+    border-color: rgba(29, 37, 48, 0.34);
+    transform: translateY(-1px);
+  }
+
+  .ts-btn-tonal:not(:disabled):hover {
+    background-color: #dcd7cc;
+    transform: translateY(-1px);
+  }
+
+  .ts-btn:not(:disabled):hover .ts-arrow {
+    transform: translateX(3px);
+  }
+}
+
+.ts-btn:not(:disabled):active {
+  transform: translateY(1px) scale(0.985);
+  transition-duration: var(--m-press);
+}
+
+.ts-arrow {
+  transition: transform var(--m-in) var(--m-ease);
+}
+
+/* Drawn left-to-right text link underline (motion.md) */
+.ts-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--p-ink);
+  font-weight: 500;
+  text-decoration: none;
+  background-image:
+    linear-gradient(var(--p-ink), var(--p-ink)),
+    linear-gradient(var(--p-line-strong), var(--p-line-strong));
+  background-size: 0% 1px, 100% 1px;
+  background-position: 0 100%, 0 100%;
+  background-repeat: no-repeat;
+  padding-bottom: 2px;
+  cursor: pointer;
+  transition: background-size var(--m-in) var(--m-ease), color var(--m-in) var(--m-ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ts-link:hover {
+    color: var(--p-action);
+    background-size: 100% 1px, 100% 1px;
+  }
+}
+
+/* Form controls — 44px accessible targets, 1px hairline, harbour focus ring */
+.ts-input {
+  width: 100%;
+  min-height: 44px;
+  border-radius: var(--r-sm);
+  background-color: var(--p-card);
+  border: 1px solid var(--p-line-strong);
+  padding: 9px 12px;
+  font-size: 14px;
+  color: var(--p-ink);
+  transition: border-color 140ms var(--m-ease), box-shadow 140ms var(--m-ease);
+}
+
+.ts-input:hover {
+  border-color: rgba(29, 37, 48, 0.34);
+}
+
+.ts-input:focus {
+  outline: none;
+  border-color: var(--p-action);
+  box-shadow: 0 0 0 3px rgba(44, 88, 119, 0.15);
+}
+
+/* Neutral ink chips (cards.md: chips are ink tints, never a rainbow of pills) */
+.ts-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  background-color: var(--p-surface-subtle);
+  color: var(--p-text);
+  border: 1px solid var(--p-line);
+}
+
+.ts-chip-accent {
+  background-color: var(--p-accent-tint);
+  color: var(--p-accent);
+  border-color: rgba(44, 88, 119, 0.22);
+}
+
+.ts-chip-breach {
+  background-color: var(--p-breach-tint);
+  color: var(--p-breach);
+  border-color: rgba(180, 62, 47, 0.24);
+}
+
+/* Load-once hero entrance (motion.md §The hero's entrance — settles once, never on scroll) */
+@keyframes tsHeroRise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ts-hero-enter {
+  animation: tsHeroRise 620ms var(--m-ease-enter) both;
+}
+
+.ts-hero-enter-delay {
+  animation: tsHeroRise 620ms var(--m-ease-enter) 90ms both;
+}
+
+/* 3.2s ReferralGraph diagram comet pulse (diagrams.md — repeating 2.5–4s cycle, pausable) */
+@keyframes tsDiagramPulse {
+  0% {
+    stroke-dashoffset: 240;
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.95;
+  }
+  78% {
+    opacity: 0.95;
+  }
+  92%,
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+
+.ts-diagram-comet {
+  stroke-dasharray: 28 240;
+  animation: tsDiagramPulse var(--m-cycle) linear infinite;
+}
+
+.ts-diagram-paused .ts-diagram-comet {
+  animation-play-state: paused;
+}
+
+/* Utility scrollbar suppression for horizontal prompt strips */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Accessibility: Reduced motion & high contrast (motion.md & system.md) */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 160ms !important;
+    transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-  .apple-pressable:active,
-  .apple-card-pressable:active {
+
+  .ts-card-lift:hover,
+  .ts-btn:hover,
+  .ts-btn:active {
     transform: none !important;
   }
-}
 
-@media (prefers-reduced-transparency: reduce) {
-  .apple-chrome-glass {
-    background: #ffffff !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    border-bottom: 1px solid #d1d5db;
+  .ts-diagram-comet {
+    animation: none !important;
+    opacity: 0 !important;
   }
 }
 
 @media (prefers-contrast: more) {
-  .apple-card {
-    box-shadow: none !important;
-    border: 1.5px solid #1e293b !important;
-  }
-  .apple-well {
-    border: 1px solid #475569 !important;
+  :root {
+    --p-line: rgba(29, 37, 48, 0.38);
+    --p-line-strong: rgba(29, 37, 48, 0.62);
+    --p-muted: #333c48;
   }
 }
 
@@ -171,7 +487,8 @@
   body {
     background: #ffffff !important;
   }
-  .apple-card {
+  .ts-card,
+  .ts-panel {
     box-shadow: none !important;
     border: 1px solid #cbd5e1 !important;
   }

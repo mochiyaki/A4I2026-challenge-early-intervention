@@ -2,15 +2,13 @@ import React, { useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import {
   BarChart3,
-  Bot,
   Check,
   Code2,
   Copy,
-  HeartHandshake,
+  FileText,
   Network,
   Play,
   Send,
-  Sparkles,
 } from 'lucide-react';
 import { cleanOrgName } from '../engine/graphTriageEngine';
 import type { LiveAgentResponse } from '../services/agentClient';
@@ -70,7 +68,7 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const handleCopy = (key: string, text: string) => {
-    triggerCausalHaptic(8);
+    triggerCausalHaptic(6);
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 1800);
@@ -92,29 +90,28 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
     : SPRING_DEFAULT;
 
   return (
-    <section className="apple-card p-6 sm:p-7 space-y-6">
-      {/* Direct, Specific Apple Segmented Navigation (SKILL.md §16) */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[0.06] pb-4 no-print">
+    <section className="ts-card p-6 sm:p-8 space-y-6">
+      {/* Header + Software Tab Bar (zero overshoot, 240ms) */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[rgba(29,37,48,0.1)] pb-5 no-print">
         <div>
-          <span className="apple-eyebrow text-[10.5px] font-bold text-[#86868B]">
-            Coordinator Brief
-          </span>
-          <h3 className="apple-title text-[17px] font-semibold text-[#1D1D1F]">
-            Actionable Output &amp; Network Audit
-          </h3>
+          <h2 className="ts-h2 text-[20px]">
+            Coordinator brief.{' '}
+            <span className="ts-muted">Family letters and network audit.</span>
+          </h2>
         </div>
 
         <div className="w-full sm:w-auto overflow-x-auto">
           <FluidSegmentedControl<BriefTabId>
             layoutId="brief-tabs-segment"
+            ariaLabel="Coordinator brief sections"
             size="md"
             options={[
               {
                 value: 'caregiver',
                 label: (
                   <>
-                    <HeartHandshake className="w-3.5 h-3.5" />
-                    <span>Caregiver Letter</span>
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Family notes</span>
                   </>
                 ),
               },
@@ -123,7 +120,7 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
                 label: (
                   <>
                     <Network className="w-3.5 h-3.5" />
-                    <span>Bounce Hubs</span>
+                    <span>Bounce hubs</span>
                   </>
                 ),
               },
@@ -132,7 +129,7 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
                 label: (
                   <>
                     <BarChart3 className="w-3.5 h-3.5" />
-                    <span>Equity Audit</span>
+                    <span>Equity audit</span>
                   </>
                 ),
               },
@@ -141,7 +138,7 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
                 label: (
                   <>
                     <Code2 className="w-3.5 h-3.5" />
-                    <span>ISO GQL &amp; Agent</span>
+                    <span>ISO GQL &amp; ADK</span>
                   </>
                 ),
               },
@@ -153,81 +150,80 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
       </div>
 
       <AnimatePresence mode="wait">
-        {/* TAB 1: Caregiver Letter */}
+        {/* TAB 1: Caregiver Letters — Clean 2-level panels (no box-in-box-in-box) */}
         {activeTab === 'caregiver' && (
           <motion.div
             key="caregiver"
             initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }}
-            animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
             transition={panelTransition}
-            className="space-y-4"
+            className="space-y-5"
           >
-            <div>
-              <h4 className="apple-subhead text-[15px] font-semibold text-[#1D1D1F]">
-                Plain-Language Family Action Note (English &amp; Español)
-              </h4>
-              <p className="text-xs text-[#515154] mt-0.5">
-                Zero bureaucratic jargon · Confirms $0 Medicaid Part C coverage, bilingual
-                evaluation, and each milestone before Day 45.
+            <div className="ts-measure">
+              <h3 className="ts-h3 text-[16px]">
+                Plain-language caregiver confirmation
+              </h3>
+              <p className="text-[14px] text-[#556070] mt-1 leading-relaxed">
+                Confirms $0 Medicaid Part C coverage, bilingual evaluation staffing, and each scheduled step before Day 45.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* English */}
-              <div className="apple-well p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="apple-eyebrow text-[10.5px] font-bold text-[#0F766E]">
-                    English Family Note
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {/* English Note */}
+              <div className="ts-panel p-5 space-y-3.5">
+                <div className="flex items-center justify-between gap-2 pb-3 border-b border-[rgba(29,37,48,0.1)]">
+                  <span className="text-[14px] font-medium text-[#1D2530]">
+                    English family note
                   </span>
                   <button
                     type="button"
                     onClick={() => handleCopy('en', finalEn)}
-                    className="apple-pressable inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.06),0_0_0_0.5px_rgba(0,0,0,0.08)] cursor-pointer no-print"
+                    className="ts-btn ts-btn-secondary min-h-[34px] py-1 px-3 text-[12.5px] no-print"
                   >
                     {copiedKey === 'en' ? (
                       <>
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        Copied
+                        <Check className="w-3.5 h-3.5 text-[#2C5877]" />
+                        <span>Copied note</span>
                       </>
                     ) : (
                       <>
-                        <Copy className="w-3.5 h-3.5" />
-                        Copy English
+                        <Copy className="w-3.5 h-3.5 text-[#556070]" />
+                        <span>Copy English note</span>
                       </>
                     )}
                   </button>
                 </div>
-                <pre className="whitespace-pre-wrap font-sans text-[13px] text-[#1D1D1F] leading-relaxed bg-white rounded-[12px] p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+                <pre className="whitespace-pre-wrap font-sans text-[14px] text-[#1D2530] leading-relaxed m-0">
                   {finalEn}
                 </pre>
               </div>
 
-              {/* Spanish */}
-              <div className="apple-well p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="apple-eyebrow text-[10.5px] font-bold text-[#0F766E]">
-                    Confirmación en Español
+              {/* Spanish Note */}
+              <div className="ts-panel p-5 space-y-3.5">
+                <div className="flex items-center justify-between gap-2 pb-3 border-b border-[rgba(29,37,48,0.1)]">
+                  <span className="text-[14px] font-medium text-[#1D2530]">
+                    Nota familiar en español
                   </span>
                   <button
                     type="button"
                     onClick={() => handleCopy('es', finalEs)}
-                    className="apple-pressable inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.06),0_0_0_0.5px_rgba(0,0,0,0.08)] cursor-pointer no-print"
+                    className="ts-btn ts-btn-secondary min-h-[34px] py-1 px-3 text-[12.5px] no-print"
                   >
                     {copiedKey === 'es' ? (
                       <>
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        Copiado
+                        <Check className="w-3.5 h-3.5 text-[#2C5877]" />
+                        <span>Nota copiada</span>
                       </>
                     ) : (
                       <>
-                        <Copy className="w-3.5 h-3.5" />
-                        Copiar Español
+                        <Copy className="w-3.5 h-3.5 text-[#556070]" />
+                        <span>Copiar nota en español</span>
                       </>
                     )}
                   </button>
                 </div>
-                <pre className="whitespace-pre-wrap font-sans text-[13px] text-[#1D1D1F] leading-relaxed bg-white rounded-[12px] p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+                <pre className="whitespace-pre-wrap font-sans text-[14px] text-[#1D2530] leading-relaxed m-0">
                   {finalEs}
                 </pre>
               </div>
@@ -235,100 +231,92 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
           </motion.div>
         )}
 
-        {/* TAB 2: Regional Bounce Hub Diagnosis */}
+        {/* TAB 2: Regional Bounce Hub Diagnosis — Zero violet, clean hairline tables */}
         {activeTab === 'bounce' && (
           <motion.div
             key="bounce"
             initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }}
-            animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
             transition={panelTransition}
-            className="space-y-5 tabular-nums"
+            className="space-y-6 tabular-nums"
           >
             {topFixHub && (
-              <div className="rounded-[16px] bg-[#5856D6]/[0.08] shadow-[inset_0_0_0_1px_rgba(88,86,214,0.2)] p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
-                <div className="space-y-1 max-w-3xl">
-                  <div className="apple-eyebrow inline-flex items-center gap-1.5 text-[10.5px] font-bold text-[#5856D6]">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Highest-Impact Network Intervention
+              <div className="ts-panel p-5 sm:p-6 flex flex-wrap items-center justify-between gap-5">
+                <div className="space-y-1.5 max-w-2xl">
+                  <div className="ts-label text-[#2C5877]">
+                    Priority network intervention
                   </div>
-                  <h4 className="apple-subhead text-[15px] font-semibold text-[#1D1D1F]">
-                    Upgrade{' '}
-                    <code className="font-mono-code text-[#5856D6]">
+                  <h3 className="ts-h3 text-[17px]">
+                    Move{' '}
+                    <code className="font-mono-code text-[15px] text-[#2C5877]">
                       {topFixHub.coordinator.provider_id}
                     </code>{' '}
-                    ({cleanOrgName(topFixHub.coordinator.synthetic_organization_name)}) from{' '}
-                    <code className="font-mono-code">paper_fax</code> to e-Portal + Bilingual Check
-                  </h4>
-                  <p className="text-xs text-[#515154]">
-                    Flat SQL reports just{' '}
-                    <strong className="text-[#1D1D1F]">
-                      {topFixHub.coordinator.median_internal_wait_days}d internal wait
+                    ({cleanOrgName(topFixHub.coordinator.synthetic_organization_name)}) from paper fax to e-Portal
+                  </h3>
+                  <p className="text-[14px] text-[#556070] leading-relaxed">
+                    Flat SQL shows a{' '}
+                    <strong className="font-medium text-[#1D2530]">
+                      {topFixHub.coordinator.median_internal_wait_days}-day internal wait
                     </strong>{' '}
-                    (waitlist {topFixHub.coordinator.active_waitlist_count}), hiding{' '}
-                    <strong className="text-[#1D1D1F]">{topFixHub.chainsOver45d}</strong> breached
-                    episodes out of {topFixHub.routedEpisodes}.
+                    (waitlist {topFixHub.coordinator.active_waitlist_count}), while downstream fax bounces pushed{' '}
+                    <strong className="font-medium text-[#1D2530]">{topFixHub.chainsOver45d}</strong>{' '}
+                    of {topFixHub.routedEpisodes} episodes past Day 45.
                   </p>
                 </div>
 
-                <div className="bg-white rounded-[14px] px-4 py-3 flex items-center gap-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+                <dl className="flex items-center gap-5 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-[rgba(29,37,48,0.1)] w-full sm:w-auto">
                   <div>
-                    <div className="apple-eyebrow text-[9.5px] font-semibold text-[#86868B]">
-                      Child-Days Saved
-                    </div>
-                    <div className="apple-display text-[22px] font-bold text-[#5856D6] mt-0.5">
+                    <dt className="ts-label">Child-days saved</dt>
+                    <dd className="font-mono-code text-[22px] font-medium text-[#2C5877] mt-0.5">
                       +{topFixHub.counterfactualSavedChildDays}d
-                    </div>
+                    </dd>
                   </div>
-                  <div className="border-l border-black/[0.08] pl-4">
-                    <div className="apple-eyebrow text-[9.5px] font-semibold text-[#86868B]">
-                      Flipped &le;45d
-                    </div>
-                    <div className="apple-display text-[22px] font-bold text-[#0D9488] mt-0.5">
-                      {topFixHub.counterfactualSavedChains} cases
-                    </div>
+                  <div className="border-l border-[rgba(29,37,48,0.12)] pl-5">
+                    <dt className="ts-label">Cases moved &le;45d</dt>
+                    <dd className="font-mono-code text-[22px] font-medium text-[#1D2530] mt-0.5">
+                      {topFixHub.counterfactualSavedChains}
+                    </dd>
                   </div>
-                </div>
+                </dl>
               </div>
             )}
 
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               {/* Naive Flat Sort */}
-              <div className="apple-well p-4 space-y-3">
+              <div className="space-y-3">
                 <div>
-                  <span className="apple-eyebrow text-[10px] font-bold text-amber-800">
-                    Why Flat SQL Fails
-                  </span>
-                  <h4 className="apple-subhead text-[14px] font-semibold text-[#1D1D1F] mt-0.5">
-                    1) Naive Sort (<code className="font-mono-code">active_waitlist_count DESC</code>)
+                  <div className="ts-label">Flat SQL baseline</div>
+                  <h4 className="ts-h3 text-[15.5px] mt-0.5">
+                    Sorted by <code className="font-mono-code text-[13.5px]">active_waitlist_count DESC</code>
                   </h4>
-                  <p className="text-xs text-[#515154]">
-                    Flags saturated downstream Eval Hubs (symptoms at Hop 2 &amp; Hop 3).
+                  <p className="text-[13.5px] text-[#556070] mt-0.5">
+                    Flags busy downstream hubs instead of upstream re-referral loops.
                   </p>
                 </div>
-                <div className="bg-white rounded-[12px] overflow-x-auto shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-                  <table className="w-full text-xs text-left">
-                    <thead className="text-[#86868B] border-b border-black/[0.06]">
+                <div className="rounded-[12px] border border-[rgba(29,37,48,0.12)] overflow-x-auto">
+                  <table className="w-full text-[13px] text-left">
+                    <thead className="bg-[#F8F7F4] text-[#556070] border-b border-[rgba(29,37,48,0.1)]">
                       <tr>
-                        <th className="py-2.5 px-3 font-semibold">Provider</th>
-                        <th className="py-2.5 px-3 font-semibold">Role</th>
-                        <th className="py-2.5 px-3 font-semibold text-right">Waitlist</th>
-                        <th className="py-2.5 px-3 font-semibold text-right">Internal</th>
+                        <th className="py-2.5 px-3.5 font-medium">Provider</th>
+                        <th className="py-2.5 px-3.5 font-medium">Role</th>
+                        <th className="py-2.5 px-3.5 font-medium text-right">Waitlist</th>
+                        <th className="py-2.5 px-3.5 font-medium text-right">Internal</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-black/[0.05]">
+                    <tbody className="divide-y divide-[rgba(29,37,48,0.08)]">
                       {naiveTopWaitlist.map((p) => (
                         <tr key={p.provider_id}>
-                          <td className="py-2 px-3 font-mono-code font-semibold text-[#1D1D1F]">
+                          <td className="py-2.5 px-3.5 font-mono-code font-medium text-[#1D2530]">
                             {p.provider_id}
                           </td>
-                          <td className="py-2 px-3 text-[#515154]">
+                          <td className="py-2.5 px-3.5 text-[#556070]">
                             {p.node_role.replace(/_/g, ' ')}
                           </td>
-                          <td className="py-2 px-3 text-right font-mono-code font-bold text-amber-700">
+                          <td className="py-2.5 px-3.5 text-right font-mono-code font-medium text-[#8F5B1E]">
                             {p.active_waitlist_count}
                           </td>
-                          <td className="py-2 px-3 text-right font-mono-code">
+                          <td className="py-2.5 px-3.5 text-right font-mono-code text-[#1D2530]">
                             {p.median_internal_wait_days}d
                           </td>
                         </tr>
@@ -339,45 +327,43 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
               </div>
 
               {/* Multi-hop Coordinator Breach Ranking */}
-              <div className="apple-well p-4 space-y-3">
+              <div className="space-y-3">
                 <div>
-                  <span className="apple-eyebrow text-[10px] font-bold text-[#0F766E]">
-                    Multi-Hop Graph Reality
-                  </span>
-                  <h4 className="apple-subhead text-[14px] font-semibold text-[#1D1D1F] mt-0.5">
-                    2) Coordinators Ranked by &gt;45-Day Breaches
+                  <div className="ts-label text-[#2C5877]">Multi-hop graph audit</div>
+                  <h4 className="ts-h3 text-[15.5px] mt-0.5">
+                    Coordinators ranked by &gt;45-day episode breaches
                   </h4>
-                  <p className="text-xs text-[#515154]">
-                    Exposes 5–6d internal-wait hubs whose fax links trigger 70d+ loops.
+                  <p className="text-[13.5px] text-[#556070] mt-0.5">
+                    Surfaces 5–6d internal-wait hubs whose fax handoffs trigger 70d+ delays.
                   </p>
                 </div>
-                <div className="bg-white rounded-[12px] overflow-x-auto shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-                  <table className="w-full text-xs text-left">
-                    <thead className="text-[#86868B] border-b border-black/[0.06]">
+                <div className="rounded-[12px] border border-[rgba(29,37,48,0.12)] overflow-x-auto">
+                  <table className="w-full text-[13px] text-left">
+                    <thead className="bg-[#F8F7F4] text-[#556070] border-b border-[rgba(29,37,48,0.1)]">
                       <tr>
-                        <th className="py-2.5 px-3 font-semibold">Coordinator</th>
-                        <th className="py-2.5 px-3 font-semibold text-right">Internal</th>
-                        <th className="py-2.5 px-3 font-semibold text-right">3+ Hops</th>
-                        <th className="py-2.5 px-3 font-semibold text-right">&gt;45d Breach</th>
-                        <th className="py-2.5 px-3 font-semibold text-right">Mean</th>
+                        <th className="py-2.5 px-3.5 font-medium">Coordinator</th>
+                        <th className="py-2.5 px-3.5 font-medium text-right">Internal</th>
+                        <th className="py-2.5 px-3.5 font-medium text-right">3+ hops</th>
+                        <th className="py-2.5 px-3.5 font-medium text-right">&gt;45d breach</th>
+                        <th className="py-2.5 px-3.5 font-medium text-right">Mean</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-black/[0.05]">
+                    <tbody className="divide-y divide-[rgba(29,37,48,0.08)]">
                       {bounceDiagnostics.map((b) => (
                         <tr key={b.coordinator.provider_id}>
-                          <td className="py-2 px-3 font-mono-code font-semibold text-[#1D1D1F]">
+                          <td className="py-2.5 px-3.5 font-mono-code font-medium text-[#1D2530]">
                             {b.coordinator.provider_id}
                           </td>
-                          <td className="py-2 px-3 text-right font-mono-code text-[#0F766E] font-semibold">
+                          <td className="py-2.5 px-3.5 text-right font-mono-code text-[#2C5877] font-medium">
                             {b.coordinator.median_internal_wait_days}d
                           </td>
-                          <td className="py-2 px-3 text-right font-mono-code">
+                          <td className="py-2.5 px-3.5 text-right font-mono-code text-[#556070]">
                             {b.chains3PlusHops}/{b.routedEpisodes}
                           </td>
-                          <td className="py-2 px-3 text-right font-mono-code font-bold text-rose-600">
+                          <td className="py-2.5 px-3.5 text-right font-mono-code font-medium text-[#B43E2F]">
                             {b.chainsOver45d}/{b.routedEpisodes} ({b.breachRatePct}%)
                           </td>
-                          <td className="py-2 px-3 text-right font-mono-code font-semibold">
+                          <td className="py-2.5 px-3.5 text-right font-mono-code font-medium text-[#1D2530]">
                             {b.meanEpisodeWaitDays}d
                           </td>
                         </tr>
@@ -388,7 +374,7 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
               {agencies.map((ag) => {
                 const timelyPct = (
                   (ag.initial_ifsp_within_45_days_count /
@@ -396,22 +382,22 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
                   100
                 ).toFixed(1);
                 return (
-                  <div key={ag.agency_id} className="apple-well p-3.5 text-xs space-y-1">
+                  <div key={ag.agency_id} className="ts-panel p-4 text-[13px] space-y-1.5">
                     <div className="flex justify-between items-center">
-                      <span className="font-mono-code font-semibold text-[#515154]">
+                      <span className="font-mono-code text-[12px] text-[#556070]">
                         {ag.agency_id}
                       </span>
-                      <span className="font-mono-code font-bold text-[#0F766E]">
+                      <span className="font-mono-code font-medium text-[#2C5877]">
                         {timelyPct}% timely
                       </span>
                     </div>
-                    <div className="font-semibold text-[#1D1D1F]">
+                    <div className="font-medium text-[14.5px] text-[#1D2530]">
                       {cleanOrgName(ag.synthetic_agency_name)}
                     </div>
-                    <div className="text-[#86868B]">{ag.served_counties}</div>
-                    <div className="text-[11px] text-[#515154] pt-1">
-                      Capacity delays: <strong className="text-[#1D1D1F]">{ag.ifsp_delayed_capacity_count}</strong>{' '}
-                      · Family delays: <strong className="text-[#1D1D1F]">{ag.ifsp_delayed_family_count}</strong>
+                    <div className="text-[#556070]">{ag.served_counties}</div>
+                    <div className="text-[12.5px] text-[#556070] pt-1.5 border-t border-[rgba(29,37,48,0.08)]">
+                      Capacity delays: <strong className="font-medium text-[#1D2530]">{ag.ifsp_delayed_capacity_count}</strong>{' '}
+                      · Family delays: <strong className="font-medium text-[#1D2530]">{ag.ifsp_delayed_family_count}</strong>
                     </div>
                   </div>
                 );
@@ -420,60 +406,57 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
           </motion.div>
         )}
 
-        {/* TAB 3: Post-Output Equity Audit */}
+        {/* TAB 3: Post-Output Equity Audit — Zero violet, clean 2-level layout */}
         {activeTab === 'equity' && (
           <motion.div
             key="equity"
             initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }}
-            animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
             transition={panelTransition}
-            className="space-y-5 tabular-nums"
+            className="space-y-6 tabular-nums"
           >
-            <div className="apple-well p-4 text-xs text-[#515154] leading-relaxed">
-              <strong className="text-[#1D1D1F]">Fairness &amp; Grain Guardrail:</strong>{' '}
-              Demographic <code className="font-mono-code">audit_*</code> shares are{' '}
-              <strong className="text-[#1D1D1F]">never</strong> used in routing scores or prompts.
-              They are joined <em>post-output</em> on{' '}
-              <code className="font-mono-code">child_home_tract_geoid = census_tract_geoid</code> to
-              audit neighborhood impact.
+            <div className="ts-panel p-4 text-[13.5px] text-[#27303D] leading-relaxed">
+              <strong className="font-medium text-[#1D2530]">Post-output fairness guardrail:</strong>{' '}
+              Demographic <code className="font-mono-code text-[12.5px]">audit_*</code> columns carry zero weight in route ranking or agent prompts. They join strictly after path selection on{' '}
+              <code className="font-mono-code text-[12.5px]">child_home_tract_geoid = census_tract_geoid</code>.
             </div>
 
-            <div className="apple-well p-1.5 overflow-x-auto">
-              <table className="w-full text-xs text-left bg-white rounded-[11px] overflow-hidden">
-                <thead className="text-[#86868B] border-b border-black/[0.06]">
+            <div className="rounded-[12px] border border-[rgba(29,37,48,0.12)] overflow-x-auto">
+              <table className="w-full text-[13px] text-left">
+                <thead className="bg-[#F8F7F4] text-[#556070] border-b border-[rgba(29,37,48,0.1)]">
                   <tr>
-                    <th className="py-2.5 px-3.5 font-semibold">Historical Outcome</th>
-                    <th className="py-2.5 px-3.5 font-semibold text-right">Episodes</th>
-                    <th className="py-2.5 px-3.5 font-semibold text-right">Tract Poverty</th>
-                    <th className="py-2.5 px-3.5 font-semibold text-right">Zero-Vehicle</th>
-                    <th className="py-2.5 px-3.5 font-semibold text-right">audit_black</th>
-                    <th className="py-2.5 px-3.5 font-semibold text-right">audit_hispanic</th>
-                    <th className="py-2.5 px-3.5 font-semibold text-right">audit_white</th>
+                    <th className="py-3 px-4 font-medium">Historical outcome</th>
+                    <th className="py-3 px-4 font-medium text-right">Episodes</th>
+                    <th className="py-3 px-4 font-medium text-right">Tract poverty</th>
+                    <th className="py-3 px-4 font-medium text-right">Zero vehicle</th>
+                    <th className="py-3 px-4 font-medium text-right">audit_black</th>
+                    <th className="py-3 px-4 font-medium text-right">audit_hispanic</th>
+                    <th className="py-3 px-4 font-medium text-right">audit_white</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-black/[0.05]">
+                <tbody className="divide-y divide-[rgba(29,37,48,0.08)]">
                   {equityAudit.map((row) => (
                     <tr key={row.label}>
-                      <td className="py-2.5 px-3.5 font-semibold text-[#1D1D1F]">
+                      <td className="py-3 px-4 font-medium text-[#1D2530]">
                         {row.label}
                       </td>
-                      <td className="py-2.5 px-3.5 text-right font-mono-code font-bold">
+                      <td className="py-3 px-4 text-right font-mono-code font-medium text-[#1D2530]">
                         {row.episodes}
                       </td>
-                      <td className="py-2.5 px-3.5 text-right font-mono-code">
+                      <td className="py-3 px-4 text-right font-mono-code text-[#27303D]">
                         {row.avgPovertyPct.toFixed(1)}%
                       </td>
-                      <td className="py-2.5 px-3.5 text-right font-mono-code">
+                      <td className="py-3 px-4 text-right font-mono-code text-[#27303D]">
                         {row.avgNoVehiclePct.toFixed(1)}%
                       </td>
-                      <td className="py-2.5 px-3.5 text-right font-mono-code">
+                      <td className="py-3 px-4 text-right font-mono-code text-[#556070]">
                         {row.auditBlackPct.toFixed(1)}%
                       </td>
-                      <td className="py-2.5 px-3.5 text-right font-mono-code">
+                      <td className="py-3 px-4 text-right font-mono-code text-[#556070]">
                         {row.auditHispanicPct.toFixed(1)}%
                       </td>
-                      <td className="py-2.5 px-3.5 text-right font-mono-code">
+                      <td className="py-3 px-4 text-right font-mono-code text-[#556070]">
                         {row.auditWhitePct.toFixed(1)}%
                       </td>
                     </tr>
@@ -482,17 +465,17 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
               </table>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               <div>
-                <h4 className="apple-subhead text-[14px] font-semibold text-[#1D1D1F]">
-                  Statewide HRSA NSCH Developmental Screening Strata
-                </h4>
-                <p className="text-xs text-[#515154]">
-                  Replaces the all-zero ACS <code className="font-mono-code">limited_english_rate</code>{' '}
-                  column and remains isolated from tract joins (no 6× fan-out).
+                <h3 className="ts-h3 text-[16px]">
+                  Statewide HRSA NSCH developmental screening strata
+                </h3>
+                <p className="text-[13.5px] text-[#556070] mt-0.5">
+                  Replaces the all-zero ACS <code className="font-mono-code text-[12.5px]">limited_english_rate</code>{' '}
+                  field without joining onto tract rows.
                 </p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {nschStrata.map((s) => {
                   const screenPct = (s.standardized_screening_rate_pct * 100).toFixed(1);
                   const followPct = (s.followup_requested_pct * 100).toFixed(1);
@@ -500,33 +483,33 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
                   return (
                     <div
                       key={s.survey_stratum_id}
-                      className="apple-well p-3.5 text-xs space-y-2"
+                      className="ts-panel p-4 text-[13px] space-y-2.5"
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono-code text-[11px] font-semibold text-[#515154]">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono-code text-[12px] text-[#556070]">
                           {s.survey_stratum_id}
                         </span>
-                        <span className="px-2 py-0.5 rounded-full bg-white text-[10px] font-semibold text-[#1D1D1F]">
+                        <span className="ts-chip bg-white">
                           {s.household_income_fpl_band}
                         </span>
                       </div>
-                      <div className="font-semibold text-[#1D1D1F]">
+                      <div className="font-medium text-[14px] text-[#1D2530]">
                         {s.primary_home_language}
                       </div>
-                      <div className="w-full bg-black/[0.08] h-1.5 rounded-full overflow-hidden">
+                      <div className="w-full bg-[#E6E2D9] h-1.5 rounded-full overflow-hidden">
                         <div
                           style={{ width: `${Math.min(100, Number(screenPct) * 1.8)}%` }}
                           className={`h-full rounded-full ${
-                            isNonEng ? 'bg-[#5856D6]' : 'bg-[#0D9488]'
+                            isNonEng ? 'bg-[#2C5877]' : 'bg-[#1D2530]'
                           }`}
                         />
                       </div>
-                      <div className="flex justify-between text-[11px] text-[#515154]">
+                      <div className="flex justify-between text-[12.5px] text-[#556070]">
                         <span>
-                          Screened: <strong className="text-[#1D1D1F]">{screenPct}%</strong>
+                          Screened: <strong className="font-medium text-[#1D2530]">{screenPct}%</strong>
                         </span>
                         <span>
-                          Follow-up: <strong className="text-[#1D1D1F]">{followPct}%</strong>
+                          Follow-up: <strong className="font-medium text-[#1D2530]">{followPct}%</strong>
                         </span>
                       </div>
                     </div>
@@ -542,112 +525,112 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
           <motion.div
             key="gql"
             initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }}
-            animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
             transition={panelTransition}
-            className="space-y-5"
+            className="space-y-6"
           >
-            <div className="apple-well p-4 sm:p-5 space-y-3 no-print">
+            <div className="ts-panel p-5 space-y-3.5 no-print">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Bot className="w-4 h-4 text-[#0D9488]" />
-                  <h4 className="apple-subhead text-[14px] font-semibold text-[#1D1D1F]">
-                    Live ADK Triage Agent Console
-                  </h4>
-                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-white text-[#515154] font-mono-code">
-                    {agentEndpoint || 'Starter Graph Engine Active'}
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <label
+                    htmlFor="adk-coordinator-prompt"
+                    className="ts-h3 text-[15.5px]"
+                  >
+                    ADK triage prompt
+                  </label>
+                  <span className="ts-chip bg-white font-mono-code text-[11.5px]">
+                    {agentEndpoint || 'Local ReferralGraph engine'}
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={onOpenAgentModal}
-                  className="text-xs font-semibold text-[#0F766E] hover:underline cursor-pointer"
+                  className="ts-link text-[13px]"
                 >
-                  Configure Endpoint
+                  Configure endpoint
                 </button>
               </div>
 
               <textarea
+                id="adk-coordinator-prompt"
                 rows={4}
                 value={agentPrompt}
                 onChange={(e) => onAgentPromptChange(e.target.value)}
-                className="w-full rounded-[12px] bg-white p-3 text-xs font-mono-code text-[#1D1D1F] shadow-[inset_0_0_0_0.5px_rgba(15,23,42,0.12)] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/40"
+                className="ts-input font-mono-code text-[12.5px] leading-relaxed"
               />
 
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[11.5px] text-[#515154]">
-                  Dispatches structured referral JSON + coordinator prompt to your Cloud Run / ADK
-                  endpoint.
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-[13px] text-[#556070]">
+                  Sends structured referral JSON and prompt to your Cloud Run or ADK service.
                 </p>
                 <button
                   type="button"
                   onClick={onRunLiveAgent}
                   disabled={agentLoading}
-                  className="apple-pressable inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold bg-[#0D9488] text-white hover:bg-[#0F766E] disabled:opacity-50 cursor-pointer shadow-[0_2px_6px_rgba(13,148,136,0.25)]"
+                  className="ts-btn ts-btn-primary"
                 >
                   {agentLoading ? (
                     <>
                       <Play className="w-3.5 h-3.5 animate-spin" />
-                      Querying...
+                      <span>Querying ADK...</span>
                     </>
                   ) : (
                     <>
                       <Send className="w-3.5 h-3.5" />
-                      Send to ADK Agent
+                      <span>Run ADK agent</span>
                     </>
                   )}
                 </button>
               </div>
 
               {agentError && (
-                <div className="p-3 rounded-[11px] bg-rose-500/12 text-xs text-rose-900">
+                <div className="p-3.5 rounded-[10px] bg-[rgba(180,62,47,0.08)] border border-[rgba(180,62,47,0.24)] text-[13px] text-[#B43E2F]">
                   {agentError}
                 </div>
               )}
 
               {agentResponse && (
-                <div className="p-4 rounded-[12px] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)] space-y-1.5">
-                  <div className="apple-eyebrow text-[10px] font-bold text-[#0F766E]">
-                    Live ADK Response
+                <div className="p-4 rounded-[10px] bg-white border border-[rgba(29,37,48,0.12)] space-y-1.5">
+                  <div className="ts-label text-[#2C5877]">
+                    Live ADK response
                   </div>
-                  <pre className="whitespace-pre-wrap font-sans text-xs text-[#1D1D1F] leading-relaxed">
+                  <pre className="whitespace-pre-wrap font-sans text-[13.5px] text-[#1D2530] leading-relaxed m-0">
                     {agentResponse.summaryMarkdown}
                   </pre>
                 </div>
               )}
             </div>
 
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h4 className="apple-subhead text-[14px] font-semibold text-[#1D1D1F]">
+                  <h3 className="ts-h3 text-[16px]">
                     BigQuery Property Graph &amp; ISO/IEC 39075 GQL
-                  </h4>
-                  <p className="text-xs text-[#515154]">
-                    Correlates <code className="font-mono-code">case_chain_id</code> for historical
-                    audits and wraps <code className="font-mono-code">GRAPH_TABLE(...)</code> for
-                    today&apos;s child.
+                  </h3>
+                  <p className="text-[13.5px] text-[#556070] mt-0.5">
+                    Correlates <code className="font-mono-code text-[12.5px]">case_chain_id</code> for historical loops and queries <code className="font-mono-code text-[12.5px]">GRAPH_TABLE(...)</code> for today&apos;s child.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => handleCopy('gql', isoGqlSnippet)}
-                  className="apple-pressable inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#1D1D1F] text-white cursor-pointer no-print"
+                  className="ts-btn ts-btn-secondary no-print"
                 >
                   {copiedKey === 'gql' ? (
                     <>
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                      Copied GQL
+                      <Check className="w-3.5 h-3.5 text-[#2C5877]" />
+                      <span>Copied GQL</span>
                     </>
                   ) : (
                     <>
-                      <Copy className="w-3.5 h-3.5" />
-                      Copy ISO GQL
+                      <Copy className="w-3.5 h-3.5 text-[#556070]" />
+                      <span>Copy GQL query</span>
                     </>
                   )}
                 </button>
               </div>
-              <pre className="apple-dark-surface text-slate-100 p-4 sm:p-5 text-xs font-mono-code overflow-x-auto leading-relaxed">
+              <pre className="ts-stage-dark p-5 text-[12.5px] font-mono-code overflow-x-auto leading-relaxed m-0">
                 {isoGqlSnippet}
               </pre>
             </div>

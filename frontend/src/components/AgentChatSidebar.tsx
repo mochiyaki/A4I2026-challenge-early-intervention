@@ -6,7 +6,6 @@ import {
   Mic,
   MicOff,
   RotateCcw,
-  Sparkles,
   Square,
   Volume2,
   VolumeX,
@@ -51,10 +50,10 @@ interface AgentChatSidebarProps {
 }
 
 const INITIAL_SUGGESTIONS = [
-  'Which path clears 45 days here?',
-  'What if the family has no car?',
+  'Compare compliant 45-day routes',
+  'Check zero-vehicle transport options',
   'Draft Spanish note for parents',
-  'Why do paper-fax hubs bounce?',
+  'Show paper-fax bounce hubs',
 ];
 
 export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
@@ -77,14 +76,14 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
   const [messages, setMessages] = useState<ChatTurn[]>(() => {
     const initialEval = activePathway
       ? cleanOrgName(activePathway.steps[2].node.synthetic_organization_name)
-      : 'a regional bilingual hub';
+      : 'a regional bilingual evaluation hub';
     const initialDays = activePathway?.totalExpectedDays ?? 39;
     return [
       {
         id: 'welcome-turn',
         role: 'assistant',
-        text: `Hi! Ask me anything by **voice or text**—no need to dig through charts.\n\nRight now for a **${intake.childAgeMonths}-month-old** on **Medicaid** in **${tract.county_name}**, the fastest bilingual path clears the 45-day clock in **${initialDays} days** via **${initialEval}**.`,
-        spokenText: `Ask me anything by voice or text. Right now for a ${intake.childAgeMonths}-month-old on Medicaid in ${tract.county_name}, the fastest bilingual path clears the 45-day clock in ${initialDays} days.`,
+        text: `Ask by voice or text to update intake filters or draft family notes.\n\nFor a **${intake.childAgeMonths}-month-old** on **Medicaid** in **${tract.county_name}**, the recommended bilingual path reaches initial IFSP in **${initialDays} days** via **${initialEval}**.`,
+        spokenText: `Ask by voice or text to update intake filters. For a ${intake.childAgeMonths}-month-old on Medicaid in ${tract.county_name}, the recommended bilingual path reaches initial IFSP in ${initialDays} days.`,
         spokenLang: 'en-US',
         sourceMode: 'graph-engine',
       },
@@ -139,7 +138,6 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
       setIsSending(true);
       scrollToBottom();
 
-      // Always run local NLU + Graph Engine so natural-language profile edits (state, age, no car, language) sync immediately
       const localReply = runConversationalGraphAgent(
         trimmed,
         intakeRef.current
@@ -179,7 +177,7 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
           scrollToBottom();
           return;
         } catch {
-          // Gracefully fall back to built-in ReferralGraph conversational engine
+          // Fall back to built-in ReferralGraph conversational engine
         }
       }
 
@@ -215,66 +213,66 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoFocusMicSignal]);
 
-  const bubbleSpring = reducedMotion
+  const bubbleTransition = reducedMotion
     ? REDUCED_MOTION_TRANSITION
     : SPRING_DEFAULT;
 
   return (
     <aside
-      aria-label="Voice and Chat Triage Agent"
-      className="apple-card flex flex-col overflow-hidden h-[640px] lg:h-[calc(100vh-6.25rem)] min-h-[540px]"
+      aria-label="Voice and chat triage agent"
+      className="ts-card flex flex-col overflow-hidden h-[640px] lg:h-[calc(100vh-6.25rem)] min-h-[540px]"
     >
-      {/* Top Copilot Header */}
-      <div className="px-4 pt-4 pb-3 border-b border-black/[0.06] bg-white/90 space-y-2.5 shrink-0">
+      {/* Header — Flat opaque card top, solid Harbour Ink mark, 1px hairline */}
+      <div className="px-5 pt-4 pb-3.5 border-b border-[rgba(29,37,48,0.1)] bg-white space-y-3 shrink-0">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="relative w-8 h-8 rounded-full bg-gradient-to-b from-[#14B8A6] to-[#0F766E] text-white flex items-center justify-center shrink-0 shadow-[0_2px_8px_rgba(13,148,136,0.3)]">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="relative w-8 h-8 rounded-[8px] bg-[#1D2530] text-[#F3F1EC] flex items-center justify-center shrink-0">
               <AudioLines className="w-4 h-4" />
               {voice.isSpeaking && (
-                <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-white" />
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#2C5877] ring-2 ring-white" />
               )}
             </div>
             <div className="min-w-0">
-              <h2 className="apple-title text-[15px] font-semibold text-[#1D1D1F] truncate">
-                Ask Triage Agent
+              <h2 className="ts-h3 text-[16px] truncate">
+                Voice and chat agent
               </h2>
               <button
                 type="button"
                 onClick={onOpenAgentModal}
-                className="text-[11px] text-[#515154] hover:text-[#0F766E] truncate block cursor-pointer"
+                className="text-[12.5px] text-[#556070] hover:text-[#2C5877] truncate block cursor-pointer transition-colors"
               >
                 {agentEndpoint
-                  ? '● Connected to Live ADK'
-                  : '● ReferralGraph Voice & Chat'}
+                  ? 'Connected to live ADK endpoint'
+                  : 'Local ReferralGraph engine · Connect ADK'}
               </button>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Auto-Speak Voice Output Toggle */}
             {voice.ttsSupported && (
               <button
                 type="button"
+                aria-label={autoSpeak ? 'Mute spoken replies' : 'Enable spoken replies'}
                 title={
                   autoSpeak
-                    ? 'Voice replies ON (click to mute)'
-                    : 'Voice replies muted (click to enable)'
+                    ? 'Spoken replies on (click to mute)'
+                    : 'Spoken replies muted (click to enable)'
                 }
                 onClick={() => {
-                  triggerCausalHaptic(5);
+                  triggerCausalHaptic(4);
                   if (autoSpeak) voice.stopSpeaking();
                   setAutoSpeak((v) => !v);
                 }}
-                className={`apple-pressable inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 min-h-[34px] px-2.5 py-1 rounded-[7px] text-[12.5px] font-medium border cursor-pointer transition-colors ${
                   autoSpeak
-                    ? 'bg-[#0D9488]/12 text-[#0F766E]'
-                    : 'bg-[#F2F2F7] text-[#86868B]'
+                    ? 'bg-[rgba(44,88,119,0.09)] border-[rgba(44,88,119,0.24)] text-[#2C5877]'
+                    : 'bg-[#F8F7F4] border-[rgba(29,37,48,0.12)] text-[#556070]'
                 }`}
               >
                 {autoSpeak ? (
                   <>
                     <Volume2 className="w-3.5 h-3.5" />
-                    <span>Voice</span>
+                    <span>Audio on</span>
                   </>
                 ) : (
                   <>
@@ -285,33 +283,31 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
               </button>
             )}
 
-            {/* Reset Conversation */}
             <button
               type="button"
-              title="Clear chat"
+              aria-label="Reset conversation"
+              title="Reset conversation"
               onClick={() => {
                 voice.stopSpeaking();
                 setSuggestions(INITIAL_SUGGESTIONS);
                 setMessages((prev) => prev.slice(0, 1));
               }}
-              className="apple-pressable w-7 h-7 rounded-full bg-[#F2F2F7] text-[#515154] hover:text-[#1D1D1F] flex items-center justify-center cursor-pointer"
+              className="w-[34px] h-[34px] rounded-[7px] bg-[#F8F7F4] hover:bg-[#E6E2D9] border border-[rgba(29,37,48,0.12)] text-[#556070] hover:text-[#1D2530] flex items-center justify-center cursor-pointer transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
-        {/* Voice Agent Language Selector + Live Voice Banner */}
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] text-[#515154]">
-            Speak or type in plain language:
-          </span>
+          <span className="ts-label">Microphone language</span>
           <FluidSegmentedControl<'en-US' | 'es-US'>
             layoutId="voice-lang-pill"
+            ariaLabel="Microphone recognition language"
             size="sm"
             options={[
-              { value: 'en-US', label: 'EN Mic' },
-              { value: 'es-US', label: 'ES Mic' },
+              { value: 'en-US', label: 'English' },
+              { value: 'es-US', label: 'Español' },
             ]}
             value={voiceLang}
             onChange={(lang) => {
@@ -330,7 +326,7 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
         </div>
       </div>
 
-      {/* Live Fluid Listening Banner (60fps 1:1 Mic Level Feedback) */}
+      {/* Live Audio-Reactive Listening Bar — Harbour Slate inverse ground (zero gradient slop) */}
       <AnimatePresence>
         {voice.isListening && (
           <motion.div
@@ -339,36 +335,35 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
               reducedMotion ? { opacity: 1 } : { opacity: 1, height: 'auto' }
             }
             exit={reducedMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}
-            transition={bubbleSpring}
-            className="bg-gradient-to-r from-[#0F766E] to-[#0D9488] text-white px-4 py-3 flex items-center justify-between gap-3 shrink-0 overflow-hidden"
+            transition={bubbleTransition}
+            className="bg-[#18202A] text-[#F3F1EC] px-5 py-3 flex items-center justify-between gap-3 shrink-0 overflow-hidden border-b border-[rgba(243,241,236,0.12)]"
           >
             <div className="flex items-center gap-3 min-w-0">
-              {/* 60fps Audio-Reactive Orb */}
               <div className="relative w-8 h-8 flex items-center justify-center shrink-0">
                 <span
                   style={{
                     transform: reducedMotion
                       ? 'scale(1)'
-                      : `scale(${1 + voice.micLevel * 0.9})`,
-                    opacity: 0.35 + voice.micLevel * 0.45,
+                      : `scale(${1 + voice.micLevel * 0.85})`,
+                    opacity: 0.3 + voice.micLevel * 0.45,
                   }}
-                  className="absolute inset-0 rounded-full bg-white/40 transition-transform duration-75"
+                  className="absolute inset-0 rounded-full bg-[#7FB3D5] transition-transform duration-75"
                 />
-                <span className="relative w-6 h-6 rounded-full bg-white text-[#0F766E] flex items-center justify-center shadow-xs">
+                <span className="relative w-6 h-6 rounded-full bg-[#F3F1EC] text-[#18202A] flex items-center justify-center">
                   <Mic className="w-3.5 h-3.5" />
                 </span>
               </div>
               <div className="min-w-0">
-                <div className="text-xs font-semibold">
+                <div className="text-[13px] font-medium">
                   {voiceLang === 'es-US'
                     ? 'Escuchando en español...'
-                    : 'Listening... speak naturally'}
+                    : 'Listening for referral details...'}
                 </div>
-                <div className="text-[11px] text-teal-100 truncate">
+                <div className="text-[12px] text-[#9AA5B4] truncate">
                   {inputText ||
                     (voiceLang === 'es-US'
-                      ? 'Ej: "Bebé de 20 meses con Medicaid sin auto"'
-                      : 'Try: "20-month-old in Texas, Spanish, no car"')}
+                      ? 'Ej.: "Niño de 20 meses con Medicaid sin auto"'
+                      : 'Example: "20-month-old in California, Spanish, no car"')}
                 </div>
               </div>
             </div>
@@ -376,18 +371,18 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
             <button
               type="button"
               onClick={voice.stopListening}
-              className="apple-pressable px-2.5 py-1 rounded-full bg-white/20 hover:bg-white/30 text-[11px] font-semibold shrink-0 cursor-pointer"
+              className="px-3 py-1 rounded-[6px] bg-[#222C39] hover:bg-[#2E3B4C] border border-[rgba(243,241,236,0.2)] text-[12px] font-medium shrink-0 cursor-pointer transition-colors"
             >
-              Done
+              Stop
             </button>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Scrollable Conversation Stream */}
+      {/* Conversation Stream */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-4 py-4 space-y-3.5 bg-[#FAFAFC]"
+        className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-[#F8F7F4]"
       >
         {messages.map((turn) => {
           const isUser = turn.role === 'user';
@@ -397,22 +392,17 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
           return (
             <motion.div
               key={turn.id}
-              initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
-              animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-              transition={bubbleSpring}
+              initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={bubbleTransition}
               className={`flex flex-col ${
                 isUser ? 'items-end' : 'items-start'
               }`}
             >
-              {/* Live Dashboard Sync Pills */}
               {!isUser && turn.badges && turn.badges.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-1.5">
+                <div className="flex flex-wrap gap-1.5 mb-1.5">
                   {turn.badges.map((b) => (
-                    <span
-                      key={b.label}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#0D9488]/12 text-[#0F766E] text-[10.5px] font-semibold"
-                    >
-                      <Sparkles className="w-2.5 h-2.5" />
+                    <span key={b.label} className="ts-chip ts-chip-accent">
                       {b.label}
                     </span>
                   ))}
@@ -420,23 +410,22 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
               )}
 
               <div
-                className={`max-w-[92%] rounded-[18px] px-3.5 py-2.5 text-[13px] leading-relaxed ${
+                className={`max-w-[92%] rounded-[14px] px-4 py-3 text-[14px] leading-relaxed ${
                   isUser
-                    ? 'bg-[#0D9488] text-white rounded-br-[6px] shadow-[0_2px_6px_rgba(13,148,136,0.22)]'
-                    : 'bg-white text-[#1D1D1F] rounded-bl-[6px] shadow-[0_1px_3px_rgba(0,0,0,0.06),0_0_0_0.5px_rgba(15,23,42,0.08)]'
+                    ? 'bg-[#2C5877] text-white rounded-br-[4px]'
+                    : 'bg-white text-[#1D2530] rounded-bl-[4px] border border-[rgba(29,37,48,0.11)]'
                 }`}
               >
                 <div className="whitespace-pre-wrap">
                   {renderSimpleMarkdown(turn.text, isUser)}
                 </div>
 
-                {/* Per-Message Speak / Stop Control */}
                 {!isUser && voice.ttsSupported && (
-                  <div className="mt-2 pt-1.5 border-t border-black/[0.05] flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-medium text-[#86868B]">
+                  <div className="mt-2.5 pt-2 border-t border-[rgba(29,37,48,0.08)] flex items-center justify-between gap-2">
+                    <span className="text-[11.5px] text-[#556070]">
                       {turn.sourceMode === 'live-adk'
-                        ? 'Live ADK Agent'
-                        : 'ReferralGraph Triage'}
+                        ? 'Live ADK agent'
+                        : 'ReferralGraph triage'}
                     </span>
                     <button
                       type="button"
@@ -452,20 +441,20 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
                           );
                         }
                       }}
-                      className="apple-pressable inline-flex items-center gap-1 text-[11px] font-semibold text-[#0F766E] hover:underline cursor-pointer"
+                      className="inline-flex items-center gap-1 text-[12px] font-medium text-[#2C5877] hover:underline cursor-pointer"
                     >
                       {isCurrentlySpeaking ? (
                         <>
                           <Square className="w-3 h-3 fill-current" />
-                          <span>Stop</span>
+                          <span>Stop audio</span>
                         </>
                       ) : (
                         <>
-                          <Volume2 className="w-3 h-3" />
+                          <Volume2 className="w-3.5 h-3.5" />
                           <span>
                             {turn.spokenLang === 'es-US'
-                              ? 'Escuchar'
-                              : 'Read Aloud'}
+                              ? 'Escuchar respuesta'
+                              : 'Read aloud'}
                           </span>
                         </>
                       )}
@@ -479,37 +468,35 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
 
         {isSending && (
           <div className="flex items-start">
-            <div className="rounded-[16px] bg-white px-3.5 py-2.5 text-xs text-[#515154] shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
-              Traversing ReferralGraph...
+            <div className="rounded-[12px] bg-white border border-[rgba(29,37,48,0.1)] px-4 py-2.5 text-[13px] text-[#556070]">
+              Querying ReferralGraph...
             </div>
           </div>
         )}
 
         {voice.voiceError && (
-          <div className="rounded-[12px] bg-amber-500/12 px-3 py-2 text-[11.5px] text-amber-950">
+          <div className="rounded-[10px] bg-[rgba(143,91,30,0.09)] border border-[rgba(143,91,30,0.25)] px-3.5 py-2.5 text-[13px] text-[#1D2530]">
             {voice.voiceError}
           </div>
         )}
       </div>
 
-      {/* Quick One-Tap Prompt Suggestions + Input Bar */}
-      <div className="p-3 bg-white border-t border-black/[0.06] space-y-2.5 shrink-0 no-print">
-        {/* Suggested Question Pills */}
+      {/* Prompt Chips + 44px Accessible Composer */}
+      <div className="p-4 bg-white border-t border-[rgba(29,37,48,0.1)] space-y-3 shrink-0 no-print">
         <div className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
           {suggestions.map((chip) => (
             <button
               key={chip}
               type="button"
-              onPointerDown={() => triggerCausalHaptic(4)}
+              onPointerDown={() => triggerCausalHaptic(3)}
               onClick={() => handleSend(chip, false)}
-              className="apple-pressable shrink-0 px-2.5 py-1 rounded-full bg-[#F2F2F7] hover:bg-[#E6E6EC] text-[11px] font-medium text-[#1D1D1F] cursor-pointer"
+              className="shrink-0 px-3 py-1.5 rounded-[7px] bg-[#F8F7F4] hover:bg-[#E6E2D9] border border-[rgba(29,37,48,0.12)] text-[12.5px] font-medium text-[#1D2530] cursor-pointer transition-colors"
             >
               {chip}
             </button>
           ))}
         </div>
 
-        {/* Composer + Prominent Voice Orb */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -517,48 +504,54 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
           }}
           className="flex items-center gap-2"
         >
-          {/* Voice Agent Mic Button */}
           <button
             type="button"
             onClick={voice.toggleListening}
             disabled={!voice.isSupported}
+            aria-label={
+              voice.isListening ? 'Stop voice input' : 'Start voice input'
+            }
             title={
               voice.isSupported
                 ? voice.isListening
                   ? 'Stop voice input'
-                  : 'Speak to Triage Agent'
+                  : 'Start voice input'
                 : 'Voice input requires Chrome, Edge, or Safari'
             }
-            className={`apple-pressable relative w-10 h-10 rounded-full flex items-center justify-center shrink-0 cursor-pointer ${
+            className={`w-[44px] h-[44px] rounded-[9px] flex items-center justify-center shrink-0 cursor-pointer border transition-colors ${
               voice.isListening
-                ? 'bg-rose-600 text-white shadow-[0_0_0_4px_rgba(225,29,72,0.18)]'
-                : 'bg-[#F2F2F7] text-[#1D1D1F] hover:bg-[#E5E5EA]'
+                ? 'bg-[#B43E2F] border-[#B43E2F] text-white'
+                : 'bg-[#F8F7F4] hover:bg-[#E6E2D9] border-[rgba(29,37,48,0.18)] text-[#1D2530]'
             } disabled:opacity-40`}
           >
             {voice.isListening ? (
               <MicOff className="w-4 h-4" />
             ) : (
-              <Mic className="w-4 h-4 text-[#0D9488]" />
+              <Mic className="w-4 h-4 text-[#2C5877]" />
             )}
           </button>
 
           <div className="relative flex-1">
+            <label htmlFor="agent-chat-input" className="sr-only">
+              Ask the referral triage agent
+            </label>
             <input
+              id="agent-chat-input"
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder={
                 voiceLang === 'es-US'
-                  ? 'Pregunte o pulse el micrófono...'
-                  : 'Ask straight away or tap mic...'
+                  ? 'Escriba su consulta o pulse el micrófono...'
+                  : 'Ask about routes, wait times, or parent notes...'
               }
-              className="w-full rounded-full bg-[#F2F2F7] pl-3.5 pr-10 py-2.5 text-[13px] text-[#1D1D1F] placeholder:text-[#86868B] focus:outline-none focus:bg-white focus:shadow-[inset_0_0_0_1.5px_#0D9488] transition"
+              className="ts-input pr-11"
             />
             <button
               type="submit"
               disabled={!inputText.trim() || isSending}
               aria-label="Send message"
-              className="apple-pressable absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#0D9488] text-white flex items-center justify-center disabled:opacity-30 cursor-pointer"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-[7px] bg-[#2C5877] hover:bg-[#244963] text-white flex items-center justify-center disabled:opacity-30 cursor-pointer transition-colors"
             >
               <ArrowUp className="w-4 h-4" />
             </button>
@@ -569,9 +562,6 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
   );
 };
 
-/**
- * Lightweight inline formatter for **bold** and `code` spans inside chat bubbles.
- */
 function renderSimpleMarkdown(text: string, isUser: boolean): React.ReactNode {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
   return parts.map((part, i) => {
@@ -586,8 +576,10 @@ function renderSimpleMarkdown(text: string, isUser: boolean): React.ReactNode {
       return (
         <code
           key={i}
-          className={`font-mono-code text-[11.5px] px-1 py-0.5 rounded ${
-            isUser ? 'bg-white/20 text-white' : 'bg-[#F2F2F7] text-[#0F766E]'
+          className={`font-mono-code text-[12.5px] px-1.5 py-0.5 rounded-[4px] ${
+            isUser
+              ? 'bg-white/20 text-white'
+              : 'bg-[#F3F1EC] text-[#2C5877]'
           }`}
         >
           {part.slice(1, -1)}
