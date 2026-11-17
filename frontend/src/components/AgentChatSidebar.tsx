@@ -5,6 +5,7 @@ import {
   AudioLines,
   BookOpenCheck,
   ChevronDown,
+  GripHorizontal,
   Mic,
   MicOff,
   RotateCcw,
@@ -264,10 +265,49 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
     ? REDUCED_MOTION_TRANSITION
     : SPRING_DEFAULT;
 
+  const [customHeightPx, setCustomHeightPx] = useState<number | null>(null);
+  const [isDraggingChatHeight, setIsDraggingChatHeight] =
+    useState<boolean>(false);
+  const asideRef = useRef<HTMLElement | null>(null);
+  const dragStartYRef = useRef<number>(0);
+  const dragStartHRef = useRef<number>(680);
+
+  const handleChatHeightDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragStartYRef.current = e.clientY;
+    dragStartHRef.current =
+      customHeightPx ??
+      asideRef.current?.getBoundingClientRect().height ??
+      700;
+    setIsDraggingChatHeight(true);
+  };
+
+  const handleChatHeightMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingChatHeight) return;
+    const dy = e.clientY - dragStartYRef.current;
+    const next = Math.min(
+      1250,
+      Math.max(460, Math.round(dragStartHRef.current + dy))
+    );
+    setCustomHeightPx(next);
+  };
+
+  const handleChatHeightUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    setIsDraggingChatHeight(false);
+  };
+
   return (
     <aside
+      ref={asideRef}
+      style={customHeightPx ? { height: `${customHeightPx}px` } : undefined}
       aria-label="Multi-agent voice and chat triage assistant"
-      className="pm-card flex flex-col overflow-hidden h-[660px] lg:h-[calc(100dvh-6.5rem)] min-h-[540px]"
+      className={`pm-card flex flex-col overflow-hidden min-h-[460px] ${
+        customHeightPx ? '' : 'h-[680px] lg:h-[calc(100dvh-6.5rem)]'
+      }`}
     >
       {/* Header */}
       <div className="px-5 pt-4 pb-3.5 border-b border-[var(--pm-border)] bg-[var(--pm-card)] space-y-3 shrink-0">
@@ -474,7 +514,9 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
               )}
 
               <div
-                className={`max-w-[94%] rounded-[14px] px-4 py-3 text-[14.5px] leading-relaxed ${
+                className={`${
+                  !isUser && turn.mapCard ? 'w-full' : 'max-w-[97%]'
+                } rounded-[14px] px-4 py-3 text-[14.5px] leading-relaxed ${
                   isUser
                     ? 'bg-[var(--pm-cta-bg)] text-white rounded-br-[4px]'
                     : 'bg-[var(--pm-card)] text-[var(--pm-ink)] rounded-bl-[4px] border border-[var(--pm-border)]'
@@ -780,6 +822,24 @@ export const AgentChatSidebar: React.FC<AgentChatSidebarProps> = ({
             </button>
           </div>
         </form>
+      </div>
+
+      {/* Vertical Drag-to-Resize Handle for Chat Frame Height */}
+      <div
+        role="separator"
+        tabIndex={0}
+        aria-label="Drag to resize chat assistant height (double-click to auto-fit screen)"
+        aria-orientation="horizontal"
+        data-dragging={isDraggingChatHeight}
+        title="Drag up or down to resize chat frame height · Double-click to reset"
+        onPointerDown={handleChatHeightDown}
+        onPointerMove={handleChatHeightMove}
+        onPointerUp={handleChatHeightUp}
+        onPointerCancel={handleChatHeightUp}
+        onDoubleClick={() => setCustomHeightPx(null)}
+        className="pm-resize-bar-y shrink-0 no-print"
+      >
+        <GripHorizontal aria-hidden="true" className="w-4 h-3.5" />
       </div>
     </aside>
   );

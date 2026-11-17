@@ -222,11 +222,11 @@ export function runConversationalGraphAgent(
   const mentionsFaxOrBottleneck =
     /\b(fax|bottleneck|cuellos de botella|bounce|spreadsheet|flat sql)\b/i.test(q);
   const wantsClinicLocation =
-    /\b(map|mapa|address|addresses|dirección|direccion|directions|cómo llegar|como llegar|ubicación|ubicacion|locate|clinic location|where is the clinic|where are the clinics|show clinic|find the clinic|dónde está la clínica|donde esta la clinica|dónde queda|donde queda)\b/i.test(
+    /\b(map|mapa|address|addresses|dirección|direccion|directions|cómo llegar|como llegar|ubicación|ubicacion|locate|clinic location|where is the clinic|where are the clinics|show clinic|find the clinic|dónde está la clínica|donde esta la clinica|dónde queda|donde queda|contact info|clinic contact|phone number|clinic phone|clinic hours|opening hours|call the clinic|teléfono|telefono|contacto|horario)\b/i.test(
       q
     ) ||
     (!mentionsFaxOrBottleneck &&
-      /\b(where is|where are|location|locations|how far|distance|dónde está|donde esta)\b/i.test(
+      /\b(where is|where are|location|locations|how far|distance|contact|dónde está|donde esta)\b/i.test(
         q
       ));
 
@@ -281,16 +281,16 @@ export function runConversationalGraphAgent(
 
     if (asksInSpanish) {
       const mdMapEs = [
-        `**Mapa interactivo de clínicas y ruta (${tract.county_name}):**`,
-        `Aquí tiene la ubicación en **Google Maps** centrada en **${focusedStop.name}** (${focusedStop.city}, a **${focusedStop.distanceFromHomeKm} km** de su vecindario).`,
+        `**Mapa interactivo y directorio de contacto (${tract.county_name}):**`,
+        `Aquí tiene la ubicación en **Google Maps** y los datos de contacto directo de **${focusedStop.name}** (${focusedStop.city}, a **${focusedStop.distanceFromHomeKm} km** de su vecindario), junto con la línea oficial gratuita de Parte C (${mapCard.statePartCHotline.tollFreePhone}).`,
         mapCard.stops.length > 2
-          ? `Use las pestañas del mapa (**H · 1 · 2 · 3 · 4**) para explorar cada clínica de la ruta de ${rec?.totalExpectedDays ?? '—'} días o abrir indicaciones paso a paso.`
-          : `Puede abrir indicaciones directas en Google Maps con un clic.`,
+          ? `Use las pestañas del mapa (**H · 1 · 2 · 3 · 4**) para ver el teléfono, correo de admisión electrónica y horario de cada clínica.`
+          : `Debajo del mapa encontrará teléfono, horario y enlace directo de indicaciones.`,
       ].join('\n');
 
       return {
         markdown: mdMapEs,
-        spokenText: `${focusedStop.name} se encuentra en ${focusedStop.city}, a ${focusedStop.distanceFromHomeKm} kilómetros de ${tract.county_name}. He abierto el mapa interactivo de Google Maps con las paradas de la ruta y las indicaciones.`,
+        spokenText: `${focusedStop.name} se encuentra en ${focusedStop.city}, a ${focusedStop.distanceFromHomeKm} kilómetros de ${tract.county_name}. Debajo del mapa interactivo de Google Maps tiene el teléfono de admisión, horario y la línea oficial gratuita del estado ${mapCard.statePartCHotline.tollFreePhone}.`,
         spokenLang: 'es-US',
         intakePatch: Object.keys(patch).length ? patch : undefined,
         appliedBadges,
@@ -313,10 +313,10 @@ export function runConversationalGraphAgent(
     }
 
     const mdMapEn = [
-      `**Interactive Google Map — ${focusedStop.name}** (\`${focusedStop.city}\`, **${focusedStop.distanceFromHomeKm} km** from ${tract.county_name}):`,
+      `**Interactive Google Map & Contact Directory — ${focusedStop.name}** (\`${focusedStop.city}\`, **${focusedStop.distanceFromHomeKm} km** from ${tract.county_name}):`,
       mapCard.stops.length > 2
-        ? `Select stops **H · 1 · 2 · 3 · 4** on the map below to inspect the home tract centroid and all 4 \`[Synthetic]\` CareNode clinics along the **${rec?.totalExpectedDays ?? '—'}-day** pathway, or launch multi-stop Google Maps directions.`
-        : `Inspect the interactive clinic pin below or launch turn-by-turn Google Maps directions (${mapCard.travelMode === 'transit' ? 'Transit / Medicaid NEMT mode' : 'Driving mode'}).`,
+        ? `Select stops **H · 1 · 2 · 3 · 4** on the map below to view each clinic's **direct intake phone, e-Portal email, hours, specialty**, and the **Official ${effectiveIntake.stateCode} Part C Helpline** (\`${mapCard.statePartCHotline.tollFreePhone}\`).`
+        : `Direct clinic phone, e-Portal intake address, hours, and the **Official ${effectiveIntake.stateCode} Part C Helpline** (\`${mapCard.statePartCHotline.tollFreePhone}\`) are listed directly under the map.`,
       mapCard.transportNote ? `• **Transit Guardrail:** ${mapCard.transportNote}` : '',
     ]
       .filter(Boolean)
@@ -324,7 +324,7 @@ export function runConversationalGraphAgent(
 
     return {
       markdown: mdMapEn,
-      spokenText: `${focusedStop.name} is located in ${focusedStop.city}, ${focusedStop.distanceFromHomeKm} kilometers from ${tract.county_name}. I have opened an interactive Google Map showing each clinic stop and directions.`,
+      spokenText: `${focusedStop.name} is located in ${focusedStop.city}, ${focusedStop.distanceFromHomeKm} kilometers from ${tract.county_name}. Directly underneath the Google Map, I have listed the clinic intake phone, electronic portal email, hours, and the official state Part C helpline.`,
       spokenLang: 'en-US',
       intakePatch: Object.keys(patch).length ? patch : undefined,
       appliedBadges,

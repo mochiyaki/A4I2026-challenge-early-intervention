@@ -258,10 +258,10 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-5 items-start">
+      <div className="pm-topology-layout">
         {filterMode === 'table' ? (
           /* Accessible Adjacency & Hop Flow Table Fallback (charts.csv Priority Rule) */
-          <div className="xl:col-span-3 pm-table-wrap">
+          <div className="pm-table-wrap pm-resizable-y min-h-[260px]">
             <table className="pm-table tabular-nums">
               <caption className="sr-only">
                 {stateCode} ReferralGraph prioritized handoff edges showing recommended electronic hops and highest-delay paper-fax bounce edges
@@ -359,7 +359,7 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
         ) : (
           /* High-Contrast Clinical Navy Topology Stage with Keyboard-Focusable CareNodes */
           <div
-            className={`xl:col-span-3 pm-stage-dark relative p-3 overflow-x-auto ${
+            className={`pm-stage-dark relative p-3 overflow-auto pm-resizable-y min-h-[340px] ${
               pulsePaused ? 'pm-diagram-paused' : ''
             }`}
           >

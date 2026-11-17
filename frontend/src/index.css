@@ -155,20 +155,25 @@
 /* Container Layout */
 .pm-wrap {
   width: 100%;
-  max-width: 1520px;
+  max-width: 1840px;
   margin-inline: auto;
   padding-inline: 16px;
 }
 
+.pm-wrap-fluid,
+[data-fluid-width="true"] .pm-wrap {
+  max-width: 100%;
+}
+
 @media (min-width: 640px) {
   .pm-wrap {
-    padding-inline: 28px;
+    padding-inline: 24px;
   }
 }
 
 @media (min-width: 1024px) {
   .pm-wrap {
-    padding-inline: 36px;
+    padding-inline: 28px;
   }
 }
 
@@ -547,6 +552,143 @@
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Resizable Pane Container Queries & Auto-Fit Grids (Prevents Narrow/Cramped Cards) */
+.pm-pane-cq {
+  container-type: inline-size;
+  min-width: 0;
+}
+
+.pm-grid-steps {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 235px), 1fr));
+}
+
+/* Only show horizontal step connector arrows when all 4 CareNode cards fit in a single row */
+.pm-step-arrow {
+  display: none;
+}
+@container (min-width: 990px) {
+  .pm-step-arrow {
+    display: flex;
+  }
+}
+
+.pm-grid-agents {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 195px), 1fr));
+}
+
+.pm-grid-checks {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 275px), 1fr));
+}
+
+.pm-grid-split {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr));
+}
+
+.pm-topology-layout {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+@container (min-width: 920px) {
+  .pm-topology-layout {
+    grid-template-columns: minmax(0, 1fr) 310px;
+  }
+}
+
+/* Interactive Drag-Resize Splitters & Vertically Resizable Frames */
+.pm-splitter-col {
+  position: relative;
+  width: 14px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 120px;
+}
+
+.pm-splitter-col::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background-color: var(--pm-border);
+  transition: background-color 140ms ease, width 140ms ease;
+}
+
+.pm-splitter-col:hover::before,
+.pm-splitter-col:focus-visible::before,
+.pm-splitter-col[data-dragging="true"]::before {
+  width: 3px;
+  background-color: var(--pm-accent);
+}
+
+.pm-splitter-pill {
+  position: sticky;
+  top: 46vh;
+  z-index: 10;
+  width: 14px;
+  height: 44px;
+  border-radius: 7px;
+  background-color: var(--pm-card);
+  border: 1px solid var(--pm-border-strong);
+  color: var(--pm-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--pm-shadow-sm);
+  transition: color 140ms ease, border-color 140ms ease, background-color 140ms ease;
+}
+
+.pm-splitter-col:hover .pm-splitter-pill,
+.pm-splitter-col[data-dragging="true"] .pm-splitter-pill {
+  border-color: var(--pm-accent);
+  color: var(--pm-accent);
+  background-color: var(--pm-surface);
+}
+
+.pm-resize-bar-y {
+  height: 16px;
+  width: 100%;
+  cursor: ns-resize;
+  user-select: none;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--pm-surface);
+  border-top: 1px solid var(--pm-border);
+  color: var(--pm-muted);
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.pm-resize-bar-y:hover,
+.pm-resize-bar-y[data-dragging="true"] {
+  background-color: var(--pm-accent-soft);
+  color: var(--pm-accent);
+}
+
+.pm-resizable-y {
+  resize: vertical;
+  overflow: auto;
 }
 
 /* Accessibility: Reduced Motion & High Contrast */

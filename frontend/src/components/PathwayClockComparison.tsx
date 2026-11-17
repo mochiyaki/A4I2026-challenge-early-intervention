@@ -412,7 +412,7 @@ export const PathwayClockComparison: React.FC<PathwayClockComparisonProps> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3.5">
+        <div className="pm-grid-steps">
           {activePathway.steps.map((step, index) => {
             const isOrigin = index === 0;
             const roleLabel =
@@ -455,7 +455,7 @@ export const PathwayClockComparison: React.FC<PathwayClockComparisonProps> = ({
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-[var(--pm-border)] space-y-2.5">
-                  <div className="flex items-center justify-between text-[12.5px] text-[var(--pm-muted)] tabular-nums gap-1.5">
+                  <div className="flex flex-wrap items-center justify-between text-[12.5px] text-[var(--pm-muted)] tabular-nums gap-1.5">
                     <button
                       type="button"
                       title={`Show ${cleanOrgName(step.node.synthetic_organization_name)} on Google Map`}
@@ -464,10 +464,10 @@ export const PathwayClockComparison: React.FC<PathwayClockComparisonProps> = ({
                         setFocusedMapStopId(step.node.provider_id);
                         setShowRouteMap(true);
                       }}
-                      className="inline-flex items-center gap-1 truncate text-left hover:text-[var(--pm-accent)] cursor-pointer transition-colors"
+                      className="inline-flex items-center gap-1 text-left hover:text-[var(--pm-accent)] cursor-pointer transition-colors"
                     >
                       <MapPin aria-hidden="true" className="w-3.5 h-3.5 shrink-0 text-[var(--pm-accent)]" />
-                      <span className="underline decoration-dotted underline-offset-2 truncate">
+                      <span className="underline decoration-dotted underline-offset-2">
                         {step.node.city} ({step.distanceFromHomeKm} km)
                       </span>
                     </button>
@@ -497,7 +497,7 @@ export const PathwayClockComparison: React.FC<PathwayClockComparisonProps> = ({
                 {index < activePathway.steps.length - 1 && (
                   <div
                     aria-hidden="true"
-                    className="hidden xl:flex absolute -right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-[var(--pm-card)] text-[var(--pm-ink)] border border-[var(--pm-border-strong)] items-center justify-center z-10 shadow-xs"
+                    className="pm-step-arrow absolute -right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-[var(--pm-card)] text-[var(--pm-ink)] border border-[var(--pm-border-strong)] items-center justify-center z-10 shadow-xs"
                   >
                     <ArrowRight className="w-3 h-3" />
                   </div>

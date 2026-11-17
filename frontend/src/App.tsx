@@ -15,6 +15,7 @@ import { IntakeSidebar } from './components/IntakeSidebar';
 import { MultiAgentCouncilPanel } from './components/MultiAgentCouncilPanel';
 import { NetworkGraphCanvas } from './components/NetworkGraphCanvas';
 import { PathwayClockComparison } from './components/PathwayClockComparison';
+import { ResizableSplitWorkspace } from './components/ResizableSplitWorkspace';
 import { SyntheticBanner } from './components/SyntheticBanner';
 import {
   buildIsoGqlSnippet,
@@ -76,6 +77,11 @@ export default function App() {
   }));
 
   const [viewMode, setViewMode] = useState<'simple' | 'full'>('simple');
+  const [fluidWidth, setFluidWidth] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    const saved = window.localStorage.getItem('pm-fluid-width');
+    return saved === null ? true : saved === 'true';
+  });
   const [micTriggerCount, setMicTriggerCount] = useState<number>(0);
   const chatSectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -98,6 +104,14 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme);
     window.localStorage.setItem('pm-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute(
+      'data-fluid-width',
+      fluidWidth ? 'true' : 'false'
+    );
+    window.localStorage.setItem('pm-fluid-width', String(fluidWidth));
+  }, [fluidWidth]);
 
   const stateBundle = useMemo(
     () => getStateData(intake.stateCode),
@@ -460,10 +474,12 @@ export default function App() {
           </div>
         </section>
 
-        {/* Main 12-Column Clinical Triage Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Intake Rail */}
-          <div className="lg:col-span-4 xl:col-span-3 lg:sticky lg:top-22 order-2 lg:order-1">
+        {/* Resizable 3-Pane Clinical Triage Workspace (Drag Column Splitters + Presets) */}
+        <ResizableSplitWorkspace
+          fluidWidth={fluidWidth}
+          onToggleFluidWidth={() => setFluidWidth((v) => !v)}
+          rightPaneRef={chatSectionRef}
+          leftPane={
             <IntakeSidebar
               intake={intake}
               tracts={stateBundle.tracts}
@@ -472,86 +488,81 @@ export default function App() {
               onChange={handleUpdateIntake}
               onSelectPreset={handleSelectPreset}
             />
-          </div>
+          }
+          centerPane={
+            <>
+              <PathwayClockComparison
+                intake={intake}
+                tract={selectedTract}
+                activePathway={activePathway}
+                alternatives={routingResult.alternatives}
+                selectedPathwayId={selectedPathwayId}
+                onSelectPathway={setSelectedPathwayId}
+                historicalTrapChain={routingResult.historicalTrapChain}
+                googleMapsApiKey={googleMapsApiKey}
+                onOpenApiModal={() => setAgentModalOpen(true)}
+              />
 
-          {/* Center Primary Triage, Multi-Agent Council & Optional Graph/Audit Sections */}
-          <div className="lg:col-span-8 xl:col-span-5 space-y-6 order-3 lg:order-2 min-w-0">
-            <PathwayClockComparison
-              intake={intake}
-              tract={selectedTract}
-              activePathway={activePathway}
-              alternatives={routingResult.alternatives}
-              selectedPathwayId={selectedPathwayId}
-              onSelectPathway={setSelectedPathwayId}
-              historicalTrapChain={routingResult.historicalTrapChain}
-              googleMapsApiKey={googleMapsApiKey}
-              onOpenApiModal={() => setAgentModalOpen(true)}
-            />
+              {/* 5-Agent Research, Verification, Evidence Attribution & Precise Conclusion Panel */}
+              <MultiAgentCouncilPanel
+                report={multiAgentReport}
+                agentEndpoint={agentEndpoint}
+                agentLoading={agentLoading}
+                onRunLiveAgent={handleRunLiveAgent}
+              />
 
-            {/* 5-Agent Research, Verification, Evidence Attribution & Precise Conclusion Panel */}
-            <MultiAgentCouncilPanel
-              report={multiAgentReport}
-              agentEndpoint={agentEndpoint}
-              agentLoading={agentLoading}
-              onRunLiveAgent={handleRunLiveAgent}
-            />
+              {viewMode === 'full' ? (
+                <>
+                  <NetworkGraphCanvas
+                    stateCode={intake.stateCode}
+                    providers={stateBundle.providers}
+                    referrals={stateBundle.referrals}
+                    activePathway={activePathway}
+                    historicalTrapChain={routingResult.historicalTrapChain}
+                    bounceDiagnostics={bounceDiagnostics}
+                  />
 
-            {viewMode === 'full' ? (
-              <>
-                <NetworkGraphCanvas
-                  stateCode={intake.stateCode}
-                  providers={stateBundle.providers}
-                  referrals={stateBundle.referrals}
-                  activePathway={activePathway}
-                  historicalTrapChain={routingResult.historicalTrapChain}
-                  bounceDiagnostics={bounceDiagnostics}
-                />
-
-                <BriefAndCaregiverTabs
-                  caregiverNotes={caregiverNotes}
-                  bounceDiagnostics={bounceDiagnostics}
-                  providers={stateBundle.providers}
-                  agencies={stateBundle.agencies}
-                  equityAudit={equityAudit}
-                  nschStrata={stateBundle.nsch}
-                  isoGqlSnippet={isoGqlSnippet}
-                  agentPrompt={agentPrompt}
-                  onAgentPromptChange={setAgentPrompt}
-                  onRunLiveAgent={handleRunLiveAgent}
-                  agentLoading={agentLoading}
-                  agentError={agentError}
-                  agentResponse={agentResponse}
-                  agentEndpoint={agentEndpoint}
-                  onOpenAgentModal={() => setAgentModalOpen(true)}
-                />
-              </>
-            ) : (
-              <div className="pm-card p-5 sm:p-6 flex flex-wrap items-center justify-between gap-4">
-                <div className="space-y-1 max-w-lg">
-                  <h2 className="pm-h3 text-[16px]">
-                    Interactive topology &amp; caregiver letters collapsed
-                  </h2>
-                  <p className="text-[14px] text-[var(--pm-muted)] leading-relaxed">
-                    Expand the 30-node CareNode referral graph, accessible flow table, bilingual English/Spanish caregiver letters, and BigQuery ISO GQL queries.
-                  </p>
+                  <BriefAndCaregiverTabs
+                    caregiverNotes={caregiverNotes}
+                    bounceDiagnostics={bounceDiagnostics}
+                    providers={stateBundle.providers}
+                    agencies={stateBundle.agencies}
+                    equityAudit={equityAudit}
+                    nschStrata={stateBundle.nsch}
+                    isoGqlSnippet={isoGqlSnippet}
+                    agentPrompt={agentPrompt}
+                    onAgentPromptChange={setAgentPrompt}
+                    onRunLiveAgent={handleRunLiveAgent}
+                    agentLoading={agentLoading}
+                    agentError={agentError}
+                    agentResponse={agentResponse}
+                    agentEndpoint={agentEndpoint}
+                    onOpenAgentModal={() => setAgentModalOpen(true)}
+                  />
+                </>
+              ) : (
+                <div className="pm-card p-5 sm:p-6 flex flex-wrap items-center justify-between gap-4">
+                  <div className="space-y-1 max-w-lg">
+                    <h2 className="pm-h3 text-[16px]">
+                      Interactive topology &amp; caregiver letters collapsed
+                    </h2>
+                    <p className="text-[14px] text-[var(--pm-muted)] leading-relaxed">
+                      Expand the 30-node CareNode referral graph, accessible flow table, bilingual English/Spanish caregiver letters, and BigQuery ISO GQL queries.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('full')}
+                    className="pm-btn pm-btn-secondary shrink-0"
+                  >
+                    <span>Open graph &amp; letters</span>
+                    <ArrowRight aria-hidden="true" className="w-4 h-4" />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('full')}
-                  className="pm-btn pm-btn-secondary shrink-0"
-                >
-                  <span>Open graph &amp; letters</span>
-                  <ArrowRight aria-hidden="true" className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Right Multi-Agent Voice & Chat Triage Assistant */}
-          <div
-            ref={chatSectionRef}
-            className="lg:col-span-12 xl:col-span-4 xl:sticky xl:top-22 order-1 lg:order-3 no-print"
-          >
+              )}
+            </>
+          }
+          rightPane={
             <AgentChatSidebar
               intake={intake}
               tract={selectedTract}
@@ -562,8 +573,8 @@ export default function App() {
               onOpenAgentModal={() => setAgentModalOpen(true)}
               autoFocusMicSignal={micTriggerCount}
             />
-          </div>
-        </div>
+          }
+        />
       </main>
 
       {/* Clinical Compliance & Provenance Footer */}

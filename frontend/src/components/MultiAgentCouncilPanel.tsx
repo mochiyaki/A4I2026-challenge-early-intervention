@@ -258,7 +258,7 @@ export const MultiAgentCouncilPanel: React.FC<MultiAgentCouncilPanelProps> = ({
         <div
           role="list"
           aria-label="5-agent execution pipeline"
-          className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-2.5"
+          className="pm-grid-agents"
         >
           {report.agentTraces.map((agent, idx) => {
             const isRunningThis = runningStepIdx === idx;
@@ -277,7 +277,7 @@ export const MultiAgentCouncilPanel: React.FC<MultiAgentCouncilPanelProps> = ({
                   setFocusedAgentId(agent.agentId);
                   setActiveTab('trace');
                 }}
-                className={`pm-card-interactive text-left p-3 rounded-[10px] border transition-colors ${
+                className={`pm-card-interactive text-left p-3.5 rounded-[10px] border transition-colors ${
                   isRunningThis
                     ? 'bg-[var(--pm-accent-soft)] border-[var(--pm-accent)]'
                     : isFocused
@@ -301,12 +301,12 @@ export const MultiAgentCouncilPanel: React.FC<MultiAgentCouncilPanelProps> = ({
                   </span>
                 </div>
                 <div
-                  className="text-[12.5px] font-semibold text-[var(--pm-ink)] mt-1.5 leading-snug truncate"
+                  className="text-[13px] font-semibold text-[var(--pm-ink)] mt-1.5 leading-snug"
                   style={{ fontFamily: 'var(--font-display)' }}
                 >
                   {agent.roleTitle}
                 </div>
-                <div className="text-[11.5px] text-[var(--pm-muted)] mt-0.5 truncate">
+                <div className="text-[11.5px] text-[var(--pm-muted)] mt-1 leading-snug">
                   {agent.artifactsProduced[0]}
                 </div>
               </button>
@@ -482,7 +482,7 @@ export const MultiAgentCouncilPanel: React.FC<MultiAgentCouncilPanelProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              <div className="pm-grid-checks">
                 {report.verificationChecks.map((chk) => (
                   <div
                     key={chk.id}

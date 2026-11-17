@@ -177,8 +177,8 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
               </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              <div className="pm-panel p-5 space-y-3.5">
+            <div className="pm-grid-split">
+              <div className="pm-panel p-5 space-y-3.5 pm-resizable-y min-h-[260px]">
                 <div className="flex items-center justify-between gap-2 pb-3 border-b border-[var(--pm-border)]">
                   <span className="pm-label">English family note</span>
                   <button
@@ -213,7 +213,7 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
                 </pre>
               </div>
 
-              <div className="pm-panel p-5 space-y-3.5">
+              <div className="pm-panel p-5 space-y-3.5 pm-resizable-y min-h-[260px]">
                 <div className="flex items-center justify-between gap-2 pb-3 border-b border-[var(--pm-border)]">
                   <span className="pm-label">Nota familiar en español</span>
                   <button
@@ -308,7 +308,7 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
               </div>
             )}
 
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div className="pm-grid-split">
               <div className="space-y-3">
                 <div>
                   <div className="pm-kicker">Flat SQL Baseline</div>
@@ -415,7 +415,7 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+            <div className="pm-grid-checks pt-2">
               {agencies.map((ag) => {
                 const timelyPct = (
                   (ag.initial_ifsp_within_45_days_count /
@@ -546,7 +546,7 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
                   field without joining onto census tract rows.
                 </p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="pm-grid-checks">
                 {nschStrata.map((s) => {
                   const screenNum = Number(
                     (s.standardized_screening_rate_pct * 100).toFixed(1)
@@ -730,7 +730,7 @@ export const BriefAndCaregiverTabs: React.FC<BriefAndCaregiverTabsProps> = ({
                   )}
                 </button>
               </div>
-              <pre className="pm-stage-dark p-5 text-[12.5px] font-mono-code overflow-x-auto leading-relaxed m-0">
+              <pre className="pm-stage-dark p-5 text-[12.5px] font-mono-code overflow-auto pm-resizable-y min-h-[220px] leading-relaxed m-0">
                 {isoGqlSnippet}
               </pre>
             </div>

@@ -287,8 +287,23 @@ export interface MapStopItem {
   cumulativeDays?: number;
   acceptsMedicaid?: boolean;
   bilingual?: boolean;
+  partCVendorEnrolled?: boolean;
+  specialty?: string;
+  syntheticPhone?: string;
+  intakeEmail?: string;
+  intakeChannelLabel?: string;
+  hoursText?: string;
+  medianInternalWaitDays?: number;
+  monthlySlotCapacity?: number;
   isHomeOrigin?: boolean;
   isSynthetic: boolean;
+}
+
+export interface StatePartCHelplineInfo {
+  programName: string;
+  tollFreePhone: string;
+  officialUrl: string;
+  regionalSyntheticOffice?: string;
 }
 
 export interface ClinicMapPayload {
@@ -300,4 +315,5 @@ export interface ClinicMapPayload {
   stops: MapStopItem[];
   directionsUrl: string;
   transportNote: string | null;
+  statePartCHotline: StatePartCHelplineInfo;
 }
