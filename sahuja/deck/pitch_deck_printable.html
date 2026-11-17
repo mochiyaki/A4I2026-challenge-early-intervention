@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>First Milestones — Agents for Impact 2026 Pitch Deck</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #131c36;
+      --border: #283663;
+      --text: #f8fafc;
+      --muted: #9fb0d9;
+      --cyan: #38bdf8;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+      background: #060913;
+      color: var(--text);
+    }
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(11, 16, 32, 0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+    }
+    .toolbar button {
+      background: var(--cyan);
+      color: #061224;
+      border: none;
+      border-radius: 7px;
+      padding: 7px 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .deck {
+      max-width: 1120px;
+      margin: 24px auto 60px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      padding: 0 16px;
+    }
+    .slide {
+      aspect-ratio: 16 / 9;
+      background: radial-gradient(circle at top right, #172554 0%, var(--bg) 68%);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 42px 48px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.45);
+    }
+    .kicker {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--cyan);
+    }
+    h1, h2 {
+      margin: 8px 0 6px;
+      font-size: 30px;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+    }
+    .sub {
+      margin: 0;
+      font-size: 15px;
+      color: var(--muted);
+    }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .box {
+      background: rgba(19, 28, 54, 0.88);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+    .big-num { font-size: 34px; font-weight: 800; margin-bottom: 6px; }
+    .box h3 { margin: 0 0 8px; font-size: 16px; }
+    .box p, .box li { font-size: 13.5px; line-height: 1.5; color: var(--muted); margin: 0; }
+    .box ul { margin: 6px 0 0; padding-left: 18px; }
+    .box li { margin-bottom: 6px; }
+    .footer-note {
+      font-size: 12px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+      display: flex;
+      justify-content: space-between;
+    }
+    code {
+      background: rgba(0,0,0,0.35);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #7dd3fc;
+      font-size: 12.5px;
+    }
+    @page { size: landscape; margin: 0; }
+    @media print {
+      body { background: var(--bg); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .toolbar { display: none; }
+      .deck { margin: 0; max-width: none; padding: 0; gap: 0; }
+      .slide {
+        width: 100vw;
+        height: 100vh;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        page-break-after: always;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <span><strong>First Milestones</strong> · 8-Slide Submission Deck (California `CA` · FIPS `06`)</span>
+    <button onclick="window.print()">Print / Save as 16:9 PDF</button>
+  </div>
+
+  <div class="deck">
+    <!-- SLIDE 1 -->
+    <section class="slide">
+      <div>
+        <div class="kicker">Agents for Impact 2026 · Early Intervention &amp; Developmental Screening Triage</div>
+        <h1 style="font-size:36px;">First Milestones: Clearing the Federal 45-Day Early Intervention Clock</h1>
+        <p class="sub">State: <strong>California (CA · FIPS 06)</strong> · Unified Track 1 (Today's Toddler Referral) &amp; Track 2 (Quarterly Multi-Hop Network Audit)</p>
+      </div>
+      <div class="grid-3">
+        <div class="box">
+          <div class="big-num" style="color:var(--cyan);">45 Days</div>
+          <h3>Federal Statutory Ceiling</h3>
+          <p>Under IDEA Part C (<code>34 CFR § 303.310</code>), every referred infant/toddler (0–35m) must receive evaluation + initial IFSP within 45 calendar days.</p>
+        </div>
+        <div class="box">
+          <div class="big-num" style="color:var(--green);">41,144</div>
+          <h3>Real Children Under 5</h3>
+          <p>Anchored across 101 real US Census ACS tracts in California (11-char leading-zero <code>06...</code> GEOIDs preserved) + 6 statewide HRSA NSCH strata.</p>
+        </div>
+        <div class="box">
+          <div class="big-num" style="color:var(--amber);">100% [Synthetic]</div>
+          <h3>Stage-Safe Provider Graph</h3>
+          <p>All 30 <code>SYN-PROV-CA-*</code> providers, 3 lead agencies &amp; 44 referral chains are 100% synthetic so simulated breaches never implicate real clinicians.</p>
+        </div>
+      </div>
+      <div class="footer-note">
+        <span>Built with Python ADK · Vertex AI Gemini · Google BigQuery MCP · BigQuery Property Graphs (ISO GQL)</span>
+        <span>Slide 1 / 8</span>
+      </div>
+    </section>
+
+    <!-- SLIDE 2 -->
+    <section class="slide">
+      <div>
+        <div class="kicker">The Problem &amp; Human Impact</div>
+        <h2>Why 20 Months vs. 5 Years Changes a Child's Entire Trajectory</h2>
+        <p class="sub">Speech, motor, and autism therapy during peak infant neuroplasticity prevents lifelong developmental gaps—if families aren't lost in fax loops.</p>
+      </div>
+      <div class="grid-2">
+        <div class="box" style="border-color:rgba(244,63,94,0.45);">
+          <h3 style="color:var(--rose);">Where the System Silently Breaks Today</h3>
+          <ul>
+            <li><strong>59% Breach Rate (26 / 44 chains):</strong> Multi-hop referrals stretch up to <strong>77 calendar days</strong>—nearly double federal law.</li>
+            <li><strong>Paper-Fax Friction:</strong> Outbound <code>paper_fax</code> handoffs average <strong>19.5 wait days</strong> and <strong>~24.3% family drop-off</strong> vs. 13.3d on electronic EHR.</li>
+            <li><strong>36-Month Aging-Out Cliff:</strong> 3 toddlers aged 30–35m sit in breached loops, risking aging out of Part C before therapy ever starts.</li>
+          </ul>
+        </div>
+        <div class="box" style="border-color:rgba(16,185,129,0.45);">
+          <h3 style="color:var(--green);">How First Milestones Delivers Measurable Impact</h3>
+          <ul>
+            <li><strong>Child-Level Impact:</strong> Reroutes a 22m Spanish/Medi-Cal toddler from a 71-day bounce loop onto a verified <strong>32-day compliant path</strong>.</li>
+            <li><strong>Family-Level Impact:</strong> Protects zero-vehicle households via Medi-Cal NEMT / tele-eval guardrails + bilingual caregiver action notes.</li>
+            <li><strong>System-Level Impact:</strong> Proves upgrading <strong>1 hub</strong> rescues <strong>9 breached chains</strong> and saves <strong>282 delayed child-days</strong>.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-note">
+        <span>Impact Thesis: Turn invisible multi-hop administrative lag into actionable &le;45-day starts</span>
+        <span>Slide 2 / 8</span>
+      </div>
+    </section>
+
+    <!-- SLIDE 3 -->
+    <section class="slide">
+      <div>
+        <div class="kicker">Required Differentiator · BigQuery Property Graphs</div>
+        <h2>Why Flat SQL Blames the Wrong Clinic—and ISO GQL Exposes the Culprit</h2>
+        <p class="sub">A single handoff is a SQL JOIN; a 3-to-4-hop re-referral bounce loop requires variable-length ISO GQL (<code>-{2,4}-&gt;</code>).</p>
+      </div>
+      <div class="grid-2">
+        <div class="box">
+          <h3 style="color:var(--muted);">❌ Flat Spreadsheet View (Downstream Symptom)</h3>
+          <p>Sorting <code>pediatric_and_ei_provider_directory</code> by waitlist points at saturated downstream clinics (<code>#16 Redding Eval</code>: 81 waitlist, 39d wait) while making <strong>Fresno Intake Desk #11 (<code>SYN-PROV-CA-011</code>)</strong> look like California's <strong>healthiest coordinator</strong> at just <strong>5 days internal wait</strong>.</p>
+        </div>
+        <div class="box" style="border-color:var(--cyan);">
+          <h3 style="color:var(--cyan);">✅ ISO GQL <code>-{2,4}-&gt;</code> Graph Diagnosis (Root Cause)</h3>
+          <p>Traversing <code>ReferralGraph</code> correlated on <code>case_chain_id</code> (<code>COUNT(DISTINCT h.case_chain_id) = 1</code>) exposes <strong><code>SYN-PROV-CA-011</code></strong> as our <strong>#1 regional bounce bottleneck</strong>: sitting on <strong>9 breached chains</strong> and <strong>+214 excess child-days</strong> due to 64% outbound <code>paper_fax</code> routing into mismatched hubs.</p>
+        </div>
+      </div>
+      <div class="grid-3">
+        <div class="box"><strong style="color:var(--green);">2-Hop Chains: 0% Breach</strong><p>Direct fast-track EHR placement always clears 45 days.</p></div>
+        <div class="box"><strong style="color:var(--amber);">3-Hop Chains: Threshold Zone</strong><p>Clears 45d only when bilingual + Medi-Cal + EHR align.</p></div>
+        <div class="box"><strong style="color:var(--rose);">4-Hop Bounce Loops: 100% Breach</strong><p>Every evaluator/credential re-referral bounce breaks federal law.</p></div>
+      </div>
+      <div class="footer-note">
+        <span>DDL excludes GEOGRAPHY (PROPERTIES ALL COLUMNS EXCEPT (provider_geom)) · Uses GQL LET + NEXT + FILTER</span>
+        <span>Slide 3 / 8</span>
+      </div>
+    </section>
+
+    <!-- SLIDE 4 -->
+    <section class="slide">
+      <div>
+        <div class="kicker">System Architecture &amp; Deliberate UX Choice</div>
+        <h2>An Interactive Coordinator Workbench, Not a Chatbot</h2>
+        <p class="sub">Designed specifically for internal regional DDS Part C intake &amp; quality leads running live cases.</p>
+      </div>
+      <div class="grid-4">
+        <div class="box">
+          <h3 style="color:var(--cyan);">1. Split-Screen UI</h3>
+          <p>Multi-turn working chat on the left updates a visual <strong>45-Day Pathway &amp; Bottleneck Brief</strong> on the right in real time.</p>
+        </div>
+        <div class="box">
+          <h3 style="color:var(--cyan);">2. Python ADK + Gemini</h3>
+          <p><code>google-adk</code> agent powered by Vertex AI <code>gemini-2.5-flash</code>, deployed live on Cloud Run.</p>
+        </div>
+        <div class="box">
+          <h3 style="color:var(--cyan);">3. Managed BQ MCP</h3>
+          <p>Consumes Google's managed BigQuery MCP server (<code>https://bigquery.googleapis.com/mcp</code>) via <code>McpToolset</code>.</p>
+        </div>
+        <div class="box">
+          <h3 style="color:var(--cyan);">4. BigQuery Graph</h3>
+          <p><code>ReferralGraph</code> on zero-baseline Enterprise reservation (<code>0</code> idle slots, autoscale <code>50</code>) + <code>ST_DISTANCE</code>.</p>
+        </div>
+      </div>
+      <div class="box">
+        <h3>Five Custom ISO GQL &amp; Spatial Tools</h3>
+        <p><code>route_toddler_referral_45d</code> · <code>audit_regional_bounce_hubs</code> · <code>simulate_bottleneck_fix</code> · <code>run_post_output_equity_audit</code> · <code>rank_screening_outreach_tracts</code></p>
+      </div>
+      <div class="footer-note">
+        <span>Compatible with both custom Cloud Run Split-Screen Workbench and `adk web`</span>
+        <span>Slide 4 / 8</span>
+      </div>
+    </section>
+
+    <!-- SLIDE 5 -->
+    <section class="slide">
+      <div>
+        <div class="kicker">Track 1 · Today's Referral Routing</div>
+        <h2>Turning a 71-Day Paper-Fax Bounce into a 32-Day Bilingual Start</h2>
+        <p class="sub">Incoming Case: 22-month-old · Fresno Tract <code>06019003103</code> · Expressive Speech Delay · Spanish · Medi-Cal · 10.8% Zero-Vehicle</p>
+      </div>
+      <div class="grid-2">
+        <div class="box" style="border-color:rgba(244,63,94,0.5);">
+          <h3 style="color:var(--rose);">❌ Historical Bounce Path Avoided (71 / 45 Days)</h3>
+          <p><code>CHAIN-CA-009</code>: Madera Clinic #01 → <strong>[Fax 12d]</strong> → Desk #09 → <strong>[Fax 22d]</strong> → Saturated Eval #13 → <strong>[Bounce Fax 23d: Bilingual Slot Unavailable]</strong> → Eval #17 → <strong>[EHR 14d]</strong> → Vendor #29.</p>
+        </div>
+        <div class="box" style="border-color:rgba(16,185,129,0.5);">
+          <h3 style="color:var(--green);">✅ Recommended Compliant Path (32 / 45 Days · 13d Buffer)</h3>
+          <p>Fresno Clinic #05 → <strong>[12d]</strong> → Bilingual Desk #09 → <strong>[EHR 12d]</strong> → Fresno Bilingual Eval #17 (Medi-Cal ✓) → <strong>[EHR 8d]</strong> → Bilingual Therapy Vendor #28 (Part C ✓).</p>
+        </div>
+      </div>
+      <div class="box">
+        <h3>Operational Guardrails &amp; Caregiver Action Note</h3>
+        <p>Flags <strong>Medi-Cal Non-Emergency Medical Transport (NEMT) / hybrid tele-assessment</strong> for high zero-vehicle tracts, tracks months remaining before the <strong>36-month Part C cliff</strong>, and generates a plain-language <strong>English &amp; Español Caregiver Action Note</strong>.</p>
+      </div>
+      <div class="footer-note">
+        <span>Traced multi-hop paths are visually rendered node-by-node in the Workbench</span>
+        <span>Slide 5 / 8</span>
+      </div>
+    </section>
+
+    <!-- SLIDE 6 -->
+    <section class="slide">
+      <div>
+        <div class="kicker">Track 2 + Bonus · Counterfactual Network Simulation</div>
+        <h2>Targeted Investment: What Fixing One Coordinator Hub Achieves</h2>
+        <p class="sub">Simulating switching <code>SYN-PROV-CA-011</code> (Fresno Desk #11) from <code>paper_fax</code> to electronic intake + pre-checked bilingual slots</p>
+      </div>
+      <div class="grid-3">
+        <div class="box">
+          <div class="big-num" style="color:var(--green);">9 / 9</div>
+          <h3>Hub Breaches Eliminated</h3>
+          <p>Every single breached multi-hop chain routed through Fresno Desk #11 drops into federal &le;45-day compliance.</p>
+        </div>
+        <div class="box">
+          <div class="big-num" style="color:var(--cyan);">282 Days</div>
+          <h3>Child Wait-Days Saved</h3>
+          <p>Eliminates wasted 23-day hop-3 re-referral bounces and cuts handoff transmission lag by ~32%.</p>
+        </div>
+        <div class="box">
+          <div class="big-num" style="color:var(--amber);">26 → 17</div>
+          <h3>Statewide Breaches (-35%)</h3>
+          <p>Achieved by modernizing <strong>1 out of 30 nodes</strong>—giving Part C directors maximum ROI before adding clinical headcount.</p>
+        </div>
+      </div>
+      <div class="footer-note">
+        <span>Counterfactual computed directly over traversed ReferralHandoff chains in ReferralGraph</span>
+        <span>Slide 6 / 8</span>
+      </div>
+    </section>
+
+    <!-- SLIDE 7 -->
+    <section class="slide">
+      <div>
+        <div class="kicker">Rigor, Validation Discipline &amp; Post-Output Equity Audit</div>
+        <h2>Data Traps Caught &amp; Who Multi-Hop Bottlenecks Land On</h2>
+        <p class="sub">Verified by 14 automated unit &amp; live E2E tests (<code>sahuja/tests/</code>)</p>
+      </div>
+      <div class="grid-2">
+        <div class="box">
+          <h3 style="color:var(--cyan);">Four Data &amp; Bias Traps Caught</h3>
+          <ul>
+            <li><strong>ACS All-Zero Trap:</strong> Confirmed <code>limited_english_rate = 0.0</code> across all 101 CA tracts; routed via <code>bilingual_services_listed</code> + NSCH instead.</li>
+            <li><strong>NSCH 6x Grain Trap:</strong> Kept 6 <code>Statewide</code> strata unjoined to tracts so tracts never duplicate 6x.</li>
+            <li><strong>Chain Correlation:</strong> Enforced single <code>case_chain_id</code> across historical <code>-{2,4}-&gt;</code> hops.</li>
+            <li><strong>Zero Race-in-Routing:</strong> Excluded all <code>audit_*</code> columns from routing; joined strictly post-output.</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3 style="color:var(--amber);">Post-Output Equity Audit &amp; Outreach (CA)</h3>
+          <ul>
+            <li><strong>Episode Delay:</strong> Breached chains (n=26) average <strong>61.8 days</strong> vs. <strong>35.7 days</strong> for timely chains (n=18).</li>
+            <li><strong>Impacted Tracts:</strong> Breaches hit neighborhoods averaging <strong>25.0% poverty</strong>, <strong>10.8% zero-vehicle households</strong> (vs. 9.6% timely), and <strong>53.3% Hispanic share</strong>.</li>
+            <li><strong>Responsible Outreach:</strong> Ranks high-poverty screening tracts only where &le;45d downstream bilingual Medi-Cal capacity is verified.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-note">
+        <span>Statewide HRSA NSCH confirms non-English household screening rates sit ~half of English-primary rates</span>
+        <span>Slide 7 / 8</span>
+      </div>
+    </section>
+
+    <!-- SLIDE 8 -->
+    <section class="slide">
+      <div>
+        <div class="kicker">Limitations &amp; Operational Judgment</div>
+        <h2>What a Property Graph Cannot Solve Alone—and Where We Go Next</h2>
+        <p class="sub">Honest technical boundaries for real-world Department of Developmental Services adoption</p>
+      </div>
+      <div class="grid-3">
+        <div class="box">
+          <h3 style="color:var(--amber);">1. Real-Time Slot Locking</h3>
+          <p><code>ReferralGraph</code> exposes structural routing bottlenecks from logs; production intake requires transactional slot locks (Cloud SQL / Firestore) so two coordinators never double-book the last bilingual slot.</p>
+        </div>
+        <div class="box">
+          <h3 style="color:var(--amber);">2. Public Transit vs. Spherical km</h3>
+          <p><code>ST_DISTANCE</code> measures straight-line distance; zero-vehicle families need public GTFS bus travel-time routing and co-located Head Start / WIC mobile evaluation days.</p>
+        </div>
+        <div class="box">
+          <h3 style="color:var(--amber);">3. Clinical &amp; Family Context</h3>
+          <p>Graph routing never diagnoses children or overrides family-initiated scheduling pauses—it equips human coordinators to prevent administrative fax bounces before Day 45.</p>
+        </div>
+      </div>
+      <div class="footer-note">
+        <span>Thank You · First Milestones (`sahuja` branch) · Live on Google Cloud Run + BigQuery Property Graphs</span>
+        <span>Slide 8 / 8</span>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
