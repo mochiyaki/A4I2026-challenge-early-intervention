@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>First Milestones · IDEA Part C Triage & Graph Audit Workbench</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121931;
+      --panel-2: #182242;
+      --border: #27345f;
+      --text: #eef2ff;
+      --muted: #9aa8d1;
+      --accent: #38bdf8;
+      --accent-2: #818cf8;
+      --green: #10b981;
+      --green-bg: rgba(16, 185, 129, 0.13);
+      --red: #f43f5e;
+      --red-bg: rgba(244, 63, 94, 0.13);
+      --amber: #f59e0b;
+      --amber-bg: rgba(245, 158, 11, 0.14);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    header {
+      background: linear-gradient(90deg, #0f172a 0%, #172554 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      display: grid; place-items: center;
+      font-size: 18px; font-weight: 800; color: #081024;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .brand p {
+      margin: 2px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .header-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      align-items: center;
+    }
+    .pill {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .pill.synth {
+      border-color: rgba(245, 158, 11, 0.5);
+      background: var(--amber-bg);
+      color: #fcd34d;
+    }
+    .pill.live {
+      border-color: rgba(16, 185, 129, 0.5);
+      background: var(--green-bg);
+      color: #6ee7b7;
+    }
+
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 42% 58%;
+      min-height: 0;
+    }
+    .left-pane {
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: var(--panel);
+    }
+    .scenarios-bar {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0,0,0,0.18);
+    }
+    .scenarios-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .scenario-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+    .scenario-btn {
+      text-align: left;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .scenario-btn:hover:not(:disabled) {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+    .scenario-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .scenario-btn .s-badge {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 3px;
+    }
+    .scenario-btn .s-title {
+      display: block;
+      font-size: 11.5px;
+      line-height: 1.3;
+      font-weight: 600;
+    }
+
+    .chat-log {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .msg {
+      max-width: 94%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 13.5px;
+      line-height: 1.55;
+    }
+    .msg.user {
+      align-self: flex-end;
+      background: linear-gradient(135deg, #1d4ed8, #312e81);
+      border: 1px solid rgba(129, 140, 248, 0.4);
+    }
+    .msg.agent {
+      align-self: flex-start;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+    }
+    .msg.agent h1, .msg.agent h2, .msg.agent h3 {
+      margin: 10px 0 6px;
+      font-size: 14px;
+      color: #bae6fd;
+    }
+    .msg.agent p { margin: 6px 0; }
+    .msg.agent ul, .msg.agent ol { margin: 6px 0; padding-left: 20px; }
+    .msg.agent code {
+      background: rgba(0,0,0,0.35);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #7dd3fc;
+    }
+    .tool-trace {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .tool-chip {
+      font-size: 10.5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(56, 189, 248, 0.14);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: #7dd3fc;
+    }
+
+    .chat-input-bar {
+      padding: 12px 14px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      background: rgba(0,0,0,0.22);
+    }
+    .chat-input-bar textarea {
+      flex: 1;
+      resize: none;
+      height: 44px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      padding: 10px 12px;
+      font-family: inherit;
+      font-size: 13px;
+    }
+    .chat-input-bar textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .send-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #081024;
+      border: none;
+      border-radius: 8px;
+      padding: 0 16px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Right Pane: Live 45-Day Pathway & Bottleneck Brief */
+    .right-pane {
+      overflow-y: auto;
+      padding: 18px 22px 40px;
+      background: radial-gradient(circle at top right, #131c38 0%, #0b1020 70%);
+    }
+    .brief-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .brief-header h2 {
+      margin: 0;
+      font-size: 17px;
+      color: #f8fafc;
+    }
+    .brief-header p {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .btn-secondary {
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 6px 11px;
+      border-radius: 7px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .btn-secondary:hover { border-color: var(--accent); }
+
+    .guardrails-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .g-badge {
+      font-size: 11px;
+      padding: 4px 9px;
+      border-radius: 6px;
+      background: rgba(129, 140, 248, 0.11);
+      border: 1px solid rgba(129, 140, 248, 0.3);
+      color: #c7d2fe;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+      margin: 0 0 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Clock Meter */
+    .clock-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .clock-box {
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+    }
+    .clock-box.good { border-color: rgba(16, 185, 129, 0.45); background: var(--green-bg); }
+    .clock-box.bad { border-color: rgba(244, 63, 94, 0.45); background: var(--red-bg); }
+    .clock-big { font-size: 22px; font-weight: 800; }
+    .clock-sub { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+    .bar-track {
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 999px;
+      margin-top: 8px;
+      overflow: hidden;
+      position: relative;
+    }
+    .bar-fill { height: 100%; border-radius: 999px; }
+
+    /* Visual Multi-Hop Graph Nodes */
+    .path-track-label {
+      font-size: 12px;
+      font-weight: 700;
+      margin: 12px 0 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .hop-chain {
+      display: flex;
+      align-items: stretch;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+    }
+    .node-box {
+      min-width: 150px;
+      flex: 1;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 9px 10px;
+      font-size: 11.5px;
+    }
+    .node-box.good { border-color: rgba(16, 185, 129, 0.5); }
+    .node-box.bad { border-color: rgba(244, 63, 94, 0.5); }
+    .node-role {
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 3px;
+    }
+    .node-name {
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 5px;
+      color: #f8fafc;
+    }
+    .node-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      font-size: 10px;
+    }
+    .mini-tag {
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.07);
+      color: var(--muted);
+    }
+    .edge-arrow {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-width: 74px;
+      font-size: 10.5px;
+      text-align: center;
+      color: var(--muted);
+    }
+    .edge-badge {
+      padding: 2px 6px;
+      border-radius: 5px;
+      font-weight: 700;
+      font-size: 10px;
+      margin-bottom: 3px;
+    }
+    .edge-badge.fax { background: var(--red-bg); color: #fda4af; border: 1px solid rgba(244,63,94,0.4); }
+    .edge-badge.ehr { background: var(--green-bg); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.4); }
+
+    .alert-banner {
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.45;
+      margin-top: 10px;
+      background: var(--amber-bg);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      color: #fde68a;
+    }
+
+    .caregiver-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .note-box {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 12px;
+      white-space: pre-line;
+      line-height: 1.45;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      text-align: left;
+      padding: 7px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    th { color: var(--muted); font-weight: 600; font-size: 11px; }
+    tr.highlight-row { background: rgba(244, 63, 94, 0.12); }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .kpi-box {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 11px;
+      text-align: center;
+    }
+    .kpi-val { font-size: 22px; font-weight: 800; color: #6ee7b7; }
+    .kpi-lbl { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      color: var(--muted);
+    }
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.25);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="brand-icon">FM</div>
+      <div>
+        <h1>First Milestones · IDEA Part C Triage & Graph Audit Workbench</h1>
+        <p>California Early Start (`CA` · FIPS `06`) · Federal 45-Day IFSP Statutory Mandate (`34 CFR § 303.310`)</p>
+      </div>
+    </div>
+    <div class="header-badges">
+      <span class="pill live" id="status-pill">● ADK + BigQuery Graph Live</span>
+      <span class="pill">ISO GQL `-{2,4}->` + `ST_DISTANCE`</span>
+      <span class="pill">Google BigQuery MCP</span>
+      <span class="pill synth">⚠️ 100% [Synthetic] Provider & Referral Network</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- LEFT: Working Coordinator Conversation -->
+    <section class="left-pane">
+      <div class="scenarios-bar">
+        <div class="scenarios-label">
+          <span>One-Click Coordinator Workflows</span>
+          <button class="btn-secondary" onclick="resetSession()" style="padding:3px 8px;font-size:11px;">New Case</button>
+        </div>
+        <div class="scenario-grid" id="scenario-grid"></div>
+      </div>
+
+      <div class="chat-log" id="chat-log">
+        <div class="msg agent">
+          <strong>Welcome, Regional IDEA Part C Coordinator.</strong><br/>
+          I am connected live to <code>ReferralGraph</code> (BigQuery Property Graph in ISO GQL), US Census ACS under-5 tract demographics, statewide HRSA NSCH screening strata, and Google's BigQuery MCP server.<br/><br/>
+          Select a workflow chip above or describe an incoming infant/toddler referral (tract or county, age in months, home language, Medi-Cal status, concern) to build your <strong>45-Day Pathway &amp; Bottleneck Brief</strong>.
+        </div>
+      </div>
+
+      <form class="chat-input-bar" onsubmit="handleSend(event)">
+        <textarea id="chat-input" placeholder="Ask about a toddler referral, multi-hop fax bounce hub, counterfactual fix, or equity audit..." onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); handleSend(event);}"></textarea>
+        <button type="submit" class="send-btn" id="send-btn">Ask Agent</button>
+      </form>
+    </section>
+
+    <!-- RIGHT: Live 45-Day Pathway & Bottleneck Brief -->
+    <section class="right-pane" id="brief-pane">
+      <div class="brief-header">
+        <div>
+          <h2>45-Day Pathway &amp; Bottleneck Brief</h2>
+          <p>Live visual graph trace, statutory clock budget, counterfactual impact, post-output Equity Audit &amp; bilingual family note</p>
+        </div>
+        <button class="btn-secondary" onclick="window.print()">Print / Save Brief</button>
+      </div>
+
+      <div class="guardrails-strip">
+        <span class="g-badge">✓ Correlated `case_chain_id` across GQL hops</span>
+        <span class="g-badge">✓ Caught `limited_english_rate = 0.0` ACS trap</span>
+        <span class="g-badge">✓ Statewide NSCH 6x grain fan-out blocked</span>
+        <span class="g-badge">✓ `audit_*` excluded from routing (post-output only)</span>
+      </div>
+
+      <div id="brief-cards">
+        <div class="empty-state">
+          <h3 style="color:#e2e8f0;margin-top:0;">No Pathway or Audit Loaded Yet</h3>
+          <p style="max-width:460px;margin:8px auto 0;line-height:1.5;">
+            Click <strong>Track 1 · Today's Referral</strong> on the left to trace a compliant &le;45-day bilingual Medi-Cal route alongside the 71-day 4-hop paper-fax bounce chain it avoids—or run <strong>Track 2 · Quarterly Graph Audit</strong> to expose California's #1 hidden bounce hub.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let sessionId = null;
+    let briefState = {
+      route_comparison: null,
+      bounce_audit: null,
+      counterfactual: null,
+      equity_audit: null,
+      outreach_tracts: null
+    };
+
+    async function initWorkbench() {
+      try {
+        const [hRes, sRes] = await Promise.all([fetch('/api/health'), fetch('/api/scenarios')]);
+        const health = await hRes.json();
+        const sData = await sRes.json();
+        document.getElementById('status-pill').textContent = `● Live · ${health.dataset} (${health.state})`;
+
+        const grid = document.getElementById('scenario-grid');
+        grid.innerHTML = '';
+        for (const sc of sData.scenarios) {
+          const btn = document.createElement('button');
+          btn.className = 'scenario-btn';
+          btn.innerHTML = `<span class="s-badge">${sc.badge}</span><span class="s-title">${sc.title}</span>`;
+          btn.onclick = () => sendPrompt(sc.prompt);
+          grid.appendChild(btn);
+        }
+      } catch (err) {
+        console.error('Init error:', err);
+      }
+    }
+
+    function resetSession() {
+      sessionId = null;
+      briefState = { route_comparison: null, bounce_audit: null, counterfactual: null, equity_audit: null, outreach_tracts: null };
+      document.getElementById('chat-log').innerHTML = `
+        <div class="msg agent">
+          <strong>Started a fresh coordinator session.</strong> Pick a workflow above or enter a toddler case / regional audit question.
+        </div>`;
+      renderBrief();
+    }
+
+    function setBusy(busy) {
+      document.getElementById('send-btn').disabled = busy;
+      document.querySelectorAll('.scenario-btn').forEach(b => b.disabled = busy);
+    }
+
+    function handleSend(e) {
+      e.preventDefault();
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+      sendPrompt(text);
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    async function sendPrompt(text) {
+      const log = document.getElementById('chat-log');
+      const uDiv = document.createElement('div');
+      uDiv.className = 'msg user';
+      uDiv.textContent = text;
+      log.appendChild(uDiv);
+
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'msg agent';
+      loadingDiv.innerHTML = `<span class="spinner"></span> Traversing <code>ReferralGraph</code> in BigQuery (ISO GQL) &amp; evaluating statutory constraints...`;
+      log.appendChild(loadingDiv);
+      log.scrollTop = log.scrollHeight;
+      setBusy(true);
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ message: text, session_id: sessionId })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Request failed');
+
+        sessionId = data.session_id;
+        let toolsHtml = '';
+        if (data.tool_calls && data.tool_calls.length) {
+          toolsHtml = `<div class="tool-trace">` +
+            data.tool_calls.map(t => `<span class="tool-chip">⚙ ${escapeHtml(t.name)} (${escapeHtml(t.source)})</span>`).join('') +
+            `</div>`;
+        }
+        loadingDiv.innerHTML = toolsHtml + marked.parse(data.reply || '');
+
+        if (data.brief_updates && data.brief_updates.length) {
+          for (const upd of data.brief_updates) {
+            briefState[upd.kind] = upd.data;
+          }
+          renderBrief();
+        }
+      } catch (err) {
+        loadingDiv.innerHTML = `<strong style="color:#fda4af;">Error:</strong> ${escapeHtml(err.message)}`;
+      } finally {
+        setBusy(false);
+        log.scrollTop = log.scrollHeight;
+      }
+    }
+
+    function cleanOrgName(name) {
+      return String(name || '').replace(' [Synthetic]', '');
+    }
+
+    function renderHopChain(hops, nodesMap, isGood) {
+      if (!hops || !hops.length) return '';
+      let html = `<div class="hop-chain">`;
+      const first = hops[0];
+      const firstInfo = nodesMap ? nodesMap[first.source_id] : null;
+      html += `
+        <div class="node-box ${isGood ? 'good' : 'bad'}">
+          <div class="node-role">${escapeHtml(first.source_role || 'Screening_Pediatric_Clinic')}</div>
+          <div class="node-name">${escapeHtml(cleanOrgName(first.source_name))}</div>
+          <div class="node-tags">
+            <span class="mini-tag">${escapeHtml(first.source_id)}</span>
+            ${firstInfo ? `<span class="mini-tag">${firstInfo.dist_km} km</span>` : ''}
+          </div>
+        </div>`;
+
+      for (const h of hops) {
+        const isFax = h.channel === 'paper_fax';
+        const isBounce = h.reason && String(h.reason).startsWith('Re-Referral Bounce');
+        const tInfo = nodesMap ? nodesMap[h.target_id] : null;
+        html += `
+          <div class="edge-arrow">
+            <span class="edge-badge ${isFax ? 'fax' : 'ehr'}">${isFax ? '📠 Fax' : '⚡ EHR'} · +${h.wait_days}d</span>
+            <span>Day ${h.cumulative_days} →</span>
+            ${isBounce ? `<span style="color:#fda4af;font-size:9.5px;font-weight:700;">↩ BOUNCE</span>` : ''}
+          </div>
+          <div class="node-box ${isGood ? 'good' : (isBounce ? 'bad' : '')}">
+            <div class="node-role">${escapeHtml(h.target_role || (tInfo ? tInfo.role : 'CareNode'))}</div>
+            <div class="node-name">${escapeHtml(cleanOrgName(h.target_name))}</div>
+            <div class="node-tags">
+              <span class="mini-tag">${escapeHtml(h.target_id)}</span>
+              ${tInfo && tInfo.accepts_medicaid ? `<span class="mini-tag" style="color:#6ee7b7;">Medi-Cal ✓</span>` : ''}
+              ${tInfo && tInfo.bilingual ? `<span class="mini-tag" style="color:#7dd3fc;">Bilingual ✓</span>` : ''}
+              ${tInfo ? `<span class="mini-tag">${tInfo.dist_km} km</span>` : ''}
+            </div>
+          </div>`;
+      }
+      html += `</div>`;
+      return html;
+    }
+
+    function copyCaregiverNote() {
+      const rc = briefState.route_comparison;
+      if (!rc || !rc.caregiver_action_note) return;
+      const txt = `ENGLISH:\n${rc.caregiver_action_note.english}\n\nESPAÑOL:\n${rc.caregiver_action_note.spanish}`;
+      navigator.clipboard.writeText(txt);
+      const btn = document.getElementById('copy-note-btn');
+      if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => btn.textContent = 'Copy EN + ES Note', 1800); }
+    }
+
+    function renderBrief() {
+      const container = document.getElementById('brief-cards');
+      const parts = [];
+
+      // 1) ROUTE COMPARISON CARD
+      if (briefState.route_comparison) {
+        const rc = briefState.route_comparison;
+        const rec = rc.recommended_pathway;
+        const brk = rc.contrasted_broken_bounce_chain;
+        const ctx = rc.child_case_context;
+        const nodesMap = {};
+        if (rec && rec.nodes) rec.nodes.forEach(n => nodesMap[n.provider_id] = n);
+
+        const recPct = rec ? Math.min(100, Math.round((rec.expected_total_days / 45) * 100)) : 0;
+        const brkPct = brk ? 100 : 0;
+
+        parts.push(`
+          <div class="card">
+            <div class="card-title">
+              <span>1 · Traced Multi-Hop Referral Pathway (Tract ${escapeHtml(ctx.home_tract_geoid)} · ${escapeHtml(ctx.county_name)})</span>
+              <span class="pill live">${ctx.child_age_months}m old · ${ctx.months_until_36m_part_c_cliff}m before 36m Part C Cliff (${ctx.aging_out_urgency})</span>
+            </div>
+
+            <div class="clock-row">
+              ${rec ? `
+              <div class="clock-box good">
+                <div class="clock-big" style="color:#6ee7b7;">${rec.expected_total_days} / 45 Days ✅</div>
+                <div class="clock-sub">Recommended ${escapeHtml(rec.pathway_type)} (${rec.days_under_45d_mandate}d statutory buffer)</div>
+                <div class="bar-track"><div class="bar-fill" style="width:${recPct}%;background:var(--green);"></div></div>
+              </div>` : ''}
+              ${brk ? `
+              <div class="clock-box bad">
+                <div class="clock-big" style="color:#fda4af;">${brk.total_wait_days} / 45 Days ❌</div>
+                <div class="clock-sub">Avoided Bounce Path (${escapeHtml(brk.case_chain_id)} · +${brk.days_over_45d_limit}d over federal limit)</div>
+                <div class="bar-track"><div class="bar-fill" style="width:${brkPct}%;background:var(--red);"></div></div>
+              </div>` : ''}
+            </div>
+
+            ${brk ? `
+              <div class="path-track-label" style="color:#fda4af;">
+                ❌ Historical 4-Hop Paper-Fax Bounce Loop Avoided (${escapeHtml(brk.case_chain_id)} — ${brk.total_wait_days} days)
+              </div>
+              ${renderHopChain(brk.hops, null, false)}
+            ` : ''}
+
+            ${rec ? `
+              <div class="path-track-label" style="color:#6ee7b7;">
+                ✅ Recommended Compliant &le;45-Day Route (${rec.expected_total_days} days · Medi-Cal + ${escapeHtml(ctx.caregiver_language)} Bilingual Verified)
+              </div>
+              ${renderHopChain(rec.hops, nodesMap, true)}
+            ` : ''}
+
+            ${rc.zero_vehicle_travel_guardrail && rc.zero_vehicle_travel_guardrail.triggered ? `
+              <div class="alert-banner">
+                <strong>🚐 Zero-Vehicle &amp; Rural Distance Guardrail:</strong> ${escapeHtml(rc.zero_vehicle_travel_guardrail.action)}
+              </div>
+            ` : ''}
+
+            ${rc.caregiver_action_note && rc.caregiver_action_note.english ? `
+              <div style="margin-top:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <strong style="font-size:12px;color:#bae6fd;">Plain-Language Caregiver Action Note (English &amp; Español)</strong>
+                  <button class="btn-secondary" id="copy-note-btn" onclick="copyCaregiverNote()" style="padding:3px 9px;font-size:11px;">Copy EN + ES Note</button>
+                </div>
+                <div class="caregiver-grid">
+                  <div class="note-box">${escapeHtml(rc.caregiver_action_note.english)}</div>
+                  <div class="note-box">${escapeHtml(rc.caregiver_action_note.spanish)}</div>
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        `);
+      }
+
+      // 2) REGIONAL BOUNCE HUB AUDIT CARD
+      if (briefState.bounce_audit) {
+        const ba = briefState.bounce_audit;
+        const rows = (ba.coordinator_graph_bottleneck_ranking || []).map((r, idx) => `
+          <tr class="${idx === 0 ? 'highlight-row' : ''}">
+            <td><strong>${escapeHtml(r.coordinator_id)}</strong><br/><span style="color:var(--muted);font-size:11px;">${escapeHtml(cleanOrgName(r.name))}</span></td>
+            <td>${r.flat_spreadsheet_internal_wait_days}d <span style="color:var(--muted);">(${r.flat_spreadsheet_waitlist} wl)</span></td>
+            <td><strong>${r.breached_episodes_over_45d} / ${r.total_episodes_routed}</strong></td>
+            <td>${r.four_hop_bounce_episodes}</td>
+            <td style="color:${idx === 0 ? '#fda4af' : 'inherit'};font-weight:700;">+${r.excess_child_days_past_45d}d</td>
+          </tr>
+        `).join('');
+
+        parts.push(`
+          <div class="card">
+            <div class="card-title">
+              <span>2 · Regional Multi-Hop Bounce Hub Diagnosis (ISO GQL \`-{2,4}->\`)</span>
+              <span class="pill synth">Fix First: ${escapeHtml(ba.coordinator_graph_bottleneck_ranking[0]?.coordinator_id)}</span>
+            </div>
+            <p style="font-size:12.5px;color:#e2e8f0;margin-top:0;line-height:1.5;">
+              ${escapeHtml(ba.key_finding)}
+            </p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Intake Coordinator Hub [Synthetic]</th>
+                  <th>Flat Table Internal Wait</th>
+                  <th>&gt;45d Breached Chains</th>
+                  <th>4-Hop Bounces</th>
+                  <th>Excess Child-Days &gt;45d</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        `);
+      }
+
+      // 3) COUNTERFACTUAL SIMULATION CARD
+      if (briefState.counterfactual) {
+        const cf = briefState.counterfactual;
+        const s = cf.summary;
+        parts.push(`
+          <div class="card">
+            <div class="card-title">
+              <span>3 · Counterfactual Network Fix Simulation (${escapeHtml(cf.coordinator_id)})</span>
+              <span class="pill live">Paper Fax → EHR + Pre-Checked Bilingual Slots</span>
+            </div>
+            <div class="kpi-grid">
+              <div class="kpi-box">
+                <div class="kpi-val">${s.breached_episodes_rescued_under_45d} / ${s.baseline_breaches_over_45d}</div>
+                <div class="kpi-lbl">Breached Chains Brought &le;45 Days</div>
+              </div>
+              <div class="kpi-box">
+                <div class="kpi-val">${s.total_child_wait_days_saved}d</div>
+                <div class="kpi-lbl">Delayed Child-Days Saved at Hub</div>
+              </div>
+              <div class="kpi-box">
+                <div class="kpi-val">${s.statewide_breaches_before} → ${s.statewide_breaches_after_single_hub_fix}</div>
+                <div class="kpi-lbl">Statewide Breaches After 1 Hub Fix</div>
+              </div>
+            </div>
+          </div>
+        `);
+      }
+
+      // 4) POST-OUTPUT EQUITY AUDIT & OUTREACH CARD
+      if (briefState.equity_audit || briefState.outreach_tracts) {
+        const eq = briefState.equity_audit;
+        const ot = briefState.outreach_tracts;
+
+        let eqTable = '';
+        if (eq && eq.breach_vs_timely_tract_demographics) {
+          eqTable = `
+            <strong style="font-size:12px;color:#bae6fd;display:block;margin-bottom:6px;">Post-Output Tract Disparity Check (Joined Strictly After Routing)</strong>
+            <table style="margin-bottom:12px;">
+              <thead>
+                <tr>
+                  <th>IFSP Outcome</th>
+                  <th>Chains</th>
+                  <th>Avg Wait</th>
+                  <th>Poverty</th>
+                  <th>Zero-Vehicle</th>
+                  <th>Hispanic (` + '`audit_*`' + `)</th>
+                  <th>Black (` + '`audit_*`' + `)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${eq.breach_vs_timely_tract_demographics.map(r => `
+                  <tr>
+                    <td><strong>${escapeHtml(r.ifsp_status)}</strong></td>
+                    <td>${r.episodes}</td>
+                    <td>${r.avg_wait_days}d</td>
+                    <td>${r.avg_tract_poverty_pct}%</td>
+                    <td>${r.avg_no_vehicle_pct}%</td>
+                    <td>${r.audit_hispanic_pct}%</td>
+                    <td>${r.audit_black_pct}%</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>`;
+        }
+
+        let outreachTable = '';
+        if (ot && ot.priority_outreach_tracts) {
+          outreachTable = `
+            <strong style="font-size:12px;color:#bae6fd;display:block;margin:10px 0 6px;">Priority Mobile Developmental Screening Tracts (Verified &le;45d Bilingual Capacity)</strong>
+            <table>
+              <thead>
+                <tr>
+                  <th>Tract GEOID</th>
+                  <th>County</th>
+                  <th>Kids &lt;5</th>
+                  <th>Poverty / No-Car</th>
+                  <th>Nearest Fast Bilingual Hub</th>
+                  <th>Recommended Mode</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${ot.priority_outreach_tracts.map(t => `
+                  <tr>
+                    <td><code>${escapeHtml(t.census_tract_geoid)}</code></td>
+                    <td>${escapeHtml(t.county_name)}</td>
+                    <td>${t.children_under_5_count}</td>
+                    <td>${t.poverty_pct}% / ${t.no_vehicle_pct}%</td>
+                    <td>${escapeHtml(t.verified_downstream_fast_hub_id)} (${t.distance_to_fast_hub_km} km, ${t.hub_internal_wait_days}d)</td>
+                    <td style="font-size:11px;">${escapeHtml(t.deployment_mode)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>`;
+        }
+
+        parts.push(`
+          <div class="card">
+            <div class="card-title">
+              <span>4 · Post-Output Equity Audit &amp; Community Screening Priority</span>
+              <span class="pill">Zero Race-in-Routing</span>
+            </div>
+            ${eqTable}
+            ${outreachTable}
+          </div>
+        `);
+      }
+
+      if (parts.length) {
+        container.innerHTML = parts.join('');
+      }
+    }
+
+    initWorkbench();
+  </script>
+</body>
+</html>
