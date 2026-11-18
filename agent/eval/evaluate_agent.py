@@ -181,10 +181,18 @@ async def evaluate_suite(
     golden = load_golden_evalset(evalset_path)
     cases = list(golden["cases"])
     if categories:
-        cat_set = {c.strip() for c in categories if c.strip()}
+        cat_set: set[str] = set()
+        for c in categories:
+            for item in c.split(","):
+                if item.strip():
+                    cat_set.add(item.strip())
         cases = [c for c in cases if c["category"] in cat_set]
     if case_ids:
-        id_set = {i.strip() for i in case_ids if i.strip()}
+        id_set: set[str] = set()
+        for i in case_ids:
+            for item in i.split(","):
+                if item.strip():
+                    id_set.add(item.strip())
         cases = [c for c in cases if c["case_id"] in id_set]
 
     # Pre-warm oracle caches for states in evalset
@@ -245,6 +253,7 @@ async def evaluate_suite(
                 )
                 result["request_error"] = err
                 result["reply_preview"] = str(payload.get("reply", ""))[:400]
+                result["full_reply"] = str(payload.get("reply", ""))
                 if err:
                     result["passed"] = False
                 return result

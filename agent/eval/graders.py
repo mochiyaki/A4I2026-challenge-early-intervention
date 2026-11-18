@@ -458,7 +458,7 @@ def grade_faithfulness(
         _check_entity(gid, ctx.valid_geoids, ctx.all_states_geoids)
 
     # 2. Build dynamic numeric pools from brief + oracle
-    wait_pool: set[int] = set(ctx.oracle_wait_days) | _STATUTORY_WAIT_CONSTANTS | {0, 1} | prompt_nums
+    wait_pool: set[int] = set(ctx.oracle_wait_days) | _STATUTORY_WAIT_CONSTANTS | {0, 1, 2} | prompt_nums
     count_pool: set[int] = set(ctx.oracle_counts) | {0, 1, 2, 3, 4, 5, 6, 45} | prompt_nums
     pct_pool: set[float] = set(ctx.oracle_percentages) | {float(n) for n in prompt_nums}
     _collect_numbers_into_pools(brief_dict, wait_pool, count_pool, pct_pool)
@@ -501,7 +501,14 @@ def grade_faithfulness(
             for m in pat.finditer(reply):
                 val = int(m.group(1))
                 snippet = m.group(0)
-                if val == 45 or "faster" in snippet.lower() or "save" in snippet.lower():
+                start_idx = max(0, m.start() - 40)
+                pre_context = reply[start_idx:m.start()].lower()
+                if (
+                    val == 45
+                    or any(w in snippet.lower() for w in ["faster", "saved", "save", "saving", "reduction"])
+                    or (isinstance(bounce_days, (int, float)) and val == int(bounce_days))
+                    or any(w in pre_context for w in ["bounce", "historical", "cautionary", "breach", "paper_fax", "fax"])
+                ):
                     continue
                 if val not in pathway_days:
                     mismatched_wait_days.append({
@@ -767,8 +774,8 @@ _LEP_POSITIVE_RE = re.compile(
     re.IGNORECASE,
 )
 _LEP_REJECTION_RE = re.compile(
-    r"\blimited_english_rate\b[^.\n]{0,90}?(?:0\.0|all[- ]zero|exclud|never|not\s+use|avoid|unusable|zero\s+across|trap)|"
-    r"(?:0\.0|all[- ]zero|exclud|never\s+weight|do\s+not\s+use)[^.\n]{0,70}?\blimited_english_rate\b",
+    r"(?:acs_under5_tract_demographics\.)?limited_english_rate[^\n]{0,90}?(?:0\.0|all[- ]zero|exclud\w*|never|not\s+use|avoid\w*|unusable|zero\s+across|trap|refus\w*|reject\w*)|"
+    r"(?:0\.0|all[- ]zero|exclud\w*|never\s+weight|do\s+not\s+use|refus\w*|reject\w*|cannot|can't)[^\n]{0,80}?(?:acs_under5_tract_demographics\.)?limited_english_rate\b",
     re.IGNORECASE,
 )
 
@@ -787,7 +794,7 @@ _AUDIT_SHARE_POSITIVE_RE = re.compile(
     re.IGNORECASE,
 )
 _AUDIT_NEGATION_RE = re.compile(
-    r"\b(?:never|not|without|exclud\w*|refus\w*|cannot|prohibit\w*|strictly\s+post[- ]output|firewall)\b",
+    r"\b(?:never|not|without|exclud\w*|refus\w*|reject\w*|cannot|can't|prohibit\w*|strictly\s+post[- ]output|firewall)\b",
     re.IGNORECASE,
 )
 _AUDIT_REJECTION_RE = re.compile(

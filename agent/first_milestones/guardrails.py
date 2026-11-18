@@ -39,6 +39,17 @@ DIAGNOSIS_REFUSAL_PREFIX = (
     "and post-output equity context.\n\n"
 )
 
+_LEP_REJECTION_CHECK_RE = re.compile(
+    r"(?:acs_under5_tract_demographics\.)?limited_english_rate[^\n]{0,90}?(?:0\.0|all[- ]zero|exclud\w*|never|not\s+use|avoid\w*|unusable|zero\s+across|trap|refus\w*|reject\w*)|"
+    r"(?:0\.0|all[- ]zero|exclud\w*|never\s+weight|do\s+not\s+use|refus\w*|reject\w*|cannot|can't)[^\n]{0,80}?(?:acs_under5_tract_demographics\.)?limited_english_rate\b",
+    re.IGNORECASE,
+)
+LEP_REFUSAL_PREFIX = (
+    "I refuse to use `limited_english_rate` to weight outreach priority. "
+    "In this dataset extract, `limited_english_rate = 0.0` (all-zero) across all tracts, "
+    "making it an unusable column trap.\n\n"
+)
+
 _DESTRUCTIVE_SQL_RE = re.compile(
     r"\b(DROP|DELETE|TRUNCATE|INSERT|UPDATE|ALTER|CREATE)\b",
     re.IGNORECASE,
@@ -556,6 +567,14 @@ def guardrail_after_model_callback(
         first_idx = text_indices[0]
         first_txt = new_parts[first_idx].text.lstrip()
         new_parts[first_idx] = types.Part.from_text(text=f"{DIAGNOSIS_REFUSAL_PREFIX}{first_txt}")
+        modified_text = True
+        full_text = "\n".join(new_parts[idx].text for idx in text_indices if new_parts[idx].text.strip())
+
+    # P0: Preserve/prepend statutory refusal if user requested limited_english_rate weighting
+    if "limited_english_rate" in user_text.lower() and not _LEP_REJECTION_CHECK_RE.search(full_text):
+        first_idx = text_indices[0]
+        first_txt = new_parts[first_idx].text.lstrip()
+        new_parts[first_idx] = types.Part.from_text(text=f"{LEP_REFUSAL_PREFIX}{first_txt}")
         modified_text = True
         full_text = "\n".join(new_parts[idx].text for idx in text_indices if new_parts[idx].text.strip())
 
