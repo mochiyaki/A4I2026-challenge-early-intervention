@@ -363,7 +363,7 @@ class GatekeeperRequest(BaseModel):
     state_code: str | None = None
     tract_geoid: str = ""
     home_tract_geoid: str = ""
-    child_age_months: int = Field(default=32, ge=0, le=60)
+    child_age_months: float = Field(default=32, ge=0, le=60)
     consent_signed: bool | None = None
     has_parent_consent: bool | None = None
     parental_consent_signed: bool | None = None
@@ -376,6 +376,7 @@ class GatekeeperRequest(BaseModel):
     insurance_type: str | None = None
     needs_medicaid: bool | None = None
     concern_domain: str = "Social-Communication / Autism Screen"
+    referral_concern: str | None = None
     has_household_vehicle: bool = False
     referral_channel: str = "ehr_electronic_portal"
     caregiver_phone_verified: bool = True
@@ -2057,11 +2058,14 @@ async def gatekeeper_endpoint(req: GatekeeperRequest) -> dict[str, Any]:
         call_kwargs = {
             **raw_dump,
             "state_code": active_state,
+            "concern_domain": req.referral_concern or req.concern_domain,
             "home_tract_geoid": tract,
             "tract_geoid": tract,
             "has_parent_consent": parent_consent,
+            "parental_consent_signed": parent_consent,
             "consent_signed": parent_consent,
             "has_screening_tool": screening_done,
+            "developmental_screen_completed": screening_done,
             "screening_tool_completed": screening_done,
             "preferred_language": language,
             "primary_language": language,
