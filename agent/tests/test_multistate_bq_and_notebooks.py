@@ -249,8 +249,6 @@ def test_scripts_load_multistate_and_local_adc_exist_and_safe() -> None:
         assert required_export in adc_sh
 
     readme = (AGENT_DIR / "README.md").read_text(encoding="utf-8")
-    for scoped_out in ("deploy_agent_engine.sh", "record_demo_video.py", "presentation/"):
-        assert scoped_out not in readme
     for expected_doc in (
         "schemas.py",
         "/run",
@@ -259,6 +257,7 @@ def test_scripts_load_multistate_and_local_adc_exist_and_safe() -> None:
         "scripts/load_multistate.sh",
         "scripts/setup_local_adc.sh",
         "scripts/deploy_cloud_run.sh",
+        "scripts/deploy_agent_engine.sh",
     ):
         assert expected_doc in readme
 

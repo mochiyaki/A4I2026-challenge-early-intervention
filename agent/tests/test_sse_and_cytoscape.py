@@ -393,6 +393,7 @@ def test_playwright_cytoscape_graph_filters_inspector_sse_and_state_switch(tmp_p
     env.pop("GOOGLE_GENAI_USE_VERTEXAI", None)
     env["A4I_STATE"] = "MS"
     env["A4I_SLOT_LEDGER_DB"] = str(tmp_path / "pw_slot_ledger.db")
+    env["A4I_CLASSIC_WORKBENCH"] = "1"
 
     proc = subprocess.Popen(
         [
